@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Геймдизайн — ветки кампании</title>
+<style>
+  :root {
+    --bg: #16181d;
+    --panel: #21242b;
+    --panel-light: #2b2f38;
+    --panel-lighter: #343943;
+    --text: #eceef1;
+    --text-dim: #9aa1ab;
+    --accent: #d4a13a;
+    --accent-dim: #8c6f2c;
+    --good: #4caf7d;
+    --bad: #d4573a;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  .page { max-width: 1100px; margin: 0 auto; }
+
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.6em; color: var(--accent); }
+  .subtitle { margin: 0; color: var(--text-dim); font-size: 0.9em; max-width: 700px; line-height: 1.4; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #1a1a1a; }
+  .btn-primary:hover { background: #e3b355; }
+  .btn-secondary { background: var(--panel-light); color: var(--text); border: 1px solid var(--accent-dim); }
+  .btn-secondary:hover { background: var(--panel-lighter); }
+  .btn-danger { background: transparent; color: var(--bad); border: 1px solid var(--bad); padding: 6px 12px; font-size: 0.85em; }
+  .btn-danger:hover { background: rgba(212, 87, 58, 0.12); }
+
+  .status { font-size: 0.9em; padding: 6px 0 16px; min-height: 1.4em; }
+  .status.ok { color: var(--good); }
+  .status.err { color: var(--bad); }
+  .status.dirty { color: var(--accent); }
+
+  .list { display: flex; flex-direction: column; gap: 14px; }
+
+  .collector {
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid #2c2f37;
+  }
+  .collector > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .collector > summary::-webkit-details-marker { display: none; }
+  .collector > summary::before {
+    content: '▸';
+    color: var(--text-dim);
+    transition: transform 0.15s ease;
+    flex: 0 0 auto;
+  }
+  .collector[open] > summary::before { transform: rotate(90deg); }
+  .summary-name { font-weight: 700; color: var(--accent); }
+  .summary-id { font-size: 0.8em; color: var(--text-dim); }
+  .summary-days { margin-left: auto; font-size: 0.85em; color: var(--text-dim); }
+
+  .collector-body { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field label {
+    display: block;
+    font-size: 0.72em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .field input[type=text],
+  .field input[type=number],
+  .field textarea,
+  .field select {
+    width: 100%;
+    background: var(--panel-light);
+    border: 1px solid #3a3f47;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.95em;
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 42px; }
+
+  .row3 { display: flex; gap: 10px; }
+  .row3 .field { flex: 1; }
+  .row3 .field.id-field { flex: 1.4; }
+
+  .missions-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+  .missions-heading h3 {
+    margin: 0;
+    font-size: 0.78em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .missions-hint { font-size: 0.78em; color: var(--text-dim); margin: -6px 0 0; line-height: 1.4; }
+
+  .missions-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .mission {
+    background: var(--panel-light);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .mission-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .mission-day-label { font-weight: 700; font-size: 0.9em; flex: 0 0 auto; }
+  .mission-preview { font-size: 0.78em; color: var(--text-dim); flex: 1 1 auto; }
+  .mission-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+
+  .tags-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+  .tag-row { display: flex; gap: 6px; align-items: center; }
+  .tag-row select { flex: 0 0 100px; }
+  .tag-row input { flex: 1; min-width: 0; }
+  .icon-btn {
+    flex: 0 0 auto;
+    background: var(--panel-lighter);
+    border: 1px solid #3a3f47;
+    color: var(--text-dim);
+    border-radius: 6px;
+    width: 26px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+  .icon-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
+  .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .add-tag-btn, .add-mission-btn {
+    align-self: flex-start;
+    background: none;
+    border: 1px dashed var(--accent-dim);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .add-tag-btn:hover, .add-mission-btn:hover { background: rgba(212, 161, 58, 0.08); }
+
+  .collector-footer { display: flex; justify-content: flex-end; }
+
+  .add-collector-btn {
+    align-self: flex-start;
+    background: none;
+    border: 2px dashed #3a3f47;
+    color: var(--text-dim);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .add-collector-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+  .json-panel { margin-top: 24px; }
+  .json-panel summary { cursor: pointer; color: var(--text-dim); margin-bottom: 8px; }
+  .json-panel pre {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 16px;
+    overflow: auto;
+    max-height: 400px;
+    font-size: 0.82em;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Геймдизайн: ветки кампании</h1>
+      <p class="subtitle">
+        Каждый заказчик — отдельная ветка кампании (см. GAME_DESIGN.md, «Orders &amp; Collectors»).
+        Внутри ветки — свой список дней (заказов): у каждого дня свои теги (жанр/период/автор, все должны
+        совпасть одновременно). После последнего описанного дня ветка бесконечно повторяет его условия
+        («мастерство»). Тип аукциона, множитель бюджета и шанс трофейного лота считаются автоматически
+        по позиции дня в списке — показаны рядом с каждым днём как подсказка.
+      </p>
+    </div>
+    <div class="toolbar">
+      <button id="btn-reload" class="btn btn-secondary">Обновить с диска</button>
+      <button id="btn-save" class="btn btn-primary">Сохранить всё</button>
+    </div>
+  </header>
+
+  <div id="status" class="status">Загрузка…</div>
+
+  <div id="list" class="list"></div>
+
+  <details class="json-panel">
+    <summary>Показать сырые данные (JSON)</summary>
+    <pre id="json-preview"></pre>
+  </details>
+</div>
+
+<script>
+  const TAG_TYPE_LABELS = { period: 'Период', genre: 'Жанр', artist: 'Автор' };
+  const TAG_TYPE_KEYS = { period: 'periods', genre: 'genres', artist: 'artists' };
+  const VENUE_LABELS = { local: 'Местный', regular: 'Обычный', elite: 'Элитный' };
+
+  // Mirrors getBranchMissionConfig() in js/campaign.js — display-only preview,
+  // keep in sync if the real formula there ever changes.
+  const BUDGET_MULTIPLIER_START = 0.9;
+  const BUDGET_MULTIPLIER_END = 1.6;
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function computeMissionPreview(missionIndex, ladderLength) {
+    const length = Math.max(1, ladderLength);
+    const t = Math.min(missionIndex, length - 1) / Math.max(1, length - 1);
+    let venueTier;
+    if (missionIndex < length * 0.2) venueTier = 'local';
+    else if (missionIndex < length * 0.8) venueTier = 'regular';
+    else venueTier = 'elite';
+    const trophyStart = Math.floor(length * 0.7);
+    const trophyChance =
+      missionIndex < trophyStart ? 0 : lerp(0, 0.35, (missionIndex - trophyStart) / Math.max(1, length - 1 - trophyStart));
+    const budgetMultiplier = lerp(BUDGET_MULTIPLIER_START, BUDGET_MULTIPLIER_END, t);
+    return { venueTier, trophyChance, budgetMultiplier };
+  }
+
+  let collectors = [];
+  let savedSnapshot = '[]';
+  let tagOptions = { periods: [], genres: [], artists: [] };
+
+  const listEl = document.getElementById('list');
+  const statusEl = document.getElementById('status');
+  const jsonPreviewEl = document.getElementById('json-preview');
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function isDirty() {
+    return JSON.stringify(collectors) !== savedSnapshot;
+  }
+
+  function onChange() {
+    if (isDirty()) setStatus('Есть несохранённые изменения.', 'dirty');
+    jsonPreviewEl.textContent = JSON.stringify(collectors, null, 2);
+  }
+
+  function ensureDatalists() {
+    ['period', 'genre', 'artist'].forEach((type) => {
+      const id = 'tagvalues-' + type;
+      let dl = document.getElementById(id);
+      if (!dl) {
+        dl = document.createElement('datalist');
+        dl.id = id;
+        document.body.appendChild(dl);
+      }
+      dl.innerHTML = '';
+      (tagOptions[TAG_TYPE_KEYS[type]] || []).forEach((v) => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        dl.appendChild(opt);
+      });
+    });
+  }
+
+  async function loadAll() {
+    if (location.protocol === 'file:') {
+      setStatus(
+        'Эта страница открыта как файл (file://) — так API не работает. Запустите сервер: в папке mvp выполните "npm run design" (или "node design-server.js"), затем откройте http://localhost:8935/gamedesign.html',
+        'err'
+      );
+      return;
+    }
+    setStatus('Загрузка…', '');
+    try {
+      const [collectorsRes, optionsRes] = await Promise.all([
+        fetch('/api/collectors'),
+        fetch('/api/tag-options'),
+      ]);
+      if (!collectorsRes.ok) throw new Error((await collectorsRes.json()).error || 'Ошибка загрузки заказчиков');
+      if (!optionsRes.ok) throw new Error((await optionsRes.json()).error || 'Ошибка загрузки справочника тегов');
+      collectors = await collectorsRes.json();
+      tagOptions = await optionsRes.json();
+      ensureDatalists();
+      savedSnapshot = JSON.stringify(collectors);
+      render();
+      setStatus('Загружено с диска.', 'ok');
+    } catch (e) {
+      const hint = e.message === 'Failed to fetch'
+        ? ' — сервер design-server.js не запущен или недоступен на этом порту. В папке mvp выполните "npm run design" и откройте страницу через http://localhost:8935/gamedesign.html, а не двойным кликом по файлу.'
+        : '';
+      setStatus('Ошибка: ' + e.message + hint, 'err');
+    }
+  }
+
+  function render(openIdx) {
+    listEl.innerHTML = '';
+    collectors.forEach((c, idx) => listEl.appendChild(renderCollector(idx, { open: idx === openIdx })));
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'add-collector-btn';
+    addBtn.textContent = '+ Новый заказчик';
+    addBtn.addEventListener('click', addCollector);
+    listEl.appendChild(addBtn);
+
+    jsonPreviewEl.textContent = JSON.stringify(collectors, null, 2);
+  }
+
+  function addCollector() {
+    collectors.push({
+      id: 'new-collector-' + Date.now().toString(36),
+      nameRu: 'Новый заказчик',
+      taglineRu: '',
+      personalModifier: 1,
+      baseBudget: 300000,
+      missions: [
+        { tags: [{ type: 'genre', value: tagOptions.genres[0] || '' }] },
+        { tags: [{ type: 'genre', value: tagOptions.genres[0] || '' }] },
+        { tags: [{ type: 'genre', value: tagOptions.genres[0] || '' }] },
+      ],
+    });
+    render(collectors.length - 1);
+    onChange();
+  }
+
+  function renderCollector(idx, opts) {
+    const c = collectors[idx];
+    const details = document.createElement('details');
+    details.className = 'collector';
+    details.open = !!(opts && opts.open);
+
+    const summary = document.createElement('summary');
+    summary.innerHTML = `
+      <span class="summary-name">${escapeHtml(c.nameRu || '(без имени)')}</span>
+      <span class="summary-id">${escapeHtml(c.id)}</span>
+      <span class="summary-days" data-summary-days></span>
+    `;
+    details.appendChild(summary);
+
+    const body = document.createElement('div');
+    body.className = 'collector-body';
+    body.innerHTML = `
+      <div class="row3">
+        <div class="field id-field">
+          <label>ID (латиницей: строчные буквы/цифры/дефис)</label>
+          <input type="text" data-field="id" value="${escapeAttr(c.id)}">
+        </div>
+        <div class="field">
+          <label>Имя заказчика</label>
+          <input type="text" data-field="nameRu" value="${escapeAttr(c.nameRu)}">
+        </div>
+      </div>
+      <div class="field">
+        <label>Описание вкуса (tagline)</label>
+        <textarea data-field="taglineRu">${escapeHtml(c.taglineRu)}</textarea>
+      </div>
+      <div class="row3">
+        <div class="field">
+          <label>Личный множитель комиссии</label>
+          <input type="number" step="0.05" min="0.1" data-field="personalModifier" value="${c.personalModifier}">
+        </div>
+        <div class="field">
+          <label>Базовый бюджет заказа, ₽</label>
+          <input type="number" step="10000" min="0" data-field="baseBudget" value="${c.baseBudget}">
+        </div>
+      </div>
+      <div class="missions-heading">
+        <h3>Дни кампании (заказы ветки)</h3>
+      </div>
+      <p class="missions-hint">
+        Каждый день — свой набор тегов (лот должен совпасть по всем сразу). После последнего дня ветка
+        повторяет его условия бесконечно. Тип аукциона/бюджет/шанс трофея под каждым днём — расчётная
+        подсказка, не редактируется напрямую: меняется автоматически от числа дней и позиции в списке.
+      </p>
+      <div class="missions-list" data-missions-list></div>
+      <button type="button" class="add-mission-btn" data-add-mission>+ день</button>
+      <div class="collector-footer">
+        <button type="button" class="btn-danger" data-delete-collector>Удалить заказчика</button>
+      </div>
+    `;
+    details.appendChild(body);
+
+    body.querySelectorAll('[data-field]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const field = input.dataset.field;
+        let value = input.value;
+        if (field === 'personalModifier' || field === 'baseBudget') value = parseFloat(value) || 0;
+        collectors[idx][field] = value;
+        if (field === 'nameRu') summary.querySelector('.summary-name').textContent = value || '(без имени)';
+        if (field === 'id') summary.querySelector('.summary-id').textContent = value;
+        onChange();
+      });
+    });
+
+    const missionsListEl = body.querySelector('[data-missions-list]');
+    renderMissions(missionsListEl, idx);
+    updateDaysSummary(summary, idx);
+
+    body.querySelector('[data-add-mission]').addEventListener('click', () => {
+      const missions = collectors[idx].missions;
+      const lastTags = missions.length ? missions[missions.length - 1].tags : [{ type: 'genre', value: tagOptions.genres[0] || '' }];
+      missions.push({ tags: lastTags.map((t) => ({ type: t.type, value: t.value })) });
+      renderMissions(missionsListEl, idx);
+      updateDaysSummary(summary, idx);
+      onChange();
+    });
+
+    body.querySelector('[data-delete-collector]').addEventListener('click', () => {
+      if (!confirm(`Удалить заказчика "${c.nameRu}"?`)) return;
+      collectors.splice(idx, 1);
+      render();
+      onChange();
+    });
+
+    return details;
+  }
+
+  function updateDaysSummary(summary, idx) {
+    const n = collectors[idx].missions.length;
+    summary.querySelector('[data-summary-days]').textContent = n + (n % 10 === 1 && n % 100 !== 11 ? ' день' : ' дней');
+  }
+
+  function renderMissions(container, idx) {
+    const collector = collectors[idx];
+    container.innerHTML = '';
+    const length = collector.missions.length;
+
+    collector.missions.forEach((mission, mIdx) => {
+      const preview = computeMissionPreview(mIdx, length);
+      const block = document.createElement('div');
+      block.className = 'mission';
+
+      const header = document.createElement('div');
+      header.className = 'mission-header';
+      header.innerHTML = `
+        <span class="mission-day-label">День ${mIdx + 1}</span>
+        <span class="mission-preview">
+          ${VENUE_LABELS[preview.venueTier]} аукцион · бюджет ×${preview.budgetMultiplier.toFixed(2)} · трофей ${Math.round(preview.trophyChance * 100)}%
+        </span>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'mission-actions';
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'icon-btn';
+      upBtn.textContent = '↑';
+      upBtn.title = 'Поднять день';
+      upBtn.disabled = mIdx === 0;
+      upBtn.addEventListener('click', () => {
+        const tmp = collector.missions[mIdx - 1];
+        collector.missions[mIdx - 1] = collector.missions[mIdx];
+        collector.missions[mIdx] = tmp;
+        renderMissions(container, idx);
+        onChange();
+      });
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'icon-btn';
+      downBtn.textContent = '↓';
+      downBtn.title = 'Опустить день';
+      downBtn.disabled = mIdx === length - 1;
+      downBtn.addEventListener('click', () => {
+        const tmp = collector.missions[mIdx + 1];
+        collector.missions[mIdx + 1] = collector.missions[mIdx];
+        collector.missions[mIdx] = tmp;
+        renderMissions(container, idx);
+        onChange();
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'icon-btn';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Удалить день';
+      delBtn.disabled = length <= 1;
+      delBtn.addEventListener('click', () => {
+        collector.missions.splice(mIdx, 1);
+        renderMissions(container, idx);
+        const summary = container.closest('.collector').querySelector('summary');
+        updateDaysSummary(summary, idx);
+        onChange();
+      });
+
+      actions.appendChild(upBtn);
+      actions.appendChild(downBtn);
+      actions.appendChild(delBtn);
+      header.appendChild(actions);
+      block.appendChild(header);
+
+      const tagsListEl = document.createElement('div');
+      tagsListEl.className = 'tags-list';
+      block.appendChild(tagsListEl);
+      renderMissionTags(tagsListEl, idx, mIdx);
+
+      const addTagBtn = document.createElement('button');
+      addTagBtn.type = 'button';
+      addTagBtn.className = 'add-tag-btn';
+      addTagBtn.textContent = '+ тег';
+      addTagBtn.addEventListener('click', () => {
+        mission.tags.push({ type: 'genre', value: tagOptions.genres[0] || '' });
+        renderMissionTags(tagsListEl, idx, mIdx);
+        onChange();
+      });
+      block.appendChild(addTagBtn);
+
+      container.appendChild(block);
+    });
+  }
+
+  function renderMissionTags(container, idx, mIdx) {
+    const mission = collectors[idx].missions[mIdx];
+    container.innerHTML = '';
+    mission.tags.forEach((tag, tagIdx) => {
+      const row = document.createElement('div');
+      row.className = 'tag-row';
+
+      const select = document.createElement('select');
+      Object.keys(TAG_TYPE_LABELS).forEach((t) => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = TAG_TYPE_LABELS[t];
+        if (t === tag.type) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', () => {
+        tag.type = select.value;
+        renderMissionTags(container, idx, mIdx);
+        onChange();
+      });
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('list', 'tagvalues-' + tag.type);
+      input.value = tag.value;
+      input.addEventListener('input', () => {
+        tag.value = input.value;
+        onChange();
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'icon-btn';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Удалить тег';
+      delBtn.disabled = mission.tags.length <= 1;
+      delBtn.addEventListener('click', () => {
+        mission.tags.splice(tagIdx, 1);
+        renderMissionTags(container, idx, mIdx);
+        onChange();
+      });
+
+      row.appendChild(select);
+      row.appendChild(input);
+      row.appendChild(delBtn);
+      container.appendChild(row);
+    });
+  }
+
+  function validateClientSide() {
+    const ids = new Set();
+    for (const c of collectors) {
+      if (!/^[a-z0-9-]+$/.test(c.id || '')) return `Некорректный ID: "${c.id}" (латиница, цифры, дефис).`;
+      if (ids.has(c.id)) return `Повторяющийся ID: "${c.id}".`;
+      ids.add(c.id);
+      if (!c.nameRu || !c.nameRu.trim()) return `У заказчика "${c.id}" пустое имя.`;
+      if (!c.missions || c.missions.length === 0) return `У заказчика "${c.nameRu}" нет ни одного дня кампании.`;
+      for (let i = 0; i < c.missions.length; i++) {
+        const mission = c.missions[i];
+        if (!mission.tags || mission.tags.length === 0) {
+          return `У заказчика "${c.nameRu}", день ${i + 1}: нет ни одного тега.`;
+        }
+        for (const t of mission.tags) {
+          if (!t.value || !t.value.trim()) return `У заказчика "${c.nameRu}", день ${i + 1}: есть тег без значения.`;
+        }
+      }
+    }
+    return null;
+  }
+
+  document.getElementById('btn-save').addEventListener('click', async () => {
+    const clientError = validateClientSide();
+    if (clientError) {
+      setStatus(clientError, 'err');
+      return;
+    }
+    setStatus('Сохранение…', '');
+    try {
+      const res = await fetch('/api/collectors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(collectors),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Не удалось сохранить');
+      savedSnapshot = JSON.stringify(collectors);
+      setStatus(`Сохранено (${body.count} заказчиков). Перезагрузите основную игру, чтобы увидеть изменения.`, 'ok');
+    } catch (e) {
+      const hint = e.message === 'Failed to fetch'
+        ? ' — сервер design-server.js не запущен или недоступен. В папке mvp выполните "npm run design".'
+        : '';
+      setStatus('Ошибка сохранения: ' + e.message + hint, 'err');
+    }
+  });
+
+  document.getElementById('btn-reload').addEventListener('click', () => {
+    if (isDirty() && !confirm('Есть несохранённые изменения — всё равно перезагрузить с диска?')) return;
+    loadAll();
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  loadAll();
+</script>
+</body>
+</html>

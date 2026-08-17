@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аукционный дом — Симулятор скупщика</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- INTRO SCREEN -->
+  <section id="screen-intro" class="screen active">
+    <div class="panel intro-panel">
+      <h1>Аукционный дом</h1>
+      <p class="subtitle">Симулятор скупщика произведений искусства</p>
+      <p class="lede">
+        Вы — агент по закупкам на арт-аукционе. Коллекционеры дают вам заказы на
+        конкретные категории произведений искусства и бюджет на покупку. Экспонат
+        появляется на подиуме, аукционист называет о нём сведения одно за другим — а
+        вы должны опознать нужный лот и подать сигнал о покупке быстрее конкурентов.
+      </p>
+      <ul class="rules-list">
+        <li>Кто сигнализирует первым — тот и покупает лот. Торга нет.</li>
+        <li>Пока идёт раскрытие сведений, цена лота растёт, а будущая комиссия падает — решайте быстро.</li>
+        <li>Правильную покупку вы узнаете только в конце дня.</li>
+        <li>Ваш капитал — это жизнь: закончились деньги — карьера окончена. Рейтинга больше нет.</li>
+      </ul>
+      <button id="btn-start-campaign" class="btn btn-primary">Начать карьеру</button>
+    </div>
+  </section>
+
+  <!-- DAY BRIEF SCREEN -->
+  <section id="screen-brief" class="screen">
+    <header class="brief-hud">
+      <div class="hud-item">День <span id="brief-day-number">1</span> из 15</div>
+      <div class="hud-item">Капитал: <span id="brief-capital">0</span> ₽</div>
+    </header>
+
+    <div class="brief-body">
+      <div class="brief-main">
+        <h3 class="brief-heading">Заказчик на сегодня</h3>
+        <div id="brief-branch-choice" class="venue-choice"></div>
+      </div>
+
+      <aside class="brief-side">
+        <h3 class="brief-heading">Мастерская</h3>
+        <div id="brief-upgrades" class="upgrade-shop"></div>
+      </aside>
+    </div>
+
+    <footer class="brief-footer">
+      <button id="btn-start-day" class="btn btn-primary">Выйти в зал</button>
+    </footer>
+  </section>
+
+  <!-- AUCTION FLOOR SCREEN -->
+  <section id="screen-auction" class="screen">
+    <header class="auction-hud">
+      <div class="hud-item">День <span id="hud-day">1</span>/15</div>
+      <div class="hud-item">Площадка: <span id="hud-venue">Обычный аукцион</span></div>
+      <div class="hud-item">Лот <span id="hud-lot-index">1</span>/<span id="hud-lot-total">10</span></div>
+      <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
+    </header>
+
+    <div id="hud-orders" class="hud-orders"></div>
+
+    <main class="auction-stage">
+      <div class="stage-left">
+        <div class="audience-row" id="audience-row">
+          <div class="rival-head"></div>
+          <div class="rival-head"></div>
+          <div class="rival-head"></div>
+          <div class="rival-head"></div>
+          <div class="rival-head"></div>
+        </div>
+
+        <div class="lot-image-wrap" id="lot-image-wrap">
+          <img id="lot-image" src="" alt="Экспонат">
+          <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
+        </div>
+        <div id="zoom-hint" class="zoom-hint">Нажмите на изображение, чтобы приблизить</div>
+      </div>
+
+      <div class="stage-right">
+        <div class="live-economics" id="live-economics">
+          <div class="economics-item">
+            <span class="economics-label">Текущая цена</span>
+            <span class="economics-value" id="live-price">—</span>
+          </div>
+          <div class="economics-item">
+            <span class="economics-label">Множитель комиссии</span>
+            <span class="economics-value" id="live-multiplier">×1.00</span>
+          </div>
+        </div>
+
+        <div class="lot-info">
+          <div class="reveal-field" id="field-genre" data-field="genre">
+            <span class="field-label">Жанр</span><span class="field-value">—</span>
+          </div>
+          <div class="reveal-field" id="field-period" data-field="period">
+            <span class="field-label">Период</span><span class="field-value">—</span>
+          </div>
+          <div class="reveal-field" id="field-artist" data-field="artist">
+            <span class="field-label">Автор</span><span class="field-value">—</span>
+          </div>
+          <div class="reveal-field" id="field-fact" data-field="fact">
+            <span class="field-label">Интересный факт</span><span class="field-value">—</span>
+          </div>
+          <div class="reveal-field" id="field-title" data-field="title">
+            <span class="field-label">Название</span><span class="field-value">—</span>
+          </div>
+        </div>
+
+        <div id="lot-result-banner" class="lot-result-banner hidden"></div>
+        <div id="insufficient-funds-hint" class="insufficient-funds-hint hidden">Недостаточно средств!</div>
+
+        <div class="action-row">
+          <button id="btn-buy" class="btn btn-buy">КУПИТЬ! (Пробел)</button>
+          <button id="btn-skip" class="btn btn-skip">Пропустить</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- END OF DAY REPORT SCREEN -->
+  <section id="screen-report" class="screen">
+    <div class="panel report-panel">
+      <h2 id="report-title">Итоги дня <span id="report-day-number">1</span></h2>
+
+      <h3 class="report-subheading">Заказчики</h3>
+      <div id="report-orders" class="report-orders"></div>
+
+      <h3 class="report-subheading">Что купили и почему</h3>
+      <div id="report-transactions" class="report-transactions"></div>
+
+      <h3 class="report-subheading">Движение капитала</h3>
+      <div id="report-ledger" class="report-ledger"></div>
+
+      <div id="report-verdict" class="report-verdict"></div>
+
+      <div id="report-boosters-section" class="hidden">
+        <h3 class="report-subheading">Бустеры на завтра</h3>
+        <div id="report-boosters" class="upgrade-shop"></div>
+      </div>
+
+      <button id="btn-report-continue" class="btn btn-primary">Продолжить</button>
+    </div>
+  </section>
+
+  <!-- CAMPAIGN END / GAME OVER SCREEN -->
+  <section id="screen-end" class="screen">
+    <div class="panel intro-panel">
+      <h1 id="end-title">Карьера завершена</h1>
+      <p id="end-message" class="lede"></p>
+      <button id="btn-restart-campaign" class="btn btn-primary">Начать заново</button>
+    </div>
+  </section>
+
+  <!-- ZOOM MODAL -->
+  <div id="zoom-modal" class="zoom-modal hidden">
+    <img id="zoom-image" src="" alt="Экспонат крупным планом">
+  </div>
+
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/collectors.js"></script>
+<script src="js/campaign.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
