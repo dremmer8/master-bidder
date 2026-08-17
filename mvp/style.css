@@ -420,6 +420,12 @@ h2 { margin-top: 0; }
   transition: opacity 0.25s ease;
 }
 .reveal-field.revealed { opacity: 1; }
+.reveal-field.order-target {
+  background: #2c2a26;
+  box-shadow: inset 2px 0 0 rgba(212, 161, 58, 0.45);
+}
+.reveal-field.order-target:not(.revealed) { opacity: 0.42; }
+.reveal-field.order-target .field-label { color: #c4b48a; }
 .reveal-field .field-label {
   min-width: 120px;
   color: var(--text-dim);

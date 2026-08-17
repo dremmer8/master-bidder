@@ -95,6 +95,19 @@ const UI = {
       `;
       el.appendChild(card);
     });
+    this.highlightOrderFields(state);
+  },
+
+  highlightOrderFields(state) {
+    document.querySelectorAll('.reveal-field').forEach((field) => field.classList.remove('order-target'));
+    const fieldByType = { genre: 'genre', period: 'period', artist: 'artist', artwork: 'title' };
+    (state.dayOrders || []).forEach((order) => {
+      (order.criteriaTags || []).forEach((tag) => {
+        const fieldName = fieldByType[tag.type];
+        const field = fieldName && document.getElementById('field-' + fieldName);
+        if (field) field.classList.add('order-target');
+      });
+    });
   },
 
   updateCapitalDisplays(capital) {
@@ -137,6 +150,7 @@ const UI = {
 
     this.updateLiveEconomics(initialPrice, initialMultiplier);
     this.zoomSrc = lot.imageUrl;
+    if (typeof Game !== 'undefined' && Game.state) this.highlightOrderFields(Game.state);
   },
 
   revealField(fieldName) {
