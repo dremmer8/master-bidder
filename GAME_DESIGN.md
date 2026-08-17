@@ -1,5 +1,7 @@
 # Auction House Specialist — Game Design Document
 
+Living design document for the HTML/JS MVP in `mvp/`. Numbers below are the **current implemented tunables**, not leftover pre-build speculation. Change them in `mvp/js/campaign.js` (and collector data via the design editor) when playtesting says so.
+
 ## Concept
 
 An educational game disguised as an arcade reflex game. The player is an art-buying agent working the floor of an auction house. Education (art history: titles, authors, periods, genres, facts) is absorbed as a *side effect* of learning to recognize artworks fast enough to win them before rival buyers — never delivered as an explicit quiz or lesson.
@@ -10,81 +12,130 @@ An educational game disguised as an arcade reflex game. The player is an art-buy
 
 ## Development Path
 
-1. **MVP first**: browser-based (HTML/JS), 2D-only, no 3D, no voice-over.
-2. **Full version**: Unity 3D, adds sculptures/3D scans, full auction-room presentation, voice-over, deeper meta-progression shop.
+1. **MVP (current):** browser-based HTML/JS in `mvp/` (`index.html`). 2D-only, no 3D, no voice-over. Playable campaign with economy, collector branches, venues, meta-upgrades, and end-of-day settlement.
+2. **Full version:** Unity 3D, adds sculptures/3D scans, full auction-room presentation, voice-over, deeper meta-progression shop.
 
 Do not build Unity/3D features before the HTML MVP validates the core loop.
 
 ---
 
+## Player Flow
+
+A run is a single 15-day campaign. Screens, in order:
+
+1. **Intro** — premise and the four non-negotiable rules (first-signal wins / no bidding war; price rises and commission falls during reveal; correctness is deferred to end of day; capital is the only life stat).
+2. **Day brief** — pick **one collector** for today (each collector is a campaign branch). Optionally buy permanent upgrades from the workshop, paid from the current capital. Then enter the hall.
+3. **Auction floor** — one venue session for that day, driven by the chosen branch's progress (see Venues). Sequential field reveal, live price and commission multiplier, race against faceless rivals, optional skip.
+4. **End-of-day report** — first time the player learns which purchases matched the order. Settlement, ledger, then (if the day was survived and the campaign continues) optional one-shot booster for *tomorrow*.
+5. **Campaign end or bankruptcy** — survive all 15 days, or go below zero at settlement.
+
+There is no day-retry and no mid-day second venue. One collector, one order, one auction session per day.
+
+---
+
 ## Core Gameplay Loop
 
-1. An exhibit (lot) is presented visually.
-2. The auctioneer reveals information **sequentially, as text** (MVP has no voice-over), in this fixed order: `Genre → Period → Author → Interesting Fact → Title`. Reveal is **automatic, on a timer** — not a player-driven action. Cadence is the existing ~1.5s/field as a starting point for tuning (TBD via playtesting).
-3. **Price and commission are live, ticking values, visible from the start of the reveal.** Each auto-revealed field bumps the price up one step and drops the commission "speed multiplier" one step (see Economy: Dynamic Price & Commission). This replaces the old behavior where price was a hidden field revealed last — its growth over time is now the core urgency signal, so it has to be visible throughout. *(Exact visual treatment is an inferred implementation detail, not explicitly speced — flag for confirmation during build.)*
-4. At any point during the reveal, the player can signal "Buy!".
-5. **Buying is a deterministic race**: whoever signals first gets the lot. There is still no bidding war between the player and rivals — the only thing moving the price is the reveal-driven step growth, not competing bids.
-6. **Race outcome (won/lost the lot to a rival) is shown immediately** — this must stay instant, since the game needs to move on to the next lot regardless of correctness.
-7. **Whether the purchase was a "correct" match for an active client order is NOT revealed during the day at all** — no immediate feedback, no running numbers, no hints. Fully suspended until the end-of-day report, same as before.
-8. **The player's running capital balance is always visible.** It is now the core survival stat (see Loss Condition), so unlike order-match correctness, it must never be hidden or deferred.
-9. Player is seated in the audience (fixed camera position by game logic) but can zoom in at any time to inspect the exhibit more closely.
+1. An exhibit (lot) is presented visually. Not-yet-revealed fields are **masked** (bullet placeholders of similar length) so values cannot be read early.
+2. The auctioneer reveals information **sequentially, as text**, in this fixed order: `Genre → Period → Author → Interesting Fact → Title`. Reveal is **automatic, on a timer** — not a player-driven action. Cadence: **1.5s per field**.
+3. **Price and commission multiplier are live from the start of the reveal.** Each auto-revealed field bumps the price up one step (+12% of the jittered base) and drops the speed multiplier one step toward a floor of **×0.35**. Both effects share a single step counter. Buying early is cheaper and pays better; waiting costs more and pays less. A fully-revealed lot is still worth buying — just less profitable.
+4. At any point the player can **Buy** (button or Space) or **Skip**. Skip resolves the lot with no purchase and no capital change.
+5. **Buying is a deterministic race**: whoever signals first gets the lot. There is no bidding war. The only thing moving the price is reveal-driven step growth, not competing bids.
+6. Purchases that would exceed the current capital are blocked ("Недостаточно средств!") — no buying on credit.
+7. **Race outcome** (won / lost to a rival / skipped) is shown immediately, then the next lot starts after a short pause (~1.4s).
+8. **Whether the purchase matched the day's order is not revealed during the auction at all** — no colors, icons, or running match counts. That wait is the informational climax of the end-of-day report.
+9. **Running capital is always visible** (brief HUD, auction HUD). It is the survival stat.
+10. The player can click the lot image at any time to **zoom**.
+
+After the last lot of the session, settlement runs once for the whole day.
 
 ### Feedback Timing (important, non-obvious)
 
-Three distinct signals must not be conflated in implementation:
-- **Race resolution** (did I get the item, or did a rival?) — always instant/real-time.
-- **Running capital balance** — always instant/visible, continuously.
-- **Order-match correctness** (was this the right item for a client, and what did it earn/cost?) — always deferred to the end-of-day report, with zero interim feedback of any kind (no colors, no icons, no partial numbers).
-
-This split is deliberate: it keeps the auction pacing snappy and the survival stakes legible in real time, while still making the end-of-day report the informational climax of the day.
+Three distinct signals must not be conflated:
+- **Race resolution** (did I get the item, skip it, or did a rival?) — always instant.
+- **Running capital balance** — always instant/visible.
+- **Order-match correctness** (was this the right item, and what did it earn/cost?) — always deferred to the end-of-day report.
 
 ---
 
 ## Rival Bidders (AI)
 
-- All lots are contested by all bots — no lot goes uncontested. Deliberate simplification for pacing/dynamism (rejected the alternative of bots having their own hidden preferences).
-- Bots are faceless/unnamed for MVP (no personas). Personas may be added later, but this is explicitly deferred, not committed.
-- Difficulty scaling: bots get faster (shorter effective reaction window) as the campaign progresses. Exact curve is a tuning detail, TBD via playtesting.
-- **Elite auctions apply an additional speed boost on top of that day's normal rival curve** — Elite is meant to be genuinely harder, not just gated by a ticket price (see Venues).
+- All lots are contested. Deliberate simplification for pacing (rejected the alternative of bots having their own hidden preferences).
+- Bots are **faceless/unnamed**: five anonymous heads in the audience row. When a rival wins, one random head raises. Personas are deferred.
+- Rival reaction is a random delay drawn from that **calendar day's** window, then multiplied by the venue's speed factor:
+  - Day 1 window: **5.0–9.0s**. Day 15 window: **1.5–3.8s**. Linear lerp in between.
+  - Local ×2.2 (slower). Regular ×1.0. Elite ×0.6 (faster).
+- The rival timer is independent of how many fields have been revealed; a fast rival can snatch a lot mid-reveal.
+
+---
+
+## Campaign Structure: Collector Branches
+
+This is the main structural change from the original "1–3 orders + pick a venue" brief.
+
+- The campaign is **15 calendar days** long (`CAMPAIGN_LENGTH`).
+- **Each collector is a campaign branch.** On the brief screen the player picks exactly **one** collector for the day and receives **exactly one** order from that collector.
+- Each branch has its own authored mission list (`missions[]` in `mvp/js/collectors.js`). The branch's mission counter (`branchProgress`) **never resets** and only advances when that branch is played.
+- `missions[i].tags` is the AND-matched criteria for that branch's (i+1)-th order. Mixing branches across the 15 days is the player's campaign strategy: you can deepen one collector or rotate.
+- Past the last authored mission, the branch **plateaus on "mastery"**: it keeps reusing the last day's tags, at max venue/budget/trophy for that ladder.
+- Venue tier, trophy chance, and branch budget multiplier are **derived from the chosen branch's mission index vs that branch's own ladder length** — not chosen by the player, and not a global day-number gate. See Venues.
+
+Current content: **5 named collectors**, **10 authored days each**. See Orders & Collectors for the roster.
+
+A design editor (`mvp/gamedesign.html`, served by `npm run design` in `mvp/`) authors collector names, modifiers, budgets, and per-day tag lists. Tag values must match artwork `periodRu` / `genreRu` / `artistRu` in `mvp/js/data.js`.
 
 ---
 
 ## Orders & Collectors (Clients)
 
-- Each day, the player has **1–3 active orders** from collectors, drawn from a pool of **10–12 lots** presented that day. **At least one order is always active** whenever the player is buying — a purchase can never end up with "nobody to sell it to."
-- Collectors are **named, recurring characters with distinct tastes** (e.g., "obsessed with Impressionism") — deliberate content investment for memorable order criteria and narrative texture.
-- **Order criteria are category-based** (era / genre / author / style), or a trophy order for one specific named artwork.
-- **Matching is binary**: a lot is "correct" for an order only if it contains **all** of that order's requested tags. No partial credit.
-- **Each collector has a personal commission modifier** — a quirk/trait that multiplies on top of the base commission formula (e.g., a generous collector pays above the base rate, a stingy one below, one who "loves speed" rewards fast buys extra). This is what makes two "correct" purchases of the same rarity worth different money for two different collectors.
-- **Each order carries a budget**, credited to the player's single balance the moment the order is accepted (see Economy: Orders & Budget).
-- **There is no fixed "wanted quantity."** A collector is simply happier — and pays more total commission — the more correct purchases they get, bounded only by their budget (soft cap, see Economy).
-- **Conflict resolution**: if a lot matches more than one active order, the game randomly credits exactly one interested collector, as before. If a lot matches **none** of the active orders, it is still auto-attributed (via the same resolution logic) as an incorrect purchase against one of the active orders — the player is never left holding a painting nobody takes (see Economy: paintings are never kept by the player).
+- **Always exactly one active order** while buying. A purchase can never end up with "nobody to sell it to."
+- Collectors are **named, recurring characters with distinct tastes**.
+- **Order criteria are category-based** (period / genre / artist), or a **trophy** order for one specific named artwork. Trophy rolls are off on Local, and otherwise ramp over the last 30% of that branch's ladder (0% → 35%).
+- **Matching is binary**: a lot is correct only if it contains **all** of that order's requested tags. No partial credit.
+- **Each collector has a personal commission modifier** that multiplies on top of the base formula.
+- **Each order carries a budget**, credited to the player's single balance the moment the auction begins (after the brief, so workshop purchases happen *before* the budget injection).
+- **There is no fixed wanted quantity.** The collector pays commission on every attributed purchase, bounded only by the budget as a *soft cap* (see Economy).
+- **Conflict resolution** is still written as: if a lot matches more than one active order, credit exactly one at random; if it matches none, auto-attribute as incorrect to an active order (preferring the same venue). With the current "one order per day" rule this always credits that single collector.
+
+### Current roster
+
+| Collector | Taste (authored arc) | Modifier | Base budget |
+|---|---|---|---|
+| Барон Аркадий Светозаров | Portrait → High Renaissance portrait | ×1.15 | 380 000 ₽ |
+| Мадам Элеонора Волконская | Landscape → Impressionist landscape | ×1.30 | 340 000 ₽ |
+| Профессор Лев Наумович Гортензиев | Dutch Golden Age → genre scenes | ×0.90 | 300 000 ₽ |
+| Графиня Аглая Тенишева | Baroque → group portrait | ×1.10 | 320 000 ₽ |
+| Капитан Фёдор Северин | Landscape → Romantic landscape | ×0.95 | 300 000 ₽ |
+
+Typical authored shape (10 days): first three days a single tag, then a second AND-tag for the rest of the ladder.
 
 ---
 
 ## Economy
 
-This is the trickiest part of the design — read carefully, it has been substantially reworked from the original MVP model.
-
 ### One unified balance
 
-- There is exactly **one** player-owned capital balance. It persists across the whole campaign (no daily reset), and there is **no separate "client money" pool anymore** — during live bidding the player is always spending their own real capital.
-- **Purchases are blocked if they would exceed the current balance** — no buying on credit, ever. This is the reason a purchase itself can never be the direct cause of bankruptcy (see Loss Condition).
+- Exactly **one** player-owned capital. It persists across the campaign. Starting capital: **40 000 ₽**.
+- During live bidding the player always spends this capital. There is no separate client-money pool.
+- Purchases are blocked if they would exceed the current balance. A purchase itself can never be the direct cause of bankruptcy (see Loss Condition).
 
 ### Orders & Budget
 
-- Accepting an order **immediately adds that order's budget to the player's balance.**
-- At end-of-day settlement, for each order: `leftover = max(0, budget − total price of paintings attributed to that order)`. That leftover is **clawed back out of the balance** — the collector keeps any unspent budget, exactly as they keep every painting bought against their order (right or wrong).
-- This makes the order budget a **soft cap, not a hard wall**: the player can keep buying correct paintings for an order past its budget, paying the extra out of their own pooled balance. Those purchases still earn **full commission** per the formula below — they simply don't get the "free" budget cushion refunded; nothing beyond the budget comes back.
-- Net effect: as long as spend stays within budget, the budget injection and its end-of-day clawback cancel out exactly. The only real profit or loss an order produces is the **commission earned** on what was bought for it.
-- **The player never keeps a painting, under any circumstance.** Every purchase — correct or incorrect — ends up with whichever collector it's attributed to at settlement. Commission for correct purchases is **not** reduced just because an order's budget has been exceeded — a discount here was considered and explicitly rejected as not worth the added complexity.
+- Accepting the day's order **immediately adds that order's budget to the balance.**
+- Budget = `round(collector.baseBudget × branchBudgetMultiplier × venue.budgetFactor)` to the nearest 100 ₽.
+  - Branch multiplier lerps **0.9 → 1.6** across that branch's authored ladder.
+  - Venue factors: Local **0.45**, Regular **1.0**, Elite **2.4**.
+  - The `gallery-connections` upgrade adds **+0.15** to the branch multiplier.
+- At end-of-day settlement: `leftover = max(0, budget − total price of paintings attributed to that order)`. Leftover is **clawed back**. The collector keeps unspent budget and every painting attributed to them (right or wrong).
+- Soft cap, not a hard wall: the player can keep buying correct paintings past the budget, paying extra out of pooled capital. Those purchases still earn **full commission**. Nothing beyond the budget is refunded.
+- Net effect when spend stays within budget: the injection and the clawback cancel. The only real profit or loss is **commission**.
+- **The player never keeps a painting.** Every purchase ends up with the collector it is attributed to. Commission for correct purchases is not reduced just because the budget was exceeded.
 
-### Dynamic Price & Commission (replaces static per-lot pricing)
+### Dynamic Price & Commission
 
-- Each lot still has a rarity tier (common / rare / epic) with a base price for that tier.
-- The field-by-field reveal now drives price and commission together: **each revealed field bumps the price up one step, and drops a single "speed multiplier" down one step.** There is exactly one multiplier governing both effects — not two independent systems. Buying early (fewer fields revealed) is cheaper and pays better; waiting for more information costs more and pays less.
-- The speed multiplier has a floor (**~×0.3–0.4, TBD via playtesting**), so a fully-revealed lot is still worth buying — just far less profitable than a fast buy.
-- Step sizes and reveal cadence: **TBD via playtesting**, starting from the existing ~1.5s/field cadence.
+- Each lot has a rarity tier (common / rare / epic) with a base price. At draw time the price is jittered **×0.85–1.15**, then rounded to 100 ₽.
+- Each revealed field: price × (1 + step × **0.12**), speed multiplier interpolates from **1.0** at step 0 to the floor at step 5.
+- Speed floor: **0.35**, or **0.45** with the `fast-appraisal` upgrade.
+- Live HUD shows current price and `×multiplier`.
 
 ### Commission Formula
 
@@ -92,84 +143,130 @@ This is the trickiest part of the design — read carefully, it has been substan
 commission = rarity_value × speed_multiplier × fit_coefficient × collector_personal_modifier
 ```
 
-- **`rarity_value`** — fixed per rarity tier. Rarity now feeds commission directly, in addition to still setting the base price. *(This explicitly supersedes the earlier MVP decision that rarity was price-only and had no other effect — that decision is reversed by this pack.)*
+- **`rarity_value`** — common **6 000**, rare **20 000**, epic **55 000**. Rarity also still sets base price.
 - **`speed_multiplier`** — from the reveal-step mechanic above.
-- **`fit_coefficient`** — binary: full value if the lot matches the order's requested tags, a much smaller value if it doesn't.
-- **`collector_personal_modifier`** — the individual collector's quirk multiplier (see Orders & Collectors).
-- For **incorrect** purchases, the smaller `fit_coefficient` itself **scales down smoothly across the campaign**: early on it's still a small net-positive commission; from some later day onward (**exact day TBD via playtesting**) it crosses zero and becomes a real fine (negative commission). This smooth ramp — not a hard difficulty switch — is what turns "buying wrong" from a minor inefficiency early in the campaign into the actual bankruptcy trigger late in it.
+- **`fit_coefficient`** — **1.0** if the lot matches the order; otherwise the campaign's incorrect-fit value (see below).
+- **`collector_personal_modifier`** — the collector's quirk multiplier.
+
+Incorrect-fit coefficient **lerps with calendar day**, not with branch progress: **+0.15 on day 1 → −0.35 on day 15**. Early on, a wrong buy is still a small net-positive commission; later it becomes a real fine and the bankruptcy trigger.
+
+**Local auctions and the insurance booster** clamp an incorrect fit coefficient to **≥ 0**, so a wrong buy cannot produce a fine there / that day. They do not turn a wrong buy into a correct one.
 
 ---
 
 ## Loss Condition & Campaign Progression
 
-*(replaces the old "Rating & Progression" section — rating is removed entirely)*
-
-- **There is no daily rating, no pass/fail score, and no persistent reputation/mood tracked per collector.** Collectors are a pure money mechanism now — this was a deliberate simplification, considered and confirmed rather than an oversight.
+- **No daily rating, no pass/fail score, no per-collector reputation/mood.** Collectors are a money mechanism plus authored taste.
 - **The only failure condition is bankruptcy**: if end-of-day settlement would take the balance below zero, the run ends. There is no other way to fail.
-- **Day-retry is removed.** Days no longer have their own pass/fail checkpoint — the campaign advances day to day continuously, carrying the balance forward, until either the campaign ends or the player goes bankrupt. (The old "no farming via failure" rule is moot, since there's nothing left to retry.)
-- **Campaign length remains 15 days**, unchanged, as the backbone for day-based difficulty: narrowing order criteria, rising rival speed, and the Elite-tier unlock day (see Venues). Exact day thresholds for these curves: **TBD via playtesting**, same status as before this pack.
+- **No day-retry.** The campaign advances day to day, carrying the balance, until day 15 is cleared or the player goes bankrupt.
+- Two difficulty clocks run in parallel:
+  - **Calendar day (1–15):** rival speed and incorrect-fit coefficient (market heat).
+  - **Per-branch mission index:** venue tier, trophy chance, order budget, and which tags are asked for.
 
 ---
 
-## Venues: Regular / Local / Elite Auctions
+## Venues: Regular / Local / Elite
 
-Three tiers of auction, differing in risk and reward — not just a cosmetic skin on the same content.
+Three tiers that differ in risk, reward, **and content**. The player does **not** pick a venue and does **not** pay an Elite ticket. Venue is a consequence of how far the chosen collector branch has been taken.
 
-- **Regular** — today's default auction. No entry fee, always available. Content and rival speed follow the normal day-based difficulty curve.
-- **Local** — hobbyist/amateur collectors. Always available for the **entire campaign**, not just an early-game tutorial — it remains a useful safe harbor even late in the run. No entry fee. **The fine mechanic does not exist here**: a wrong purchase pays a small but never-negative commission, so the balance can never be pushed toward bankruptcy at a Local auction. Content is deliberately easier across the board, not just risk-free: lower rarity pool, simpler single-tag order criteria, slower/gentler rival timing.
-- **Elite** — unlocks at a specific later campaign day (**exact day TBD via playtesting**; a global progression gate, not a per-player unlock). Requires a **one-time paid entry ticket per attempt** — an *additional* session on top of that day's Regular auction, not a replacement for it. Content is scaled up: higher rarity lot pool, bigger order budgets (bigger absolute commissions), **and** rival bidders faster/more aggressive than that day's normal curve. The ticket is the gate; the harder rivals and richer rewards are what make it genuinely "elite," not just exclusive.
-- All three venues draw from and pay into the **same single balance** — there is no separate currency per venue.
+For a branch of length `L` (currently 10), mission index `i` (0-based):
+
+- **Local** if `i < 0.2L` (first 20%)
+- **Regular** if `i < 0.8L` (next 60%)
+- **Elite** if `i ≥ 0.8L` (last 20%)
+
+On a 10-day ladder that is missions 1–2 Local, 3–8 Regular, 9–10 Elite, then mastery stays Elite.
+
+| | Local | Regular | Elite |
+|---|---|---|---|
+| Label | Местный аукцион | Обычный аукцион | Элитный аукцион |
+| Rarity pool | common, rare | common, rare, epic | rare, epic |
+| Lots / session | 6–7 | 10–12 | 8–10 |
+| Budget factor | 0.45 | 1.0 | 2.4 |
+| Rival delay factor | ×2.2 (slower) | ×1.0 | ×0.6 (faster) |
+| Incorrect-buy fine | clamped ≥ 0 | follows campaign curve | follows campaign curve |
+| Trophy orders | never | allowed | allowed |
+
+All three draw from and pay into the **same single balance**.
 
 ---
 
 ## Money Sinks: Meta-Progression & Boosters
 
-Both are new spends drawn from the same unified balance as everything else — every purchase here is a real bet against the bankruptcy threshold, not a side currency.
+Both spend the same unified capital.
 
-- **Meta-progression**: permanent upgrades for the player's character, kept for the rest of the run once bought. Thematically tied to the "auction agent" role (e.g., higher base speed multiplier, cheaper Elite tickets, fine resistance) — framed as mechanical skill growth rather than cosmetics, to reinforce the game's theme.
-- **Boosters**: one-day, one-shot effects bought at the end of a day, applying to the *next* day only (e.g., fine immunity for a day, an extra active-order slot, more favorable reveal pacing). Cheap enough to be a repeatable tactical choice, not a rare luxury.
-- Exact costs/effects for both: **TBD via playtesting.**
+### Permanent upgrades (bought on the day brief, before the order budget is credited)
+
+| Id | Name | Effect | Cost |
+|---|---|---|---|
+| `gallery-connections` | Связи в галерее | +0.15 to the branch budget multiplier, forever | 60 000 ₽ |
+| `fast-appraisal` | Быстрая экспертиза | Speed-multiplier floor +0.10 forever | 80 000 ₽ |
+
+One-time; cannot be rebought.
+
+### Boosters (bought on the end-of-day report, apply to the *next* day only)
+
+| Id | Name | Effect | Cost |
+|---|---|---|---|
+| `insurance` | Страховка на день | Tomorrow, incorrect-buy commission cannot go below zero | `15 000 + 1 000 × nextDay`, rounded to 100 ₽ |
+
+Cheap enough to be a repeatable tactical choice. Hidden on the final day's report and on bankruptcy.
 
 ---
 
 ## Market Recurrence ("living market")
 
-- The same physical artwork can be bought and sold multiple times and **may reappear in later days**, having changed hands, consistent with how a real art market behaves.
-- When a previously-encountered artwork reappears, it should be **visibly marked as "familiar"** to the player (a light narrative/UI marker) — this is the mechanism intended to reinforce memorization of specific works, so it must not be silently omitted.
+- The same physical artwork can appear on later days (the lot pool is redrawn from the venue's rarity filter each session).
+- A lot the player **previously bought** is marked **«Знакомый лот»**. Merely seeing a lot and losing/skipping it does not mark it familiar. The badge is the memorization hook and must not be silently omitted for purchased works.
+
+---
+
+## Presentation (MVP)
+
+- Dark desktop-style layout, Russian UI, gold accent. Title in-game: **«Аукционный дом — Симулятор скупщика»**.
+- Auction stage: audience row (rival heads) + lot image on the left; live economics, five reveal fields, result banner, Buy / Skip on the right.
+- HUD: calendar day / 15, venue name, lot index, capital, and the day's order chip (criteria + budget).
+- Report: per-order spend / leftover clawback / correct vs incorrect counts / commission; per-purchase match ledger; capital movement (start, commissions, clawback, other spend such as workshop overspend beyond budget, end).
 
 ---
 
 ## Content & Licensing
 
-- **All artwork data must be real**: real titles, real artists, real periods/genres, real facts. No invented or fictionalized art. This is the entire educational value proposition — accuracy is non-negotiable.
-- **No forgery/misattribution mechanic** in MVP (nothing shown is ever fake or mislabeled). This was explicitly considered and rejected for MVP as scope creep; may be revisited as a post-MVP enrichment layer.
-- **Content sourcing strategy**: a **hand-curated, static dataset** (not a live API pull). Rationale: factual accuracy matters too much to risk on automated enrichment from museum APIs; a curated list (target ~30–50 works for MVP) can be manually fact-checked.
-- Suggested public-domain/open-license sources to curate from (needs licensing verification per asset before use, even though the game is free): Wikimedia Commons, Met Museum Open Access, Smithsonian Open Access, Rijksmuseum API, Europeana. This list is a starting point for research, not a final decision.
-- **MVP content medium**: paintings only (2D images). Sculptures and 3D scans are explicitly out of scope until the Unity phase.
-- Because the game is intended for **public release** (even though free/non-commercial), track the license/attribution of every chosen asset from the start — do not defer this to "later."
+- **All artwork data must be real**: real titles, real artists, real periods/genres, real facts. No invented art. Accuracy is the educational value proposition.
+- **No forgery/misattribution mechanic** in MVP. Explicitly rejected as scope creep; may return post-MVP.
+- **Content sourcing:** hand-curated static dataset, not a live API. Current set: **24 public-domain paintings** with Wikimedia Commons image URLs, tagged in Russian (`titleRu`, `artistRu`, `periodRu`, `genreRu`, `factRu`) plus rarity and base price.
+  - 6 epic, 10 rare, 8 common.
+  - Periods include High / Early / Northern Renaissance, Dutch Golden Age, Baroque, Rococo, Neoclassicism, Romanticism, Realism, Impressionism, Post-Impressionism, Ukiyo-e, Viennese Symbolism, and others as tagged in `mvp/js/data.js`.
+- Suggested sources for further curation (verify license per asset even though the game is free): Wikimedia Commons, Met Museum Open Access, Smithsonian Open Access, Rijksmuseum, Europeana.
+- **MVP medium:** paintings only (2D images). Sculptures and 3D scans wait for Unity.
+- Track license/attribution of every asset from the start.
 
 ---
 
 ## MVP Scope Summary (HTML/JS)
 
-Include:
-- Core loop: sequential text reveal, live ticking price/commission during reveal, race-to-signal buying, instant race-outcome feedback, always-visible running balance, fully deferred correctness feedback (end-of-day report only).
-- Faceless AI rivals that contest every lot; Elite auctions get an extra rival-speed boost beyond the day's normal curve.
-- 1–3 named collectors per day with binary tag-matching orders, a personal commission modifier per collector, order budgets with soft-cap/clawback settlement, and no fixed wanted-quantity cap.
-- Reworked economy: rarity feeds commission (not just price), reveal-driven step growth for price and decay for the speed multiplier (with a floor), the full commission formula (rarity × speed × fit × collector modifier), and an incorrect-purchase coefficient that ramps from small-positive to negative across the campaign.
-- Bankruptcy-only failure condition, no day-retry, continuous day-to-day progression across a fixed 15-day campaign.
-- Three venues: Regular (default), Local (always-on safe harbor, no fines, easier content), Elite (paid ticket, unlocks late, bigger/harder/richer content, additional session on top of Regular).
-- Meta-progression (permanent buffs) and boosters (one-day effects) as money sinks from the single unified balance.
-- Market recurrence with a "familiar lot" marker.
-- Curated static dataset of ~30–50 real, licensed public-domain paintings, in Russian.
-- Zoom-to-inspect on the lot image.
+Shipped in `mvp/`:
 
-Exclude (explicitly deferred to Unity phase, or out of scope):
+- Core loop: masked sequential text reveal (1.5s/field), live price and commission multiplier, race-to-signal Buy (button or Space), Skip, instant race-outcome feedback, always-visible capital, correctness deferred to the report, click-to-zoom.
+- Faceless AI rivals that contest every lot; delay scales with calendar day and venue.
+- Collector-branch campaign: pick one named collector per day, one binary tag-matched order, personal commission modifier, authored day-by-day tags, mastery plateau, budgets with soft-cap/clawback. Trophy orders on Regular/Elite late in a branch.
+- Economy: rarity feeds commission and price; +12%/field price growth; speed multiplier down to ×0.35; formula rarity × speed × fit × collector modifier; incorrect-fit +0.15 → −0.35 across 15 days.
+- Bankruptcy-only failure, no day-retry, 15 calendar days, starting capital 40 000 ₽.
+- Three venues (Local / Regular / Elite) **assigned by branch progress**, differing in rarity pool, lot count, budget factor, rival speed, and whether fines exist. No entry ticket, no extra Elite session on top of Regular.
+- Two permanent upgrades and one next-day insurance booster.
+- Familiar-lot marker for previously purchased works.
+- Curated static dataset of 24 real public-domain paintings, in Russian.
+- Collector-branch design editor (`gamedesign.html` + `design-server.js`).
+
+Exclude (deferred to Unity, or rejected for MVP):
+
 - Sculptures / 3D scans / 3D auction room.
-- Voice-over / audio narration (text only in MVP).
+- Voice-over / audio narration.
 - Named/personalized AI rivals.
-- Forgery/misattribution risk mechanic.
-- Any live museum API integration.
-- Any daily rating/score or per-collector persistent reputation/mood beyond the personal commission modifier — explicitly rejected, not just deferred.
+- Forgery/misattribution.
+- Live museum API integration.
+- Player-chosen venue, Elite paid ticket, or a second venue session on the same day — the original brief had these; the implemented campaign uses branch-derived venue instead.
+- Daily rating/score or per-collector persistent reputation/mood — rejected, not deferred.
+- Multiple simultaneous orders per day — the engine still *can* attribute across several orders, but the day builder always creates one.
 
-**MVP success criterion** (informal, no hard analytics required): a playtest session of 10–15 minutes should feel tense and make the player want to play "just one more day," and a playtester should be able to complete a full 15-day run without going bankrupt by their 2nd or 3rd attempt at the campaign, showing visible improvement in buying speed/accuracy across attempts.
+**MVP success criterion** (informal): a 10–15 minute session should feel tense and make the player want "just one more day," and a playtester should be able to finish a 15-day run without bankruptcy by a 2nd or 3rd campaign attempt, with visible improvement in buying speed/accuracy.
