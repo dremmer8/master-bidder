@@ -240,19 +240,30 @@ h2 { margin-top: 0; }
 }
 
 .stage-left {
-  flex: 2.2;
+  flex: 2.8;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 .stage-right {
-  flex: 1;
-  min-width: 280px;
-  max-width: 420px;
+  flex: 0 0 340px;
+  width: 340px;
+  min-width: 340px;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.lot-block {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #12141a;
+  border: 1px solid #2c2f37;
+  border-radius: 8px;
+  overflow: visible;
 }
 
 .audience-row {
@@ -260,10 +271,11 @@ h2 { margin-top: 0; }
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 22px;
-  height: 52px;
-  padding-top: 18px;
-  overflow: visible;
+  gap: 28px;
+  height: 58px;
+  padding: 16px 12px 10px;
+  background: #1a1c22;
+  border-top: 1px solid #2c2f37;
 }
 .rival-head {
   width: 26px;
@@ -309,10 +321,7 @@ h2 { margin-top: 0; }
   align-items: center;
   justify-content: center;
   cursor: zoom-in;
-  background: #12141a;
-  border: 1px solid #2c2f37;
-  border-radius: 8px;
-  padding: 10px;
+  padding: 12px 12px 8px;
 }
 .lot-image-wrap img {
   max-width: 100%;
@@ -345,7 +354,7 @@ h2 { margin-top: 0; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .order-brief-card {
   background: #2a2418;
@@ -387,8 +396,12 @@ h2 { margin-top: 0; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
+  background: #1c1f26;
+  border: 1px solid #3a3f47;
+  border-radius: 8px;
+  padding: 10px;
 }
 .lot-info-kicker {
   font-size: 0.72em;
@@ -402,7 +415,7 @@ h2 { margin-top: 0; }
   gap: 10px;
   padding: 7px 12px;
   border-radius: 6px;
-  background: var(--panel-light);
+  background: #262a32;
   opacity: 0.25;
   transition: opacity 0.25s ease;
 }
@@ -535,6 +548,7 @@ h2 { margin-top: 0; }
   #app { height: auto; min-height: 100vh; }
   .auction-stage { flex-direction: column; overflow-y: auto; }
   .stage-left { flex: none; }
+  .stage-right { flex: none; width: auto; min-width: 0; }
   .lot-image-wrap { min-height: 280px; }
   .action-row { flex-wrap: wrap; }
   .audience-row { width: 100%; }
