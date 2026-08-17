@@ -78,17 +78,35 @@ const UI = {
     document.getElementById('hud-venue').textContent = VENUES[state.currentVenue].labelRu;
     document.getElementById('hud-lot-total').textContent = state.lots.length;
     this.updateCapitalDisplays(state.capital);
-    this.renderOrderChips(state);
+    this.renderOrderBrief(state);
   },
 
-  renderOrderChips(state) {
-    const ordersEl = document.getElementById('hud-orders');
-    ordersEl.innerHTML = '';
+  renderOrderBrief(state) {
+    const el = document.getElementById('order-brief');
+    el.innerHTML = '';
     state.dayOrders.forEach((o) => {
-      const chip = document.createElement('div');
-      chip.className = 'hud-order-chip';
-      chip.innerHTML = `<span class="chip-name">${o.nameRu}:</span> ${o.criteriaLabel} <span class="chip-budget">(бюджет ${formatMoney(o.budget)} ₽)</span>`;
-      ordersEl.appendChild(chip);
+      const card = document.createElement('div');
+      card.className = 'order-brief-card';
+      card.innerHTML = `
+        <div class="order-brief-kicker">Заказчик</div>
+        <div class="order-brief-name">${o.nameRu}</div>
+        <div class="order-brief-want">${o.criteriaLabel}</div>
+        <div class="order-brief-budget">Бюджет ${formatMoney(o.budget)} ₽</div>
+      `;
+      el.appendChild(card);
+    });
+    this.highlightOrderFields(state);
+  },
+
+  highlightOrderFields(state) {
+    document.querySelectorAll('.reveal-field').forEach((field) => field.classList.remove('order-target'));
+    const fieldByType = { genre: 'genre', period: 'period', artist: 'artist', artwork: 'title' };
+    state.dayOrders.forEach((order) => {
+      (order.criteriaTags || []).forEach((tag) => {
+        const fieldName = fieldByType[tag.type];
+        const field = fieldName && document.getElementById('field-' + fieldName);
+        if (field) field.classList.add('order-target');
+      });
     });
   },
 
@@ -132,6 +150,7 @@ const UI = {
 
     this.updateLiveEconomics(initialPrice, initialMultiplier);
     this.zoomSrc = lot.imageUrl;
+    if (typeof Game !== 'undefined' && Game.state) this.highlightOrderFields(Game.state);
   },
 
   revealField(fieldName) {

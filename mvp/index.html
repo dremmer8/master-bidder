@@ -64,18 +64,8 @@
       <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
     </header>
 
-    <div id="hud-orders" class="hud-orders"></div>
-
     <main class="auction-stage">
       <div class="stage-left">
-        <div class="audience-row" id="audience-row">
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-        </div>
-
         <div class="lot-image-wrap" id="lot-image-wrap">
           <img id="lot-image" src="" alt="Экспонат">
           <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
@@ -94,6 +84,8 @@
             <span class="economics-value" id="live-multiplier">×1.00</span>
           </div>
         </div>
+
+        <div id="order-brief" class="order-brief"></div>
 
         <div class="lot-info">
           <div class="reveal-field" id="field-genre" data-field="genre">
@@ -117,6 +109,13 @@
         <div id="insufficient-funds-hint" class="insufficient-funds-hint hidden">Недостаточно средств!</div>
 
         <div class="action-row">
+          <div class="audience-row" id="audience-row">
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+          </div>
           <button id="btn-buy" class="btn btn-buy">КУПИТЬ! (Пробел)</button>
           <button id="btn-skip" class="btn btn-skip">Пропустить</button>
         </div>
