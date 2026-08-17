@@ -60,7 +60,7 @@ Three distinct signals must not be conflated:
 ## Rival Bidders (AI)
 
 - All lots are contested. Deliberate simplification for pacing (rejected the alternative of bots having their own hidden preferences).
-- Bots are **faceless/unnamed**: five anonymous heads in the audience row. When a rival wins, one random head raises. Personas are deferred.
+- Bots are **faceless/unnamed**: five anonymous heads in a hall strip under the painting. When a rival wins, one random head raises. Personas are deferred.
 - Rival reaction is a random delay drawn from that **calendar day's** window, then multiplied by the venue's speed factor:
   - Day 1 window: **5.0–9.0s**. Day 15 window: **1.5–3.8s**. Linear lerp in between.
   - Local ×2.2 (slower). Regular ×1.0. Elite ×0.6 (faster).
@@ -224,8 +224,10 @@ Cheap enough to be a repeatable tactical choice. Hidden on the final day's repor
 ## Presentation (MVP)
 
 - Dark desktop-style layout, Russian UI, gold accent. Title in-game: **«Аукционный дом — Симулятор скупщика»**.
-- Auction stage: audience row (rival heads) + lot image on the left; live economics, five reveal fields, result banner, Buy / Skip on the right.
-- HUD: calendar day / 15, venue name, lot index, capital, and the day's order chip (criteria + budget).
+- Auction stage, two columns: a **wide painting block** on the left (canvas + rival audience seated in a hall strip under the image + zoom hint); data column on the right.
+- Right column, top to bottom: the day's **order in its own gold card** (collector, criteria, budget); live price and commission multiplier; a separate **current-lot panel** (genre / period / artist / fact / title); result banner; Buy / Skip.
+- Lot reveal rows whose tag type matches the order (genre / period / artist, or title for a trophy) get a **light** accent so the player can find the important line. The order text itself stays in the gold card — it is not mixed into the lot fields. Correctness of the match is still deferred to the report.
+- HUD: calendar day / 15, venue name, lot index, capital.
 - Report: per-order spend / leftover clawback / correct vs incorrect counts / commission; per-purchase match ledger; capital movement (start, commissions, clawback, other spend such as workshop overspend beyond budget, end).
 
 ---
