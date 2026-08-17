@@ -88,9 +88,7 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'order-brief-card';
       card.innerHTML = `
-        <div class="order-brief-kicker">Заказчик</div>
         <div class="order-brief-name">${o.nameRu}</div>
-        <div class="order-brief-want">${o.criteriaLabel}</div>
         <div class="order-brief-budget">Бюджет ${formatMoney(o.budget)} ₽</div>
       `;
       el.appendChild(card);
@@ -99,13 +97,27 @@ const UI = {
   },
 
   highlightOrderFields(state) {
-    document.querySelectorAll('.reveal-field').forEach((field) => field.classList.remove('order-target'));
+    document.querySelectorAll('.reveal-field').forEach((field) => {
+      field.classList.remove('order-target');
+      const hint = field.querySelector('.field-order-hint');
+      if (hint) hint.remove();
+    });
     const fieldByType = { genre: 'genre', period: 'period', artist: 'artist', artwork: 'title' };
     state.dayOrders.forEach((order) => {
       (order.criteriaTags || []).forEach((tag) => {
         const fieldName = fieldByType[tag.type];
         const field = fieldName && document.getElementById('field-' + fieldName);
-        if (field) field.classList.add('order-target');
+        if (!field) return;
+        field.classList.add('order-target');
+        const hint = document.createElement('span');
+        hint.className = 'field-order-hint';
+        if (tag.type === 'artwork') {
+          const art = typeof ARTWORKS !== 'undefined' ? ARTWORKS.find((a) => a.id === tag.value) : null;
+          hint.textContent = art ? `ищет: «${art.titleRu}»` : 'трофейный лот';
+        } else {
+          hint.textContent = 'ищет: ' + tag.value;
+        }
+        field.appendChild(hint);
       });
     });
   },

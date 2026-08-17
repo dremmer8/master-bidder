@@ -39,7 +39,7 @@ const { chromium } = require('playwright');
     const info = await page.evaluate(() => {
       const genre = document.querySelector('#field-genre .field-value').textContent;
       const period = document.querySelector('#field-period .field-value').textContent;
-      const orders = Array.from(document.querySelectorAll('.order-brief-card')).map((c) => c.textContent);
+      const orders = Array.from(document.querySelectorAll('.field-order-hint, .order-brief-card')).map((c) => c.textContent);
       return { genre, period, orders };
     });
 
