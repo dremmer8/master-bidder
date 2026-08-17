@@ -91,11 +91,13 @@ h2 { margin-top: 0; }
 
 .action-row {
   display: flex;
+  align-items: center;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .btn-buy {
   flex: 3;
+  min-width: 0;
   background: var(--good);
   color: #0d1f16;
   font-size: 1.4em;
@@ -227,54 +229,53 @@ h2 { margin-top: 0; }
 }
 .hud-item strong { color: var(--text); }
 
-.hud-orders {
-  flex-shrink: 0;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.hud-order-chip {
-  background: var(--panel-light);
-  border: 1px solid var(--accent-dim);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 0.85em;
-}
-.hud-order-chip .chip-name { color: var(--accent); font-weight: 700; }
-.hud-order-chip .chip-budget { color: var(--text-dim); }
-
 .auction-stage {
   flex: 1;
   min-height: 0;
   background: var(--panel);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 16px 20px 14px;
   display: flex;
   gap: 24px;
 }
 
 .stage-left {
-  flex: 1.3;
+  flex: 2.8;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 .stage-right {
-  flex: 1;
-  min-width: 300px;
+  flex: 0 0 340px;
+  width: 340px;
+  min-width: 340px;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* Row of rival bidders, seen from behind, seated in front of the player */
-.audience-row {
-  flex-shrink: 0;
+.lot-block {
+  flex: 1;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
+  background: #12141a;
+  border: 1px solid #2c2f37;
+  border-radius: 8px;
+  overflow: visible;
+}
+
+.audience-row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 10px;
+  gap: 28px;
+  height: 58px;
+  padding: 16px 12px 10px;
+  background: #1a1c22;
+  border-top: 1px solid #2c2f37;
 }
 .rival-head {
   width: 26px;
@@ -320,12 +321,13 @@ h2 { margin-top: 0; }
   align-items: center;
   justify-content: center;
   cursor: zoom-in;
+  padding: 12px 12px 8px;
 }
 .lot-image-wrap img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 .familiar-badge {
@@ -346,6 +348,30 @@ h2 { margin-top: 0; }
   color: var(--text-dim);
   padding-top: 6px;
 }
+
+.order-brief {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.order-brief-card {
+  background: #2a2418;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.order-brief-kicker {
+  font-size: 0.72em;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.order-brief-name { font-weight: 700; font-size: 1.05em; }
+.order-brief-want { font-size: 0.95em; margin-top: 6px; color: var(--accent); }
+.order-brief-budget { font-size: 0.82em; color: var(--text-dim); margin-top: 4px; }
 
 .live-economics {
   flex-shrink: 0;
@@ -370,19 +396,36 @@ h2 { margin-top: 0; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
+  background: #1c1f26;
+  border: 1px solid #3a3f47;
+  border-radius: 8px;
+  padding: 10px;
+}
+.lot-info-kicker {
+  font-size: 0.72em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0 4px 2px;
 }
 .reveal-field {
   display: flex;
   gap: 10px;
   padding: 7px 12px;
   border-radius: 6px;
-  background: var(--panel-light);
+  background: #262a32;
   opacity: 0.25;
   transition: opacity 0.25s ease;
 }
 .reveal-field.revealed { opacity: 1; }
+.reveal-field.order-target {
+  background: #2c2a26;
+  box-shadow: inset 2px 0 0 rgba(212, 161, 58, 0.45);
+}
+.reveal-field.order-target:not(.revealed) { opacity: 0.42; }
+.reveal-field.order-target .field-label { color: #c4b48a; }
 .reveal-field .field-label {
   min-width: 120px;
   color: var(--text-dim);
@@ -511,7 +554,10 @@ h2 { margin-top: 0; }
   #app { height: auto; min-height: 100vh; }
   .auction-stage { flex-direction: column; overflow-y: auto; }
   .stage-left { flex: none; }
-  .lot-image-wrap { min-height: 200px; }
+  .stage-right { flex: none; width: auto; min-width: 0; }
+  .lot-image-wrap { min-height: 280px; }
+  .action-row { flex-wrap: wrap; }
+  .audience-row { width: 100%; }
   .brief-body { flex-direction: column; overflow-y: auto; }
   .brief-main, .brief-side { flex: none; }
 }

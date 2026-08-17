@@ -64,26 +64,27 @@
       <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
     </header>
 
-    <div id="hud-orders" class="hud-orders"></div>
-
     <main class="auction-stage">
       <div class="stage-left">
-        <div class="audience-row" id="audience-row">
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-          <div class="rival-head"></div>
-        </div>
-
-        <div class="lot-image-wrap" id="lot-image-wrap">
-          <img id="lot-image" src="" alt="Экспонат">
-          <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
+        <div class="lot-block">
+          <div class="lot-image-wrap" id="lot-image-wrap">
+            <img id="lot-image" src="" alt="Экспонат">
+            <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
+          </div>
+          <div class="audience-row" id="audience-row">
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+            <div class="rival-head"></div>
+          </div>
         </div>
         <div id="zoom-hint" class="zoom-hint">Нажмите на изображение, чтобы приблизить</div>
       </div>
 
       <div class="stage-right">
+        <div id="order-brief" class="order-brief"></div>
+
         <div class="live-economics" id="live-economics">
           <div class="economics-item">
             <span class="economics-label">Текущая цена</span>
@@ -96,6 +97,7 @@
         </div>
 
         <div class="lot-info">
+          <div class="lot-info-kicker">Текущий лот</div>
           <div class="reveal-field" id="field-genre" data-field="genre">
             <span class="field-label">Жанр</span><span class="field-value">—</span>
           </div>
