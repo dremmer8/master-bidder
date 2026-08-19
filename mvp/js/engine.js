@@ -248,6 +248,8 @@ const Game = {
       dayConfig: null,
       dayOrders: [],
       lots: [],
+      pendingOrder: null,
+      pendingVenueConfig: null,
       currentLotIndex: 0,
       purchasesToday: [],
       lotResolved: false,
@@ -266,18 +268,32 @@ const Game = {
     this.startDay();
   },
 
+  prepareDayLots() {
+    const { order, venueConfig } = buildDayOrder(this.state);
+    this.state.pendingOrder = order;
+    this.state.pendingVenueConfig = venueConfig;
+    this.state.lots = drawLots(venueConfig.lotsCount(), this.state.seenArtworkIds, venueConfig.rarityPool);
+    this.state.currentLotIndex = 0;
+    ImageCache.preloadUrls(
+      this.state.lots.map((lot) => lot.imageUrl),
+      (progress) => UI.updateBriefPreload(progress)
+    );
+  },
+
   startDay() {
     this.state.dayStartCapital = this.state.capital;
     const cfg = getWorldConfig(this.state.day);
     this.state.dayConfig = cfg;
     this.state.dayOrders = [];
     this.state.purchasesToday = [];
+    this.prepareDayLots();
     UI.showBrief(this.state, cfg);
   },
 
   selectBranch(id) {
     if (!COLLECTORS.some((c) => c.id === id)) return;
     this.state.selectedBranchId = id;
+    this.prepareDayLots();
     UI.refreshBranchChoice(this.state);
   },
 
@@ -314,11 +330,12 @@ const Game = {
   },
 
   beginAuction() {
-    const { order, venueConfig } = buildDayOrder(this.state);
+    if (!ImageCache.isReady()) return;
+    const order = this.state.pendingOrder;
+    const venueConfig = this.state.pendingVenueConfig;
     this.creditOrders([order]);
     this.state.dayOrders.push(order);
     this.state.currentVenue = venueConfig.key;
-    this.state.lots = drawLots(venueConfig.lotsCount(), this.state.seenArtworkIds, venueConfig.rarityPool);
     this.state.currentLotIndex = 0;
     UI.showAuctionScreen(this.state);
     this.presentLot();

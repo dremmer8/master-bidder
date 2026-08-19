@@ -14,6 +14,7 @@ const { chromium } = require('playwright');
 
   await page.click('#btn-start-campaign');
   await page.waitForSelector('#screen-brief.active');
+  await page.waitForFunction(() => !document.getElementById('btn-start-day').disabled, null, { timeout: 15000 });
   await page.click('#brief-branch-choice .venue-card'); // pick a client branch for today's order
   await page.screenshot({ path: 'shots/2-brief.png' });
 

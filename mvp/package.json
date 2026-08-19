@@ -5,10 +5,15 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "design": "node design-server.js"
+    "design": "node design-server.js",
+    "fetch-artworks": "node scripts/fetch-artworks.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "sharp": "^0.35.3"
+  }
 }

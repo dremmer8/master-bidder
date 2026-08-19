@@ -16,6 +16,7 @@ const { chromium } = require('playwright');
   await page.goto('http://localhost:8934/index.html');
   await page.click('#btn-start-campaign');
   await page.waitForSelector('#screen-brief.active');
+  await page.waitForFunction(() => !document.getElementById('btn-start-day').disabled, null, { timeout: 15000 });
   await page.click('#btn-start-day');
   await page.waitForSelector('#screen-auction.active');
 
