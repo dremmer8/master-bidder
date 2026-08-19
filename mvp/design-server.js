@@ -3,19 +3,22 @@
 // the game-design editor can read/write real data files that the main game
 // (index.html) loads directly — no build step, no database.
 //
-// Run: node design-server.js
-// Then open http://localhost:8935/gamedesign.html (editor)
-//  or  http://localhost:8935/index.html       (the game itself)
+// Run from mvp/: npm start
+// Laptop:  http://localhost:8935/
+// Phone:   http://<LAN-IP>:8935/  (printed on startup)
+// Editor:  http://localhost:8935/gamedesign.html
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { URL } = require('url');
 
 const ROOT = __dirname;
 const COLLECTORS_PATH = path.join(ROOT, 'js', 'collectors.js');
 const DATA_PATH = path.join(ROOT, 'js', 'data.js');
-const PORT = process.env.PORT || 8935;
+const PORT = Number(process.env.PORT) || 8935;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -24,7 +27,10 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
 };
 
 const TAG_TYPES = ['period', 'genre', 'artist'];
@@ -203,9 +209,39 @@ function serveStatic(pathname, res) {
       return res.end('Not found: ' + rel);
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'no-store',
+    });
     res.end(data);
   });
+}
+
+function lanIPv4() {
+  const out = [];
+  for (const addrs of Object.values(os.networkInterfaces())) {
+    for (const a of addrs || []) {
+      const v4 = a.family === 'IPv4' || a.family === 4;
+      if (v4 && !a.internal) out.push(a.address);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function printListenUrls() {
+  const ips = lanIPv4();
+  console.log(`Game:   http://localhost:${PORT}/`);
+  console.log(`Editor: http://localhost:${PORT}/gamedesign.html`);
+  if (ips.length) {
+    console.log('');
+    console.log('С телефона в той же Wi-Fi сети откройте:');
+    for (const ip of ips) {
+      console.log(`  http://${ip}:${PORT}/`);
+    }
+  } else {
+    console.log('');
+    console.log('LAN-адрес не найден. Подключите ноутбук к Wi-Fi и перезапустите сервер.');
+  }
 }
 
 const server = http.createServer((req, res) => {
@@ -218,7 +254,6 @@ const server = http.createServer((req, res) => {
   return serveStatic(pathname, res);
 });
 
-server.listen(PORT, () => {
-  console.log(`Game design server: http://localhost:${PORT}/gamedesign.html`);
-  console.log(`Game itself:        http://localhost:${PORT}/index.html`);
+server.listen(PORT, HOST, () => {
+  printListenUrls();
 });

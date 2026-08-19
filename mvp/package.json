@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node design-server.js",
     "design": "node design-server.js"
   },
   "keywords": [],
