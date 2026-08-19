@@ -25,6 +25,22 @@ const UI = {
     this.updateBriefCapital(state.capital);
     this.refreshBranchChoice(state);
     this.refreshUpgradeShop(state);
+    this.updateBriefPreload(ImageCache.progress());
+  },
+
+  updateBriefPreload({ loaded, total, ready }) {
+    const btn = document.getElementById('btn-start-day');
+    const status = document.getElementById('brief-preload-status');
+    if (ready || total === 0) {
+      btn.disabled = false;
+      btn.textContent = 'Выйти в зал';
+      status.classList.add('hidden');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = `Загрузка экспонатов (${loaded}/${total})…`;
+    status.textContent = `Подготовка зала: ${loaded} из ${total} картин`;
+    status.classList.remove('hidden');
   },
 
   updateBriefCapital(capital) {

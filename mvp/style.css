@@ -165,8 +165,19 @@ h2 { margin-top: 0; }
   letter-spacing: 0.05em;
 }
 
-.brief-footer { flex-shrink: 0; display: flex; justify-content: flex-end; }
+.brief-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.brief-preload-status {
+  font-size: 0.85em;
+  color: var(--text-dim);
+}
 .brief-footer .btn-primary { padding: 14px 40px; font-size: 1.1em; }
+.brief-footer .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .venue-choice {
   flex: 1;
