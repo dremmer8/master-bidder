@@ -34,7 +34,7 @@
   <!-- DAY BRIEF SCREEN -->
   <section id="screen-brief" class="screen">
     <header class="brief-hud">
-      <div class="hud-item">День <span id="brief-day-number">1</span> из 15</div>
+      <div class="hud-item">День <span id="brief-day-number">1</span></div>
       <div class="hud-item">Капитал: <span id="brief-capital">0</span> ₽</div>
     </header>
 
@@ -59,7 +59,7 @@
   <!-- AUCTION FLOOR SCREEN -->
   <section id="screen-auction" class="screen">
     <header class="auction-hud">
-      <div class="hud-item">День <span id="hud-day">1</span>/15</div>
+      <div class="hud-item">День <span id="hud-day">1</span></div>
       <div class="hud-item">Площадка: <span id="hud-venue">Обычный аукцион</span></div>
       <div class="hud-item">Лот <span id="hud-lot-index">1</span>/<span id="hud-lot-total">10</span></div>
       <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
@@ -71,6 +71,7 @@
           <div class="lot-image-wrap" id="lot-image-wrap">
             <img id="lot-image" src="" alt="Экспонат">
             <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
+            <div id="lot-fx" class="lot-fx" aria-hidden="true"></div>
           </div>
           <div class="audience-row" id="audience-row">
             <div class="rival-head"></div>
@@ -79,6 +80,7 @@
             <div class="rival-head"></div>
             <div class="rival-head"></div>
           </div>
+          <div id="lot-fade" class="lot-fade" aria-hidden="true"></div>
         </div>
         <div id="zoom-hint" class="zoom-hint">Нажмите на изображение, чтобы приблизить</div>
       </div>
@@ -92,8 +94,8 @@
             <span class="economics-value" id="live-price">—</span>
           </div>
           <div class="economics-item">
-            <span class="economics-label">Множитель комиссии</span>
-            <span class="economics-value" id="live-multiplier">×1.00</span>
+            <span class="economics-label">Ваш капитал</span>
+            <span class="economics-value economics-capital" id="live-capital">—</span>
           </div>
         </div>
 
@@ -122,6 +124,7 @@
         <div class="action-row">
           <button id="btn-buy" class="btn btn-buy">КУПИТЬ! (Пробел)</button>
           <button id="btn-skip" class="btn btn-skip">Пропустить</button>
+          <button id="btn-finish-day" class="btn btn-finish-day">Закончить день</button>
         </div>
       </div>
     </main>
@@ -162,8 +165,53 @@
   </section>
 
   <!-- ZOOM MODAL -->
-  <div id="zoom-modal" class="zoom-modal hidden">
-    <img id="zoom-image" src="" alt="Экспонат крупным планом">
+  <div id="zoom-modal" class="zoom-modal hidden" aria-hidden="true">
+    <div class="zoom-modal-scaler">
+      <img id="zoom-image" src="" alt="Экспонат крупным планом">
+    </div>
+  </div>
+
+  <!-- PURCHASE VISITING CARD (pauses auction until player dismisses) -->
+  <div id="purchase-card-overlay" class="purchase-card-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="purchase-card-title">
+    <div class="purchase-card">
+      <header class="purchase-card-header">
+        <div class="purchase-card-kicker">Визиточка лота</div>
+        <button type="button" id="btn-purchase-card-collapse" class="purchase-card-collapse" title="Свернуть визитку">Свернуть</button>
+      </header>
+      <div class="purchase-card-body">
+        <div class="purchase-card-image-wrap purchase-card-image-zoomable" id="purchase-card-image-wrap" role="button" tabindex="0" title="Нажмите, чтобы увеличить">
+          <img id="purchase-card-image" src="" alt="">
+          <span class="purchase-card-zoom-hint">Увеличить</span>
+        </div>
+        <div class="purchase-card-details">
+          <h2 id="purchase-card-title" class="purchase-card-title"></h2>
+          <p id="purchase-card-artist" class="purchase-card-artist"></p>
+          <dl class="purchase-card-meta">
+            <div class="purchase-card-meta-row">
+              <dt>Период</dt>
+              <dd id="purchase-card-period"></dd>
+            </div>
+            <div class="purchase-card-meta-row">
+              <dt>Жанр</dt>
+              <dd id="purchase-card-genre"></dd>
+            </div>
+            <div class="purchase-card-meta-row">
+              <dt>Редкость</dt>
+              <dd id="purchase-card-rarity"></dd>
+            </div>
+            <div class="purchase-card-meta-row purchase-card-meta-price">
+              <dt>Цена покупки</dt>
+              <dd id="purchase-card-price"></dd>
+            </div>
+          </dl>
+          <p id="purchase-card-fact" class="purchase-card-fact"></p>
+        </div>
+      </div>
+      <footer class="purchase-card-footer">
+        <p id="purchase-card-pause-hint" class="purchase-card-pause-hint">Торги на паузе — сверните визитку, когда будете готовы к следующему лоту.</p>
+        <button type="button" id="btn-purchase-card-continue" class="btn btn-primary">Продолжить торги</button>
+      </footer>
+    </div>
   </div>
 
 </div>

@@ -22,11 +22,11 @@ function parseArtworks(source) {
   return entries;
 }
 
-async function downloadBuffer(url, retries = 4) {
+async function downloadBuffer(url, retries = 6) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const res = await fetch(url, { redirect: 'follow' });
     if (res.status === 429 && attempt < retries) {
-      const waitMs = 2000 * (attempt + 1);
+      const waitMs = 5000 * (attempt + 1);
       console.log(`rate limited, waiting ${waitMs}ms…`);
       await new Promise((r) => setTimeout(r, waitMs));
       continue;
@@ -66,7 +66,7 @@ async function main() {
   for (const entry of artworks) {
     try {
       await compressOne(entry);
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 3000));
     } catch (err) {
       console.error(`failed ${entry.id}:`, err.message);
       process.exitCode = 1;

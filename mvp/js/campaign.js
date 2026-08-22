@@ -22,15 +22,24 @@ const SPEED_MULTIPLIER_FLOOR = 0.35; // multiplier at step 0 is always 1.0
 const INCORRECT_FIT_START = 0.15; // day 1
 const INCORRECT_FIT_END = -0.35; // final day
 
-const REVEAL_INTERVAL_MS = 1500; // time between each auctioneer field reveal
-const RESOLUTION_PAUSE_MS = 1400; // pause after a lot resolves before the next one
+const REVEAL_INTERVAL_MS = 2250; // time between each auctioneer field reveal
+const RESOLUTION_PAUSE_MS = 2100; // pause after a lot resolves before the next one
+const SKIP_FAST_REVEAL_INTERVAL_MS = 380; // accelerated reveal when skipping a lot
+const SKIP_RIVAL_PAUSE_MS = 650; // beat after last reveal before rival buys
 
-// Each collector branch defines its own campaign length via collector.missions
-// (see js/collectors.js, edited through gamedesign.html) — missionIndex is
-// 0-based and never resets; past the branch's own last authored day it just
-// plateaus at max difficulty ("mastery") forever, reusing that last day's tags.
+// Each collector branch shares the same order-difficulty ladder (genre → period →
+// artist); see ORDER_PHASE_* below and getOrderTagsForMission(). Past the ladder
+// ceiling the branch plateaus on the last phase ("mastery").
 const BRANCH_BUDGET_MULTIPLIER_START = 0.9; // missionIndex 0
 const BRANCH_BUDGET_MULTIPLIER_END = 1.6; // missionIndex >= ladder ceiling
+
+// Shared order ladder — every collector uses the same phase lengths; only the
+// tag values differ (collector.orderGenre / orderPeriod / orderArtist).
+const ORDER_PHASE_GENRE_DAYS = 3;
+const ORDER_PHASE_PERIOD_DAYS = 3;
+const ORDER_PHASE_ARTIST_DAYS = 4;
+const ORDER_LADDER_LENGTH =
+  ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS + ORDER_PHASE_ARTIST_DAYS;
 const GALLERY_CONNECTIONS_BUDGET_BONUS = 0.15; // 'gallery-connections' upgrade effect
 
 // Venue definitions — differ in more than risk: content itself is scaled per venue
@@ -81,8 +90,8 @@ function lerp(a, b, t) {
 function getWorldConfig(day) {
   const t = (day - 1) / (CAMPAIGN_LENGTH - 1);
 
-  const rivalMinSec = lerp(5, 1.5, t);
-  const rivalMaxSec = lerp(9, 3.8, t);
+  const rivalMinSec = lerp(7.5, 2.25, t);
+  const rivalMaxSec = lerp(13.5, 5.7, t);
   const incorrectFitCoefficient = lerp(INCORRECT_FIT_START, INCORRECT_FIT_END, t);
 
   return { day, rivalMinSec, rivalMaxSec, incorrectFitCoefficient };
@@ -90,9 +99,8 @@ function getWorldConfig(day) {
 
 // Returns the difficulty config for a collector branch's Nth order
 // (missionIndex, 0-based, from state.branchProgress — never resets).
-// ladderLength is that branch's own authored day count (collector.missions.length),
-// so the venue/trophy/budget curve scales to however many days the designer set up
-// for this specific collector, instead of a fixed campaign-wide constant. The
+// ladderLength is ORDER_LADDER_LENGTH — the shared genre→period→artist ladder
+// (see ORDER_PHASE_*). Venue/trophy/budget curve scales to that length.
 // thresholds below (20% local / 60% regular / 20% elite, trophy ramp over the
 // last 30%) reproduce the shape of the original fixed 10-day ladder at any length.
 function getBranchMissionConfig(missionIndex, ladderLength) {
@@ -111,6 +119,35 @@ function getBranchMissionConfig(missionIndex, ladderLength) {
   const branchBudgetMultiplier = lerp(BRANCH_BUDGET_MULTIPLIER_START, BRANCH_BUDGET_MULTIPLIER_END, t);
 
   return { missionIndex, trophyChance, venueTier, branchBudgetMultiplier };
+}
+
+// Returns the AND-matched tag set for a branch's Nth order (missionIndex, 0-based).
+// Phase 1: genre only · phase 2: period only · phase 3: artist only.
+function getOrderTagsForMission(missionIndex, collector) {
+  const idx = Math.min(missionIndex, ORDER_LADDER_LENGTH - 1);
+  if (idx < ORDER_PHASE_GENRE_DAYS) {
+    return [{ type: 'genre', value: collector.orderGenre }];
+  }
+  if (idx < ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS) {
+    return [{ type: 'period', value: collector.orderPeriod }];
+  }
+  return [{ type: 'artist', value: collector.orderArtist }];
+}
+
+function getOrderPhaseForMission(missionIndex) {
+  const idx = Math.min(missionIndex, ORDER_LADDER_LENGTH - 1);
+  if (idx < ORDER_PHASE_GENRE_DAYS) return 'genre';
+  if (idx < ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS) return 'period';
+  return 'artist';
+}
+
+function getCollectorBranchProgress(missionIndex) {
+  const total = ORDER_LADDER_LENGTH;
+  const completed = Math.min(missionIndex, total);
+  const remaining = Math.max(0, total - missionIndex);
+  const mastered = missionIndex >= total;
+  const currentOrder = mastered ? total : missionIndex + 1;
+  return { total, completed, remaining, mastered, currentOrder };
 }
 
 // Permanent, one-time meta-progression upgrades (see GAME_DESIGN.md, Money Sinks).

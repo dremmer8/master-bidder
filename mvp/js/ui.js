@@ -5,6 +5,13 @@ const UI = {
   zoomSrc: null,
   pendingValues: null,
   insufficientFundsTimer: null,
+  purchaseCardDismiss: null,
+  purchaseCardDefaultContinueLabel: 'Продолжить торги',
+  purchaseCardDefaultPauseHint:
+    'Торги на паузе — сверните визитку, когда будете готовы к следующему лоту.',
+  _zoomCloseTimer: null,
+
+  RARITY_LABELS: { common: 'Обычная', rare: 'Редкая', epic: 'Эпическая' },
 
   init() {
     ['intro', 'brief', 'auction', 'report', 'end'].forEach((name) => {
@@ -47,20 +54,58 @@ const UI = {
     document.getElementById('brief-capital').textContent = formatMoney(capital);
   },
 
+  formatOrdersRemaining(n) {
+    if (n === 1) return 'Остался 1 заказ';
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `Осталось ${n} заказа`;
+    return `Осталось ${n} заказов`;
+  },
+
+  buildCollectorProgressMarkup(missionIndex) {
+    const { total, completed, remaining, mastered, currentOrder } = getCollectorBranchProgress(missionIndex);
+    const segments = [];
+    for (let i = 0; i < total; i++) {
+      const phase = getOrderPhaseForMission(i);
+      let cls = 'collector-progress-segment phase-' + phase;
+      if (i < completed) cls += ' done';
+      else if (i === missionIndex && !mastered) cls += ' current';
+      segments.push(`<div class="${cls}" title="Заказ ${i + 1}"></div>`);
+    }
+    const labelRight = mastered ? 'Мастерство' : this.formatOrdersRemaining(remaining);
+    return `
+      <div class="collector-progress">
+        <div class="collector-progress-label">
+          <span>Заказ ${currentOrder} из ${total}</span>
+          <span>${labelRight}</span>
+        </div>
+        <div class="collector-progress-track" role="progressbar" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${total}" aria-label="Прогресс заказчика">
+          ${segments.join('')}
+        </div>
+      </div>
+    `;
+  },
+
   refreshBranchChoice(state) {
     const el = document.getElementById('brief-branch-choice');
     el.innerHTML = '';
     COLLECTORS.forEach((c) => {
       const missionIndex = state.branchProgress[c.id] || 0;
-      const branchCfg = getBranchMissionConfig(missionIndex, c.missions.length);
+      const branchCfg = getBranchMissionConfig(missionIndex, ORDER_LADDER_LENGTH);
       const venue = VENUES[branchCfg.venueTier];
-      const mastered = missionIndex >= c.missions.length - 1;
       const card = document.createElement('div');
       card.className = 'venue-card' + (state.selectedBranchId === c.id ? ' selected' : '');
+      const portraitHtml = c.portraitUrl
+        ? `<div class="venue-card-portrait"><img src="${c.portraitUrl}" alt="${c.nameRu}"></div>`
+        : '';
       card.innerHTML = `
-        <div class="venue-card-name">${c.nameRu}</div>
-        <div class="venue-card-desc">${c.taglineRu}</div>
-        <div class="venue-card-desc">Заказ №${missionIndex + 1}${mastered ? ' (мастерство)' : ''} · ${venue.labelRu}</div>
+        ${portraitHtml}
+        <div class="venue-card-body">
+          <div class="venue-card-name">${c.nameRu}</div>
+          <div class="venue-card-desc">${c.taglineRu}</div>
+          ${this.buildCollectorProgressMarkup(missionIndex)}
+          <div class="venue-card-desc venue-card-venue">${venue.labelRu}</div>
+        </div>
       `;
       card.addEventListener('click', () => Game.selectBranch(c.id));
       el.appendChild(card);
@@ -103,11 +148,19 @@ const UI = {
     state.dayOrders.forEach((o) => {
       const card = document.createElement('div');
       card.className = 'order-brief-card';
+      const portraitHtml = o.portraitUrl
+        ? `<div class="order-brief-portrait"><img src="${o.portraitUrl}" alt="${o.nameRu}"></div>`
+        : '';
+      const missionIndex = state.branchProgress[state.selectedBranchId] || 0;
       card.innerHTML = `
-        <div class="order-brief-kicker">Заказ</div>
-        <div class="order-brief-name">${o.nameRu}</div>
-        <div class="order-brief-want">${o.criteriaLabel}</div>
-        <div class="order-brief-budget">Бюджет ${formatMoney(o.budget)} ₽</div>
+        ${portraitHtml}
+        <div class="order-brief-content">
+          <div class="order-brief-kicker">Заказ</div>
+          <div class="order-brief-name">${o.nameRu}</div>
+          ${this.buildCollectorProgressMarkup(missionIndex)}
+          <div class="order-brief-want">${o.criteriaLabel}</div>
+          <div class="order-brief-budget">Бюджет ${formatMoney(o.budget)} ₽</div>
+        </div>
       `;
       el.appendChild(card);
     });
@@ -128,6 +181,8 @@ const UI = {
 
   updateCapitalDisplays(capital) {
     document.getElementById('hud-capital').textContent = formatMoney(capital);
+    const live = document.getElementById('live-capital');
+    if (live) live.textContent = formatMoney(capital) + ' ₽';
   },
 
   flashInsufficientFunds() {
@@ -137,7 +192,7 @@ const UI = {
     this.insufficientFundsTimer = setTimeout(() => hint.classList.add('hidden'), 1200);
   },
 
-  renderLot(lot, index, total, initialPrice, initialMultiplier) {
+  renderLot(lot, index, total, initialPrice) {
     document.getElementById('hud-lot-index').textContent = index + 1;
     document.getElementById('hud-lot-total').textContent = total;
     document.getElementById('lot-image').src = lot.imageUrl;
@@ -147,8 +202,11 @@ const UI = {
     banner.classList.add('hidden');
     banner.className = 'lot-result-banner hidden';
 
+    this.clearLotOutcomeFx();
+
     document.getElementById('btn-buy').disabled = false;
     document.getElementById('btn-skip').disabled = false;
+    document.getElementById('btn-finish-day').disabled = false;
     document.querySelectorAll('.rival-head.raised').forEach((h) => h.classList.remove('raised'));
 
     this.pendingValues = {
@@ -164,9 +222,68 @@ const UI = {
       el.querySelector('.field-value').textContent = maskValue(this.pendingValues[f]);
     });
 
-    this.updateLiveEconomics(initialPrice, initialMultiplier);
+    this.updateLiveEconomics(initialPrice, { animate: false });
+    if (typeof Game !== 'undefined' && Game.state) {
+      this.updateCapitalDisplays(Game.state.capital);
+    }
     this.zoomSrc = lot.imageUrl;
     if (typeof Game !== 'undefined' && Game.state) this.highlightOrderFields(Game.state);
+  },
+
+  clearLotOutcomeFx() {
+    const wrap = document.getElementById('lot-image-wrap');
+    const fx = document.getElementById('lot-fx');
+    const img = document.getElementById('lot-image');
+    wrap.classList.remove('fx-won', 'fx-lost');
+    fx.className = 'lot-fx';
+    fx.textContent = '';
+    img.style.filter = '';
+    img.style.transform = '';
+  },
+
+  playLotOutcomeFx(kind) {
+    const wrap = document.getElementById('lot-image-wrap');
+    const fx = document.getElementById('lot-fx');
+    this.clearLotOutcomeFx();
+    void wrap.offsetWidth;
+
+    if (kind === 'won') {
+      wrap.classList.add('fx-won');
+      fx.className = 'lot-fx lot-fx-won';
+      fx.textContent = 'ВАШ!';
+    } else if (kind === 'lost') {
+      wrap.classList.add('fx-lost');
+      fx.className = 'lot-fx lot-fx-lost';
+      fx.textContent = 'ПРОДАН';
+    }
+  },
+
+  // Black fade-out → swapFn (render / finish) → fade-in. Returns a promise that
+  // resolves after the fade-out completes and swapFn has run (fade-in still running).
+  withLotFade(swapFn) {
+    const fade = document.getElementById('lot-fade');
+    const FADE_MS = 340;
+    if (this._lotFadeTimer) clearTimeout(this._lotFadeTimer);
+    fade.classList.add('on');
+    return new Promise((resolve) => {
+      this._lotFadeTimer = setTimeout(() => {
+        this._lotFadeTimer = null;
+        swapFn();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => fade.classList.remove('on'));
+        });
+        resolve();
+      }, FADE_MS);
+    });
+  },
+
+  // First lot of the day: start blacked out, then reveal.
+  revealLotFromBlack() {
+    const fade = document.getElementById('lot-fade');
+    fade.classList.add('on');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => fade.classList.remove('on'));
+    });
   },
 
   revealField(fieldName) {
@@ -178,9 +295,43 @@ const UI = {
     }
   },
 
-  updateLiveEconomics(price, multiplier) {
-    document.getElementById('live-price').textContent = formatMoney(price) + ' ₽';
-    document.getElementById('live-multiplier').textContent = '×' + multiplier.toFixed(2);
+  updateLiveEconomics(price, { animate = true } = {}) {
+    const priceEl = document.getElementById('live-price');
+    const fromPrice = this._livePrice ?? price;
+    this._livePrice = price;
+
+    if (!animate || fromPrice === price) {
+      if (this._econAnim) {
+        cancelAnimationFrame(this._econAnim);
+        this._econAnim = null;
+      }
+      priceEl.textContent = formatMoney(price) + ' ₽';
+      return;
+    }
+
+    this._animatePrice(priceEl, fromPrice, price);
+  },
+
+  _animatePrice(priceEl, fromPrice, toPrice) {
+    if (this._econAnim) cancelAnimationFrame(this._econAnim);
+
+    priceEl.classList.remove('econ-flash-up', 'econ-flash-down');
+    void priceEl.offsetWidth;
+    priceEl.classList.add(toPrice > fromPrice ? 'econ-flash-up' : 'econ-flash-down');
+
+    const duration = 480;
+    const start = performance.now();
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const e = easeOut(t);
+      const p = Math.round(fromPrice + (toPrice - fromPrice) * e);
+      priceEl.textContent = formatMoney(p) + ' ₽';
+      if (t < 1) this._econAnim = requestAnimationFrame(tick);
+      else this._econAnim = null;
+    };
+    this._econAnim = requestAnimationFrame(tick);
   },
 
   showWaitingHint() {
@@ -202,6 +353,8 @@ const UI = {
     banner.classList.remove('hidden');
     document.getElementById('btn-buy').disabled = true;
     document.getElementById('btn-skip').disabled = true;
+    document.getElementById('btn-finish-day').disabled = true;
+    this.playLotOutcomeFx(kind);
   },
 
   raiseRandomHand() {
@@ -222,12 +375,26 @@ const UI = {
     ordersEl.innerHTML = '';
     result.orderStats.forEach((o) => {
       const sign = o.commissionEarned >= 0 ? '+' : '−';
+      const status = o.fulfilled ? 'Заказ выполнен' : 'Заказ не выполнен';
       const row = document.createElement('div');
-      row.className = 'order-report-card';
+      row.className = 'order-report-card' + (o.fulfilled ? '' : ' unfulfilled');
+      const portraitHtml = o.portraitUrl
+        ? `<div class="order-report-portrait"><img src="${o.portraitUrl}" alt="${o.nameRu}"></div>`
+        : '';
       row.innerHTML = `
-        <div class="order-report-name">${o.nameRu} <span class="order-venue-tag">${VENUES[o.venue].labelRu}</span></div>
-        <div class="order-report-line">Бюджет: ${formatMoney(o.budget)} ₽ · Потрачено: ${formatMoney(o.spent)} ₽ · Списано неизрасходованного: ${formatMoney(o.leftover)} ₽</div>
-        <div class="order-report-line">Верно: ${o.correctCount} · Неверно: ${o.incorrectCount} · Комиссия: ${sign}${formatMoney(Math.abs(o.commissionEarned))} ₽</div>
+        ${portraitHtml}
+        <div class="order-report-body">
+          <div class="order-report-name">${o.nameRu} <span class="order-venue-tag">${VENUES[o.venue].labelRu}</span>
+            <span class="order-fulfill-tag ${o.fulfilled ? 'ok' : 'bad'}">${status}</span>
+          </div>
+          <div class="order-report-line">Бюджет: ${formatMoney(o.budget)} ₽ · Потрачено: ${formatMoney(o.spent)} ₽ · Списано неизрасходованного: ${formatMoney(o.leftover)} ₽</div>
+          <div class="order-report-line">Верно: ${o.correctCount} · Неверно: ${o.incorrectCount} · Комиссия: ${sign}${formatMoney(Math.abs(o.commissionEarned))} ₽</div>
+          ${
+            o.fulfilled
+              ? ''
+              : '<div class="order-report-line order-unfulfilled-hint">Нужна хотя бы одна подходящая картина — иначе заказ остаётся открытым.</div>'
+          }
+        </div>
       `;
       ordersEl.appendChild(row);
     });
@@ -239,7 +406,9 @@ const UI = {
     } else {
       result.purchaseDetails.forEach((p) => {
         const row = document.createElement('div');
-        row.className = 'transaction-row ' + (p.matched ? 'matched' : 'unmatched');
+        row.className = 'transaction-row transaction-row-clickable ' + (p.matched ? 'matched' : 'unmatched');
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
         const sign = p.amount >= 0 ? '+' : '−';
         row.innerHTML = `
           <div class="transaction-main">
@@ -247,11 +416,22 @@ const UI = {
               <span class="transaction-price">(${formatMoney(p.price)} ₽)</span>
             </div>
             <div class="transaction-reason">${p.reason}</div>
+            <div class="transaction-view-card-hint">Нажмите, чтобы открыть визиточку</div>
           </div>
           <div class="transaction-amount ${p.amount >= 0 ? 'positive' : 'negative'}">${sign}${formatMoney(
           Math.abs(p.amount)
         )} ₽</div>
         `;
+        row.addEventListener('click', () => {
+          const artwork = ARTWORKS.find((a) => a.id === p.artworkId);
+          if (artwork) this.showPurchaseCard(artwork, p.price, { review: true });
+        });
+        row.addEventListener('keydown', (e) => {
+          if (e.code === 'Enter' || e.code === 'Space') {
+            e.preventDefault();
+            row.click();
+          }
+        });
         txEl.appendChild(row);
       });
     }
@@ -273,11 +453,17 @@ const UI = {
     const continueBtn = document.getElementById('btn-report-continue');
     const boostersSection = document.getElementById('report-boosters-section');
     if (result.pass) {
-      verdict.textContent =
-        state.day >= CAMPAIGN_LENGTH
-          ? 'День пройден! Кампания завершена.'
-          : 'День пройден! Переходим к следующему дню.';
-      verdict.className = 'report-verdict pass';
+      if (!result.ordersFulfilled) {
+        verdict.textContent =
+          'День пережит, но заказ не закрыт: нужна хотя бы одна подходящая картина. Заказ остаётся открытым.';
+        verdict.className = 'report-verdict warn';
+      } else if (state.day >= CAMPAIGN_LENGTH) {
+        verdict.textContent = 'День пройден! Кампания завершена.';
+        verdict.className = 'report-verdict pass';
+      } else {
+        verdict.textContent = 'День пройден! Переходим к следующему дню.';
+        verdict.className = 'report-verdict pass';
+      }
       continueBtn.textContent = 'Продолжить';
       if (state.day < CAMPAIGN_LENGTH) {
         boostersSection.classList.remove('hidden');
@@ -336,13 +522,108 @@ const UI = {
       'Карьера скупщика окончена.';
   },
 
-  openZoom() {
-    if (!this.zoomSrc) return;
-    document.getElementById('zoom-image').src = this.zoomSrc;
-    document.getElementById('zoom-modal').classList.remove('hidden');
+  revealAllLotFields() {
+    REVEALABLE_FIELDS.forEach((f) => this.revealField(f));
+  },
+
+  isPurchaseCardOpen() {
+    const el = document.getElementById('purchase-card-overlay');
+    return el && !el.classList.contains('hidden');
+  },
+
+  showPurchaseCard(lot, price, { onDismiss = null, review = false } = {}) {
+    this.purchaseCardDismiss = onDismiss;
+
+    if (!review) this.revealAllLotFields();
+
+    const hintEl = document.getElementById('purchase-card-pause-hint');
+    const continueBtn = document.getElementById('btn-purchase-card-continue');
+    const overlayEl = document.getElementById('purchase-card-overlay');
+    if (!overlayEl || !continueBtn) {
+      console.error('Purchase card markup is missing from index.html');
+      if (onDismiss) onDismiss();
+      return;
+    }
+
+    if (hintEl) {
+      hintEl.textContent = review
+        ? 'Визиточка купленного лота. Закройте, чтобы вернуться к итогам дня.'
+        : this.purchaseCardDefaultPauseHint;
+    }
+    continueBtn.textContent = review ? 'Закрыть' : this.purchaseCardDefaultContinueLabel;
+
+    document.getElementById('purchase-card-image').src = lot.imageUrl;
+    document.getElementById('purchase-card-image').alt = lot.titleRu;
+    document.getElementById('purchase-card-title').textContent = lot.titleRu;
+    document.getElementById('purchase-card-artist').textContent =
+      lot.artistRu + (lot.year ? ` (${lot.year})` : '');
+    document.getElementById('purchase-card-period').textContent = lot.periodRu;
+    document.getElementById('purchase-card-genre').textContent = lot.genreRu;
+    document.getElementById('purchase-card-rarity').textContent =
+      this.RARITY_LABELS[lot.rarity] || lot.rarity;
+    document.getElementById('purchase-card-price').textContent = formatMoney(price) + ' ₽';
+    document.getElementById('purchase-card-fact').textContent = lot.factRu;
+
+    overlayEl.classList.remove('hidden');
+    continueBtn.focus();
+  },
+
+  closePurchaseCard() {
+    if (!this.isPurchaseCardOpen()) return;
+    document.getElementById('purchase-card-overlay').classList.add('hidden');
+    const hintEl = document.getElementById('purchase-card-pause-hint');
+    if (hintEl) hintEl.textContent = this.purchaseCardDefaultPauseHint;
+    document.getElementById('btn-purchase-card-continue').textContent = this.purchaseCardDefaultContinueLabel;
+    const dismiss = this.purchaseCardDismiss;
+    this.purchaseCardDismiss = null;
+    if (dismiss) dismiss();
+  },
+
+  isZoomOpen() {
+    const modal = document.getElementById('zoom-modal');
+    return modal && modal.classList.contains('open');
+  },
+
+  openZoom(src, alt) {
+    const url = src || this.zoomSrc;
+    if (!url) return;
+
+    const modal = document.getElementById('zoom-modal');
+    const img = document.getElementById('zoom-image');
+    if (!modal || !img) return;
+
+    if (this._zoomCloseTimer) {
+      clearTimeout(this._zoomCloseTimer);
+      this._zoomCloseTimer = null;
+    }
+
+    img.src = url;
+    if (alt) img.alt = alt;
+
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => modal.classList.add('open'));
+    });
   },
 
   closeZoom() {
-    document.getElementById('zoom-modal').classList.add('hidden');
+    const modal = document.getElementById('zoom-modal');
+    if (!modal || !modal.classList.contains('open')) return;
+
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    if (this._zoomCloseTimer) clearTimeout(this._zoomCloseTimer);
+    this._zoomCloseTimer = setTimeout(() => {
+      modal.classList.add('hidden');
+      this._zoomCloseTimer = null;
+    }, 400);
+  },
+
+  openPurchaseCardZoom() {
+    const img = document.getElementById('purchase-card-image');
+    if (!img || !img.src) return;
+    this.openZoom(img.src, img.alt);
   },
 };

@@ -5,13 +5,46 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-start-day').addEventListener('click', () => Game.beginAuction());
   document.getElementById('btn-buy').addEventListener('click', () => Game.onBuyClicked());
   document.getElementById('btn-skip').addEventListener('click', () => Game.onSkipClicked());
+  document.getElementById('btn-finish-day').addEventListener('click', () => Game.onFinishDayClicked());
   document.getElementById('btn-report-continue').addEventListener('click', () => Game.continueAfterReport());
   document.getElementById('btn-restart-campaign').addEventListener('click', () => Game.startCampaign());
 
   document.getElementById('lot-image-wrap').addEventListener('click', () => UI.openZoom());
   document.getElementById('zoom-modal').addEventListener('click', () => UI.closeZoom());
 
+  const purchaseCardImageWrap = document.getElementById('purchase-card-image-wrap');
+  if (purchaseCardImageWrap) {
+    purchaseCardImageWrap.addEventListener('click', (e) => {
+      e.stopPropagation();
+      UI.openPurchaseCardZoom();
+    });
+    purchaseCardImageWrap.addEventListener('keydown', (e) => {
+      if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+        UI.openPurchaseCardZoom();
+      }
+    });
+  }
+
+  document.getElementById('btn-purchase-card-collapse')?.addEventListener('click', () => UI.closePurchaseCard());
+  document.getElementById('btn-purchase-card-continue')?.addEventListener('click', () => UI.closePurchaseCard());
+
   document.addEventListener('keydown', (e) => {
+    if (UI.isZoomOpen()) {
+      if (e.code === 'Escape' || e.code === 'Space') {
+        e.preventDefault();
+        UI.closeZoom();
+      }
+      return;
+    }
+    if (UI.isPurchaseCardOpen()) {
+      if (e.code === 'Escape' || e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        UI.closePurchaseCard();
+      }
+      return;
+    }
     if (e.code === 'Space') {
       const auctionActive = document.getElementById('screen-auction').classList.contains('active');
       if (auctionActive) {

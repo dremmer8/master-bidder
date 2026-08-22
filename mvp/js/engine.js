@@ -46,24 +46,51 @@ function getBranchBudgetMultiplierBonus(state) {
   return state.upgrades.has('gallery-connections') ? GALLERY_CONNECTIONS_BUDGET_BONUS : 0;
 }
 
-// Builds the day's single order for a collector branch. Tags come from that
-// specific day's authored mission (collector.missions[missionIndex], clamped
-// to the branch's last day past the ceiling — "mastery" plateau); trophy
-// chance and venue tier come from branchCfg (see campaign.js getBranchMissionConfig).
+// Worst-case hammer price for an artwork: max jitter × full reveal steps.
+// Used so order budgets always cover every venue-eligible matching purchase.
+function maxPossibleLivePrice(artwork) {
+  const maxJitter = 1.15;
+  const maxStep = REVEALABLE_FIELDS.length;
+  return Math.round((artwork.basePrice * maxJitter * (1 + maxStep * PRICE_STEP_PCT)) / 100) * 100;
+}
+
+function matchingArtworksInVenue(tags, venueConfig) {
+  return ARTWORKS.filter(
+    (a) => venueConfig.rarityPool.includes(a.rarity) && matchesCriteria(a, tags)
+  );
+}
+
+// Prefer venue-pool matches; if the authored criteria only hit rarities outside
+// this venue (e.g. commons on Elite), fall back to any catalog match so the
+// order stays solvable and budget/draw still have a candidate set.
+function fulfillableMatchesForOrder(tags, venueConfig) {
+  const inPool = matchingArtworksInVenue(tags, venueConfig);
+  if (inPool.length) return inPool;
+  return ARTWORKS.filter((a) => matchesCriteria(a, tags));
+}
+
+function budgetFloorForArtworks(artworks) {
+  if (!artworks.length) return 0;
+  return Math.max(...artworks.map(maxPossibleLivePrice));
+}
+
+// Builds the day's single order for a collector branch. Tags come from the shared
+// order ladder (getOrderTagsForMission); trophy chance and venue tier come from
+// branchCfg (see campaign.js getBranchMissionConfig).
 function buildOrder(collector, branchCfg, venueConfig, state, tags) {
   const wantsTrophy = venueConfig.key !== 'local' && branchCfg.trophyChance > 0 && Math.random() < branchCfg.trophyChance;
   const budgetMultiplier = branchCfg.branchBudgetMultiplier + getBranchBudgetMultiplierBonus(state);
-  const budget = Math.round((collector.baseBudget * budgetMultiplier * venueConfig.budgetFactor) / 100) * 100;
+  let budget = Math.round((collector.baseBudget * budgetMultiplier * venueConfig.budgetFactor) / 100) * 100;
 
   if (wantsTrophy) {
-    const candidates = ARTWORKS.filter(
-      (a) => venueConfig.rarityPool.includes(a.rarity) && matchesCriteria(a, tags)
-    );
+    const candidates = matchingArtworksInVenue(tags, venueConfig);
     if (candidates.length) {
       const target = candidates[Math.floor(Math.random() * candidates.length)];
+      budget = Math.max(budget, maxPossibleLivePrice(target));
       return {
         nameRu: collector.nameRu,
         taglineRu: collector.taglineRu,
+        portraitUrl: collector.portraitUrl,
         criteriaTags: [{ type: 'artwork', value: target.id }],
         criteriaLabel: `Именно эта работа: «${target.titleRu}» (${target.artistRu})`,
         budget,
@@ -73,9 +100,14 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
     }
   }
 
+  // Category orders: budget must cover every matching lot that can appear
+  // for this order (max jitter + all fields revealed), not just the formula.
+  budget = Math.max(budget, budgetFloorForArtworks(fulfillableMatchesForOrder(tags, venueConfig)));
+
   return {
     nameRu: collector.nameRu,
     taglineRu: collector.taglineRu,
+    portraitUrl: collector.portraitUrl,
     criteriaTags: tags,
     criteriaLabel: describeCriteria(tags),
     budget,
@@ -91,10 +123,9 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
 function buildDayOrder(state) {
   const collector = COLLECTORS.find((c) => c.id === state.selectedBranchId);
   const missionIndex = state.branchProgress[collector.id] || 0;
-  const branchCfg = getBranchMissionConfig(missionIndex, collector.missions.length);
+  const branchCfg = getBranchMissionConfig(missionIndex, ORDER_LADDER_LENGTH);
   const venueConfig = VENUES[branchCfg.venueTier];
-  const dayIndex = Math.min(missionIndex, collector.missions.length - 1);
-  const tags = collector.missions[dayIndex].tags;
+  const tags = getOrderTagsForMission(missionIndex, collector);
   return { order: buildOrder(collector, branchCfg, venueConfig, state, tags), venueConfig };
 }
 
@@ -103,17 +134,56 @@ function jitterPrice(base) {
   return Math.round((base * factor) / 100) * 100;
 }
 
-// Lots are drawn from the venue's own rarity pool (Local skips epic, Elite
-// skips common) — venues differ in content, not just in risk.
-function drawLots(count, seenSet, rarityPool) {
-  const candidates = ARTWORKS.filter((a) => rarityPool.includes(a.rarity));
-  const shuffled = shuffle(candidates.slice());
-  const picked = shuffled.slice(0, Math.min(count, shuffled.length));
-  return picked.map((a) => ({
-    ...a,
-    basePriceJittered: jitterPrice(a.basePrice),
-    familiar: seenSet.has(a.id),
-  }));
+function toPresentedLot(artwork, seenSet) {
+  return {
+    ...artwork,
+    basePriceJittered: jitterPrice(artwork.basePrice),
+    familiar: seenSet.has(artwork.id),
+  };
+}
+
+// Player-bought works stay off the auction block for this many full days after
+// the purchase day (e.g. bought on day 5 → absent on days 6–7, back on day 8).
+const ARTWORK_SALE_COOLDOWN_DAYS = 2;
+
+function isArtworkOnSaleCooldown(artworkId, currentDay, purchaseDays) {
+  const purchaseDay = purchaseDays[artworkId];
+  if (purchaseDay == null) return false;
+  const daysSincePurchase = currentDay - purchaseDay;
+  return daysSincePurchase >= 1 && daysSincePurchase <= ARTWORK_SALE_COOLDOWN_DAYS;
+}
+
+function filterOffCooldown(artworks, currentDay, purchaseDays) {
+  return artworks.filter((a) => !isArtworkOnSaleCooldown(a.id, currentDay, purchaseDays));
+}
+
+// Lots are drawn from the venue's rarity pool, but at least one order-matching
+// artwork is always seeded into the day — otherwise the order cannot be closed.
+function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, purchaseDays) {
+  const rarityPool = venueConfig.rarityPool;
+  const pool = filterOffCooldown(
+    ARTWORKS.filter((a) => rarityPool.includes(a.rarity)),
+    currentDay,
+    purchaseDays
+  );
+  const matches = filterOffCooldown(
+    fulfillableMatchesForOrder(orderCriteriaTags, venueConfig),
+    currentDay,
+    purchaseDays
+  );
+  const fallbackMatches = fulfillableMatchesForOrder(orderCriteriaTags, venueConfig);
+
+  const guaranteedSource = matches.length ? matches : fallbackMatches;
+  const guaranteed = guaranteedSource.length
+    ? [guaranteedSource[Math.floor(Math.random() * guaranteedSource.length)]]
+    : [];
+  const guaranteedIds = new Set(guaranteed.map((a) => a.id));
+
+  const fillerPool = pool.length ? pool : ARTWORKS.filter((a) => rarityPool.includes(a.rarity));
+  const fillers = shuffle(fillerPool.filter((a) => !guaranteedIds.has(a.id)));
+  const need = Math.max(0, count - guaranteed.length);
+  const picked = guaranteed.concat(fillers.slice(0, need));
+  return shuffle(picked).map((a) => toPresentedLot(a, seenSet));
 }
 
 // Price rises one step per revealed field; the same step drives the speed
@@ -195,6 +265,7 @@ function computeSettlement(state) {
     totalCommission += commission;
 
     purchaseDetails.push({
+      artworkId: p.id,
       titleRu: p.titleRu,
       price: p.price,
       matched,
@@ -208,12 +279,16 @@ function computeSettlement(state) {
   let totalClawback = 0;
   orderStats.forEach((o) => {
     o.leftover = Math.max(0, o.budget - o.spent);
+    // An order only closes if at least one matching painting was delivered.
+    // Zero buys or incorrect-only buys leave it open (branch does not advance).
+    o.fulfilled = o.correctCount > 0;
     totalClawback += o.leftover;
   });
 
   const net = Math.round(totalCommission - totalClawback);
   const projectedCapital = capital + net;
   const pass = projectedCapital >= 0;
+  const ordersFulfilled = orderStats.length > 0 && orderStats.every((o) => o.fulfilled);
   // dayNet is the true start-to-end delta for the ledger; it also folds in
   // spends that aren't visible above (elite ticket cost, personal overspend
   // beyond an order's budget) so the ledger always reconciles exactly.
@@ -230,6 +305,7 @@ function computeSettlement(state) {
     startingCapital: dayStartCapital,
     projectedCapital,
     pass,
+    ordersFulfilled,
   };
 }
 
@@ -242,6 +318,7 @@ const Game = {
       capital: STARTING_CAPITAL,
       dayStartCapital: STARTING_CAPITAL,
       seenArtworkIds: new Set(),
+      artworkPurchaseDays: {},
       upgrades: new Set(),
       pendingBoosters: new Set(),
       insuranceActiveToday: false,
@@ -256,6 +333,7 @@ const Game = {
       revealStep: 0,
       revealTimers: [],
       rivalTimer: null,
+      fastForwarding: false,
       pendingResult: null,
       branchProgress: {},
       selectedBranchId: COLLECTORS[0].id,
@@ -272,7 +350,14 @@ const Game = {
     const { order, venueConfig } = buildDayOrder(this.state);
     this.state.pendingOrder = order;
     this.state.pendingVenueConfig = venueConfig;
-    this.state.lots = drawLots(venueConfig.lotsCount(), this.state.seenArtworkIds, venueConfig.rarityPool);
+    this.state.lots = drawLots(
+      venueConfig.lotsCount(),
+      this.state.seenArtworkIds,
+      venueConfig,
+      order.criteriaTags,
+      this.state.day,
+      this.state.artworkPurchaseDays
+    );
     this.state.currentLotIndex = 0;
     ImageCache.preloadUrls(
       this.state.lots.map((lot) => lot.imageUrl),
@@ -338,10 +423,10 @@ const Game = {
     this.state.currentVenue = venueConfig.key;
     this.state.currentLotIndex = 0;
     UI.showAuctionScreen(this.state);
-    this.presentLot();
+    this.presentLot({ revealFromBlack: true });
   },
 
-  presentLot() {
+  presentLot({ revealFromBlack = false } = {}) {
     const { lots, currentLotIndex } = this.state;
     if (currentLotIndex >= lots.length) {
       this.finishDay();
@@ -349,16 +434,17 @@ const Game = {
     }
 
     this.state.lotResolved = false;
+    this.state.fastForwarding = false;
     this.state.revealStep = 0;
     const lot = lots[currentLotIndex];
-    const floor = getSpeedFloor(this.state);
-    UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0), computeSpeedMultiplier(0, floor));
+    UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0));
+    if (revealFromBlack) UI.revealLotFromBlack();
 
     this.state.revealTimers = REVEALABLE_FIELDS.map((f, i) =>
       setTimeout(() => {
         this.state.revealStep = i + 1;
         UI.revealField(f);
-        UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep), computeSpeedMultiplier(this.state.revealStep, floor));
+        UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep));
       }, REVEAL_INTERVAL_MS * (i + 1))
     );
     this.state.revealTimers.push(
@@ -381,7 +467,7 @@ const Game = {
   },
 
   onBuyClicked() {
-    if (this.state.lotResolved) return;
+    if (this.state.lotResolved || this.state.fastForwarding) return;
     const lot = this.state.lots[this.state.currentLotIndex];
     const price = computeLivePrice(lot, this.state.revealStep);
     if (price > this.state.capital) {
@@ -391,6 +477,7 @@ const Game = {
     this.clearLotTimers();
     this.state.lotResolved = true;
     this.state.capital -= price;
+    this.state.artworkPurchaseDays[lot.id] = this.state.day;
     this.state.purchasesToday.push({
       id: lot.id,
       titleRu: lot.titleRu,
@@ -404,11 +491,12 @@ const Game = {
     });
     UI.showLotResult('won');
     UI.updateCapitalDisplays(this.state.capital);
-    setTimeout(() => this.advanceLot(), RESOLUTION_PAUSE_MS);
+    UI.showPurchaseCard(lot, price, { onDismiss: () => this.advanceLot() });
   },
 
   onRivalWins() {
     if (this.state.lotResolved) return;
+    this.state.fastForwarding = false;
     this.clearLotTimers();
     this.state.lotResolved = true;
     UI.raiseRandomHand();
@@ -419,16 +507,46 @@ const Game = {
   },
 
   onSkipClicked() {
+    if (this.state.lotResolved || this.state.fastForwarding) return;
+
+    const lot = this.state.lots[this.state.currentLotIndex];
+    const startStep = this.state.revealStep;
+    const remainingFields = REVEALABLE_FIELDS.slice(startStep);
+
+    this.state.fastForwarding = true;
+    document.getElementById('btn-skip').disabled = true;
+    document.getElementById('btn-buy').disabled = true;
+    this.clearLotTimers();
+
+    remainingFields.forEach((field, i) => {
+      this.state.revealTimers.push(
+        setTimeout(() => {
+          if (this.state.lotResolved) return;
+          this.state.revealStep = startStep + i + 1;
+          UI.revealField(field);
+          UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep), { animate: false });
+        }, SKIP_FAST_REVEAL_INTERVAL_MS * (i + 1))
+      );
+    });
+
+    const rivalDelayMs =
+      SKIP_FAST_REVEAL_INTERVAL_MS * remainingFields.length + SKIP_RIVAL_PAUSE_MS;
+    this.state.rivalTimer = setTimeout(() => this.onRivalWins(), rivalDelayMs);
+  },
+
+  onFinishDayClicked() {
     if (this.state.lotResolved) return;
+    this.state.fastForwarding = false;
     this.clearLotTimers();
     this.state.lotResolved = true;
-    UI.showLotResult('skipped');
-    setTimeout(() => this.advanceLot(), RESOLUTION_PAUSE_MS);
+    this.finishDay();
   },
 
   advanceLot() {
-    this.state.currentLotIndex += 1;
-    this.presentLot();
+    UI.withLotFade(() => {
+      this.state.currentLotIndex += 1;
+      this.presentLot();
+    });
   },
 
   finishDay() {
@@ -450,7 +568,11 @@ const Game = {
     this.state.pendingBoosters = new Set();
     this.state.purchasesToday.forEach((p) => this.state.seenArtworkIds.add(p.id));
     const branchId = this.state.selectedBranchId;
-    this.state.branchProgress[branchId] = (this.state.branchProgress[branchId] || 0) + 1;
+    // Order stays open until at least one correct purchase — do not advance
+    // that collector's mission ladder on an empty or incorrect-only day.
+    if (result.ordersFulfilled) {
+      this.state.branchProgress[branchId] = (this.state.branchProgress[branchId] || 0) + 1;
+    }
     this.state.day += 1;
     if (this.state.day > CAMPAIGN_LENGTH) {
       UI.showCampaignEnd(this.state);

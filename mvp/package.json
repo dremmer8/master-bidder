@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "design": "node design-server.js",
-    "fetch-artworks": "node scripts/fetch-artworks.js"
+    "fetch-artworks": "node scripts/fetch-artworks.js",
+    "fetch-collectors": "node scripts/fetch-collectors.js"
   },
   "keywords": [],
   "author": "",

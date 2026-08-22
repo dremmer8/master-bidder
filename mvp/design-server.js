@@ -75,19 +75,14 @@ function validateCollectors(list) {
     if (typeof c.taglineRu !== 'string' || !c.taglineRu.trim()) {
       return `У заказчика "${c.id}" отсутствует описание (taglineRu).`;
     }
-    if (!Array.isArray(c.missions) || c.missions.length === 0) {
-      return `У заказчика "${c.id}" должен быть хотя бы один день кампании (missions).`;
+    if (typeof c.orderGenre !== 'string' || !c.orderGenre.trim()) {
+      return `У заказчика "${c.id}" отсутствует orderGenre.`;
     }
-    for (let i = 0; i < c.missions.length; i++) {
-      const mission = c.missions[i];
-      if (!mission || !Array.isArray(mission.tags) || mission.tags.length === 0) {
-        return `У заказчика "${c.id}", день ${i + 1}: должен быть хотя бы один тег.`;
-      }
-      for (const t of mission.tags) {
-        if (!t || !TAG_TYPES.includes(t.type) || typeof t.value !== 'string' || !t.value.trim()) {
-          return `Некорректный тег у заказчика "${c.id}", день ${i + 1}.`;
-        }
-      }
+    if (typeof c.orderPeriod !== 'string' || !c.orderPeriod.trim()) {
+      return `У заказчика "${c.id}" отсутствует orderPeriod.`;
+    }
+    if (typeof c.orderArtist !== 'string' || !c.orderArtist.trim()) {
+      return `У заказчика "${c.id}" отсутствует orderArtist.`;
     }
     if (typeof c.personalModifier !== 'number' || !(c.personalModifier > 0)) {
       return `personalModifier у "${c.id}" должен быть положительным числом.`;
@@ -107,38 +102,29 @@ function serializeCollectorsFile(list) {
   const header = `// Collector (client) definitions — each one is a campaign branch: a named,
 // recurring character with distinct tastes (see GAME_DESIGN.md, Orders & Collectors).
 //
-// missions[] is that branch's own day-by-day campaign: missions[i].tags is the
-// exact set of AND-matched tags used for that branch's (i+1)-th order. Once the
-// player has done more orders than missions.length, the branch plateaus forever
-// on its last authored day ("mastery") — see getBranchMissionConfig in campaign.js,
-// which also derives venue tier / trophy chance / budget multiplier from
-// missionIndex scaled against this branch's own missions.length.
+// orderGenre / orderPeriod / orderArtist — the collector's thematic focus. The
+// shared ladder in campaign.js applies the same phase structure to everyone:
+// ORDER_PHASE_GENRE_DAYS of genre-only orders, then period-only, then artist-only.
 //
-// tags[].type must be one of 'period' | 'genre' | 'artist' and tags[].value must
-// match an existing ARTWORKS periodRu/genreRu/artistRu value (see data.js) so
-// matchesCriteria() in engine.js can compare them.
+// portraitSource — Wikimedia Commons URL for the collector's portrait.
+// Run \`npm run fetch-collectors\` after changing portraitSource.
 //
 // This file is generated/edited by gamedesign.html via design-server.js's
 // POST /api/collectors — hand edits are fine, just keep the shape intact.
 `;
 
   const entries = list.map((c) => {
-    const missionLines = c.missions
-      .map((m) => {
-        const tagsInline = m.tags.map((t) => `{ type: ${jsString(t.type)}, value: ${jsString(t.value)} }`).join(', ');
-        return `      { tags: [${tagsInline}] },`;
-      })
-      .join('\n');
     return [
       '  {',
       `    id: ${jsString(c.id)},`,
       `    nameRu: ${jsString(c.nameRu)},`,
       `    taglineRu: ${jsString(c.taglineRu)},`,
+      ...(c.portraitSource ? [`    portraitSource:\n      ${jsString(c.portraitSource)},`] : []),
       `    personalModifier: ${c.personalModifier},`,
       `    baseBudget: ${c.baseBudget},`,
-      '    missions: [',
-      missionLines,
-      '    ],',
+      `    orderGenre: ${jsString(c.orderGenre)},`,
+      `    orderPeriod: ${jsString(c.orderPeriod)},`,
+      `    orderArtist: ${jsString(c.orderArtist)},`,
       '  },',
     ].join('\n');
   });
