@@ -1,4 +1,28 @@
 document.addEventListener('DOMContentLoaded', () => {
+  I18n.init();
+  I18n.applyStaticTexts();
+
+  const langSelect = document.getElementById('lang-select');
+  langSelect.value = I18n.getLocale();
+  langSelect.addEventListener('change', () => {
+    I18n.setLocale(langSelect.value);
+    UI.onLocaleChange();
+    updateSoundToggleUI();
+    updateCurrencySymbols();
+  });
+
+  function updateCurrencySymbols() {
+    document.querySelectorAll('.currency-symbol').forEach((el) => {
+      el.textContent = I18n.currencySymbol();
+    });
+  }
+  updateCurrencySymbols();
+
+  window.addEventListener('localechange', () => {
+    langSelect.value = I18n.getLocale();
+    updateCurrencySymbols();
+  });
+
   UI.init();
   Sound.init();
 
@@ -7,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const muted = Sound.isMuted();
     soundToggleBtn.textContent = muted ? '🔇' : '🔊';
     soundToggleBtn.setAttribute('aria-pressed', String(muted));
-    soundToggleBtn.title = muted ? 'Включить звук' : 'Выключить звук';
+    soundToggleBtn.title = I18n.t(muted ? 'sound.unmute' : 'sound.mute');
   };
   updateSoundToggleUI();
   soundToggleBtn.addEventListener('click', () => {

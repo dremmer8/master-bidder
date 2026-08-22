@@ -13,9 +13,6 @@ function randRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function formatMoney(n) {
-  return Math.round(n).toLocaleString('ru-RU');
-}
 
 // Hides a not-yet-revealed field's value behind a redacted placeholder of
 // roughly the same length, so nothing can be read before it's announced.
@@ -38,8 +35,12 @@ function matchesCriteria(artwork, criteriaTags) {
 }
 
 function describeCriteria(tags) {
-  const labels = { period: 'Период', genre: 'Жанр', artist: 'Автор' };
-  return tags.map((t) => `${labels[t.type]}: ${t.value}`).join(' И ');
+  const labels = {
+    period: I18n.t('orderTag.period'),
+    genre: I18n.t('orderTag.genre'),
+    artist: I18n.t('orderTag.artist'),
+  };
+  return tags.map((t) => `${labels[t.type]}: ${I18n.vocab(t.value)}`).join(I18n.t('criteria.and'));
 }
 
 // Worst-case hammer price for an artwork: max jitter × full reveal steps.
@@ -91,11 +92,15 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
       const floor = Math.round((maxPossibleLivePrice(target) * advanceMultiplier) / 100) * 100;
       budget = Math.max(budget, floor);
       return {
+        collectorId: collector.id,
         nameRu: collector.nameRu,
         taglineRu: collector.taglineRu,
         portraitUrl: collector.portraitUrl,
         criteriaTags: [{ type: 'artwork', value: target.id }],
-        criteriaLabel: `Именно эта работа: «${target.titleRu}» (${target.artistRu})`,
+        criteriaLabel: I18n.t('criteria.exactWork', {
+          title: I18n.artwork(target, 'title'),
+          artist: I18n.vocab(target.artistRu),
+        }),
         budget,
         personalModifier: collector.personalModifier,
         venue: venueConfig.key,
@@ -112,6 +117,7 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
   budget = Math.max(budget, categoryFloor);
 
   return {
+    collectorId: collector.id,
     nameRu: collector.nameRu,
     taglineRu: collector.taglineRu,
     portraitUrl: collector.portraitUrl,
@@ -311,8 +317,13 @@ function computeSettlement(state) {
       matched,
       amount: commission,
       reason: matched
-        ? `Подошло заказчику «${order.nameRu}» — ${order.criteriaLabel}.`
-        : `Не подошло ни одному заказу — списано заказчику «${order.nameRu}» по сниженной ставке.`,
+        ? I18n.t('purchase.matched', {
+            name: I18n.entity('collectors', order.collectorId, 'name', order.nameRu),
+            criteria: order.criteriaLabel,
+          })
+        : I18n.t('purchase.unmatched', {
+            name: I18n.entity('collectors', order.collectorId, 'name', order.nameRu),
+          }),
     });
   });
 

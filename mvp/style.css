@@ -100,11 +100,39 @@ h2 { margin-top: 0; }
 }
 .btn-secondary:hover:not(:disabled) { background: #343943; }
 
-.sound-toggle {
+.top-controls {
   position: fixed;
   top: 14px;
   right: 18px;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82em;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 4px 10px 4px 12px;
+}
+
+.lang-switch select {
+  background: transparent;
+  color: var(--text);
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.sound-toggle {
+  position: static;
   width: 36px;
   height: 36px;
   border-radius: 50%;

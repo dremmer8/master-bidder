@@ -3,69 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Аукционный дом — Симулятор скупщика</title>
+<title data-i18n="meta.title">Аукционный дом — Симулятор скупщика</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<button id="btn-sound-toggle" class="sound-toggle" type="button" title="Выключить звук" aria-pressed="false">🔊</button>
+<div class="top-controls">
+  <label class="lang-switch" for="lang-select">
+    <span data-i18n="lang.label">Язык</span>
+    <select id="lang-select" aria-label="Language">
+      <option value="ru" data-i18n="lang.ru">Русский</option>
+      <option value="en" data-i18n="lang.en">English</option>
+    </select>
+  </label>
+  <button id="btn-sound-toggle" class="sound-toggle" type="button" data-i18n-title="sound.mute" title="Выключить звук" aria-pressed="false">🔊</button>
+</div>
 
 <div id="app">
 
   <!-- INTRO SCREEN -->
   <section id="screen-intro" class="screen active">
     <div class="panel intro-panel">
-      <h1>Аукционный дом</h1>
-      <p class="subtitle">Симулятор скупщика произведений искусства</p>
-      <p class="lede">
+      <h1 data-i18n="intro.title">Аукционный дом</h1>
+      <p class="subtitle" data-i18n="intro.subtitle">Симулятор скупщика произведений искусства</p>
+      <p class="lede" data-i18n="intro.lede">
         Вы — агент по закупкам на арт-аукционе. Коллекционеры дают вам заказы на
         конкретные категории произведений искусства и бюджет на покупку. Экспонат
         появляется на подиуме, аукционист называет о нём сведения одно за другим — а
         вы должны опознать нужный лот и подать сигнал о покупке быстрее конкурентов.
       </p>
       <ul class="rules-list">
-        <li>Кто сигнализирует первым — тот и покупает лот. Торга нет.</li>
-        <li>Пока идёт раскрытие сведений, цена лота растёт, а будущая комиссия падает — решайте быстро.</li>
-        <li>Правильную покупку вы узнаете только в конце дня.</li>
-        <li>Ваш капитал — это жизнь: закончились деньги — карьера окончена. Рейтинга больше нет.</li>
+        <li data-i18n="intro.rule1">Кто сигнализирует первым — тот и покупает лот. Торга нет.</li>
+        <li data-i18n="intro.rule2">Пока идёт раскрытие сведений, цена лота растёт, а будущая комиссия падает — решайте быстро.</li>
+        <li data-i18n="intro.rule3">Правильную покупку вы узнаете только в конце дня.</li>
+        <li data-i18n="intro.rule4">Ваш капитал — это жизнь: закончились деньги — карьера окончена. Рейтинга больше нет.</li>
       </ul>
-      <button id="btn-start-campaign" class="btn btn-primary">Начать карьеру</button>
-      <p class="editor-link"><a href="gamedesign.html">Редактор кампаний заказчиков</a></p>
+      <button id="btn-start-campaign" class="btn btn-primary" data-i18n="intro.start">Начать карьеру</button>
+      <p class="editor-link"><a href="gamedesign.html" data-i18n="intro.editorLink">Редактор кампаний заказчиков</a></p>
     </div>
   </section>
 
   <!-- DAY BRIEF SCREEN -->
   <section id="screen-brief" class="screen">
     <header class="brief-hud">
-      <div class="hud-item">День <span id="brief-day-number">1</span></div>
-      <div class="hud-item">Капитал: <span id="brief-capital">0</span> ₽</div>
+      <div class="hud-item"><span data-i18n="brief.day">День</span> <span id="brief-day-number">1</span></div>
+      <div class="hud-item"><span data-i18n="brief.capital">Капитал:</span> <span id="brief-capital">0</span> <span class="currency-symbol">₽</span></div>
     </header>
 
     <div class="brief-body">
       <div class="brief-main">
-        <h3 class="brief-heading">Заказчик на сегодня</h3>
+        <h3 class="brief-heading" data-i18n="brief.clientHeading">Заказчик на сегодня</h3>
         <div id="brief-branch-choice" class="venue-choice"></div>
       </div>
 
       <aside class="brief-side">
-        <h3 class="brief-heading">Мастерская</h3>
+        <h3 class="brief-heading" data-i18n="brief.workshop">Мастерская</h3>
         <div id="brief-upgrades" class="upgrade-shop"></div>
       </aside>
     </div>
 
     <footer class="brief-footer">
       <div id="brief-preload-status" class="brief-preload-status hidden"></div>
-      <button id="btn-start-day" class="btn btn-primary">Выйти в зал</button>
+      <button id="btn-start-day" class="btn btn-primary" data-i18n="brief.enterHall">Выйти в зал</button>
     </footer>
   </section>
 
   <!-- AUCTION FLOOR SCREEN -->
   <section id="screen-auction" class="screen">
     <header class="auction-hud">
-      <div class="hud-item">День <span id="hud-day">1</span></div>
-      <div class="hud-item">Площадка: <span id="hud-venue">Обычный аукцион</span></div>
-      <div class="hud-item">Лот <span id="hud-lot-index">1</span>/<span id="hud-lot-total">10</span></div>
-      <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
+      <div class="hud-item"><span data-i18n="auction.day">День</span> <span id="hud-day">1</span></div>
+      <div class="hud-item"><span data-i18n="auction.venue">Площадка:</span> <span id="hud-venue">Обычный аукцион</span></div>
+      <div class="hud-item"><span data-i18n="auction.lot">Лот</span> <span id="hud-lot-index">1</span>/<span id="hud-lot-total">10</span></div>
+      <div class="hud-item"><span data-i18n="auction.capital">Капитал:</span> <span id="hud-capital">0</span> <span class="currency-symbol">₽</span></div>
       <div class="hud-item hud-effects hidden" id="hud-active-upgrades"></div>
       <div class="hud-item hud-effects hidden" id="hud-active-boosters"></div>
     </header>
@@ -74,8 +83,8 @@
       <div class="stage-left">
         <div class="lot-block">
           <div class="lot-image-wrap" id="lot-image-wrap">
-            <img id="lot-image" src="" alt="Экспонат">
-            <div id="familiar-badge" class="familiar-badge hidden">Знакомый лот</div>
+            <img id="lot-image" src="" data-i18n-title="auction.lotAlt" alt="Экспонат">
+            <div id="familiar-badge" class="familiar-badge hidden" data-i18n="auction.familiarLot">Знакомый лот</div>
             <div id="lot-fx" class="lot-fx" aria-hidden="true"></div>
           </div>
           <div class="audience-row" id="audience-row">
@@ -97,7 +106,7 @@
           </div>
           <div id="lot-fade" class="lot-fade" aria-hidden="true"></div>
         </div>
-        <div id="zoom-hint" class="zoom-hint">Нажмите на изображение, чтобы приблизить</div>
+        <div id="zoom-hint" class="zoom-hint" data-i18n="auction.zoomHint">Нажмите на изображение, чтобы приблизить</div>
       </div>
 
       <div class="stage-right">
@@ -105,42 +114,42 @@
 
         <div class="live-economics" id="live-economics">
           <div class="economics-item">
-            <span class="economics-label">Текущая цена</span>
+            <span class="economics-label" data-i18n="auction.currentPrice">Текущая цена</span>
             <span class="economics-value" id="live-price">—</span>
           </div>
           <div class="economics-item">
-            <span class="economics-label">Ваш капитал</span>
+            <span class="economics-label" data-i18n="auction.yourCapital">Ваш капитал</span>
             <span class="economics-value economics-capital" id="live-capital">—</span>
           </div>
         </div>
 
         <div class="lot-info">
-          <div class="lot-info-kicker">Текущий лот</div>
+          <div class="lot-info-kicker" data-i18n="auction.currentLot">Текущий лот</div>
           <div class="reveal-field" id="field-genre" data-field="genre">
-            <span class="field-label">Жанр</span><span class="field-value">—</span>
+            <span class="field-label" data-i18n="auction.field.genre">Жанр</span><span class="field-value">—</span>
           </div>
           <div class="reveal-field" id="field-period" data-field="period">
-            <span class="field-label">Период</span><span class="field-value">—</span>
+            <span class="field-label" data-i18n="auction.field.period">Период</span><span class="field-value">—</span>
           </div>
           <div class="reveal-field" id="field-artist" data-field="artist">
-            <span class="field-label">Автор</span><span class="field-value">—</span>
+            <span class="field-label" data-i18n="auction.field.artist">Автор</span><span class="field-value">—</span>
           </div>
           <div class="reveal-field" id="field-fact" data-field="fact">
-            <span class="field-label">Интересный факт</span><span class="field-value">—</span>
+            <span class="field-label" data-i18n="auction.field.fact">Интересный факт</span><span class="field-value">—</span>
           </div>
           <div class="reveal-field" id="field-title" data-field="title">
-            <span class="field-label">Название</span><span class="field-value">—</span>
+            <span class="field-label" data-i18n="auction.field.title">Название</span><span class="field-value">—</span>
           </div>
         </div>
 
         <div id="lot-result-banner" class="lot-result-banner hidden"></div>
-        <div id="insufficient-funds-hint" class="insufficient-funds-hint hidden">Недостаточно средств!</div>
+        <div id="insufficient-funds-hint" class="insufficient-funds-hint hidden" data-i18n="auction.insufficientFunds">Недостаточно средств!</div>
 
         <div class="action-row">
-          <button id="btn-start-lot" class="btn btn-start-lot hidden">Начать торги (Пробел)</button>
-          <button id="btn-buy" class="btn btn-buy">КУПИТЬ! (Пробел)</button>
-          <button id="btn-skip" class="btn btn-skip">Пропустить</button>
-          <button id="btn-finish-day" class="btn btn-finish-day">Закончить день</button>
+          <button id="btn-start-lot" class="btn btn-start-lot hidden" data-i18n="auction.startLot">Начать торги (Пробел)</button>
+          <button id="btn-buy" class="btn btn-buy" data-i18n="auction.buy">КУПИТЬ! (Пробел)</button>
+          <button id="btn-skip" class="btn btn-skip" data-i18n="auction.skip">Пропустить</button>
+          <button id="btn-finish-day" class="btn btn-finish-day" data-i18n="auction.finishDay">Закончить день</button>
         </div>
       </div>
     </main>
@@ -149,41 +158,41 @@
   <!-- END OF DAY REPORT SCREEN -->
   <section id="screen-report" class="screen">
     <div class="panel report-panel">
-      <h2 id="report-title">Итоги дня <span id="report-day-number">1</span></h2>
+      <h2><span data-i18n="report.title">Итоги дня</span> <span id="report-day-number">1</span></h2>
 
-      <h3 class="report-subheading">Заказчики</h3>
+      <h3 class="report-subheading" data-i18n="report.clients">Заказчики</h3>
       <div id="report-orders" class="report-orders"></div>
 
-      <h3 class="report-subheading">Что купили и почему</h3>
+      <h3 class="report-subheading" data-i18n="report.purchases">Что купили и почему</h3>
       <div id="report-transactions" class="report-transactions"></div>
 
-      <h3 class="report-subheading">Движение капитала</h3>
+      <h3 class="report-subheading" data-i18n="report.ledger">Движение капитала</h3>
       <div id="report-ledger" class="report-ledger"></div>
 
       <div id="report-verdict" class="report-verdict"></div>
 
       <div id="report-boosters-section" class="hidden">
-        <h3 class="report-subheading" id="report-boosters-heading">Бустеры на завтра</h3>
+        <h3 class="report-subheading" id="report-boosters-heading" data-i18n="report.boosters">Бустеры на завтра</h3>
         <div id="report-boosters" class="upgrade-shop"></div>
       </div>
 
-      <button id="btn-report-continue" class="btn btn-primary">Продолжить</button>
+      <button id="btn-report-continue" class="btn btn-primary" data-i18n="report.continue">Продолжить</button>
     </div>
   </section>
 
   <!-- CAMPAIGN END / GAME OVER SCREEN -->
   <section id="screen-end" class="screen">
     <div class="panel intro-panel">
-      <h1 id="end-title">Карьера завершена</h1>
+      <h1 id="end-title" data-i18n="end.careerTitle">Карьера завершена</h1>
       <p id="end-message" class="lede"></p>
-      <button id="btn-restart-campaign" class="btn btn-primary">Начать заново</button>
+      <button id="btn-restart-campaign" class="btn btn-primary" data-i18n="end.restart">Начать заново</button>
     </div>
   </section>
 
   <!-- ZOOM MODAL -->
   <div id="zoom-modal" class="zoom-modal hidden" aria-hidden="true">
     <div class="zoom-modal-scaler">
-      <img id="zoom-image" src="" alt="Экспонат крупным планом">
+      <img id="zoom-image" src="" data-i18n-title="purchaseCard.zoomAlt" alt="Экспонат крупным планом">
     </div>
   </div>
 
@@ -191,32 +200,32 @@
   <div id="purchase-card-overlay" class="purchase-card-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="purchase-card-title">
     <div class="purchase-card">
       <header class="purchase-card-header">
-        <div class="purchase-card-kicker">Визиточка лота</div>
-        <button type="button" id="btn-purchase-card-collapse" class="purchase-card-collapse" title="Свернуть визитку">Свернуть</button>
+        <div class="purchase-card-kicker" data-i18n="purchaseCard.kicker">Визиточка лота</div>
+        <button type="button" id="btn-purchase-card-collapse" class="purchase-card-collapse" data-i18n-title="purchaseCard.collapseTitle" title="Свернуть визитку" data-i18n="purchaseCard.collapse">Свернуть</button>
       </header>
       <div class="purchase-card-body">
-        <div class="purchase-card-image-wrap purchase-card-image-zoomable" id="purchase-card-image-wrap" role="button" tabindex="0" title="Нажмите, чтобы увеличить">
+        <div class="purchase-card-image-wrap purchase-card-image-zoomable" id="purchase-card-image-wrap" role="button" tabindex="0" data-i18n-title="purchaseCard.zoomTitle" title="Нажмите, чтобы увеличить">
           <img id="purchase-card-image" src="" alt="">
-          <span class="purchase-card-zoom-hint">Увеличить</span>
+          <span class="purchase-card-zoom-hint" data-i18n="purchaseCard.zoom">Увеличить</span>
         </div>
         <div class="purchase-card-details">
           <h2 id="purchase-card-title" class="purchase-card-title"></h2>
           <p id="purchase-card-artist" class="purchase-card-artist"></p>
           <dl class="purchase-card-meta">
             <div class="purchase-card-meta-row">
-              <dt>Период</dt>
+              <dt data-i18n="purchaseCard.period">Период</dt>
               <dd id="purchase-card-period"></dd>
             </div>
             <div class="purchase-card-meta-row">
-              <dt>Жанр</dt>
+              <dt data-i18n="purchaseCard.genre">Жанр</dt>
               <dd id="purchase-card-genre"></dd>
             </div>
             <div class="purchase-card-meta-row">
-              <dt>Редкость</dt>
+              <dt data-i18n="purchaseCard.rarity">Редкость</dt>
               <dd id="purchase-card-rarity"></dd>
             </div>
             <div class="purchase-card-meta-row purchase-card-meta-price">
-              <dt>Цена покупки</dt>
+              <dt data-i18n="purchaseCard.price">Цена покупки</dt>
               <dd id="purchase-card-price"></dd>
             </div>
           </dl>
@@ -224,14 +233,18 @@
         </div>
       </div>
       <footer class="purchase-card-footer">
-        <p id="purchase-card-pause-hint" class="purchase-card-pause-hint">Торги на паузе — сверните визитку, когда будете готовы к следующему лоту.</p>
-        <button type="button" id="btn-purchase-card-continue" class="btn btn-primary">Продолжить торги</button>
+        <p id="purchase-card-pause-hint" class="purchase-card-pause-hint" data-i18n="purchaseCard.pauseHint">Торги на паузе — сверните визитку, когда будете готовы к следующему лоту.</p>
+        <button type="button" id="btn-purchase-card-continue" class="btn btn-primary" data-i18n="purchaseCard.continue">Продолжить торги</button>
       </footer>
     </div>
   </div>
 
 </div>
 
+<script src="js/i18n.js"></script>
+<script src="js/locales/ui.ru.js"></script>
+<script src="js/locales/ui.en.js"></script>
+<script src="js/locales/content.en.js"></script>
 <script src="js/sound.js"></script>
 <script src="js/data.js"></script>
 <script src="js/collectors.js"></script>

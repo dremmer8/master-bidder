@@ -1,22 +1,87 @@
 // Pure rendering layer. Reads state passed in by Game, writes to DOM only.
 
+function uiCollectorName(collectorOrOrder) {
+  const id = collectorOrOrder.id || collectorOrOrder.collectorId;
+  return I18n.entity('collectors', id, 'name', collectorOrOrder.nameRu);
+}
+
+function uiCollectorTagline(collector) {
+  return I18n.entity('collectors', collector.id, 'tagline', collector.taglineRu);
+}
+
+function uiVenueLabel(venueKey) {
+  const venue = VENUES[venueKey];
+  return I18n.entity('venues', venueKey, 'label', venue.labelRu);
+}
+
+function uiUpgradeName(upgrade) {
+  return I18n.entity('upgrades', upgrade.id, 'name', upgrade.nameRu);
+}
+
+function uiUpgradeDesc(upgrade) {
+  return I18n.entity('upgrades', upgrade.id, 'desc', upgrade.descRu);
+}
+
+function uiBoosterName(booster) {
+  return I18n.entity('boosters', booster.id, 'name', booster.nameRu);
+}
+
+function uiBoosterDesc(booster) {
+  return I18n.entity('boosters', booster.id, 'desc', booster.descRu);
+}
+
+function uiArtworkFields(artwork) {
+  return {
+    title: I18n.artwork(artwork, 'title'),
+    artist: I18n.artwork(artwork, 'artist') + (artwork.year ? ` (${artwork.year})` : ''),
+    period: I18n.vocab(artwork.periodRu),
+    genre: I18n.vocab(artwork.genreRu),
+    fact: I18n.artwork(artwork, 'fact'),
+  };
+}
+
 const UI = {
   screens: {},
   zoomSrc: null,
   pendingValues: null,
   insufficientFundsTimer: null,
   purchaseCardDismiss: null,
-  purchaseCardDefaultContinueLabel: 'Продолжить торги',
-  purchaseCardDefaultPauseHint:
-    'Торги на паузе — сверните визитку, когда будете готовы к следующему лоту.',
   _zoomCloseTimer: null,
-
-  RARITY_LABELS: { common: 'Обычная', rare: 'Редкая', epic: 'Эпическая' },
+  _lastBriefState: null,
+  _lastBriefCfg: null,
+  _lastReportState: null,
+  _lastReportResult: null,
 
   init() {
     ['intro', 'brief', 'auction', 'report', 'end'].forEach((name) => {
       this.screens[name] = document.getElementById('screen-' + name);
     });
+  },
+
+  onLocaleChange() {
+    if (this._lastBriefState) {
+      this.showBrief(this._lastBriefState, this._lastBriefCfg);
+      this.updateBriefPreload(ImageCache.progress());
+    }
+    if (this._lastReportState && this._lastReportResult) {
+      this.showReport(this._lastReportState, this._lastReportResult);
+    }
+    const auctionActive = this.screens.auction?.classList.contains('active');
+    if (auctionActive && typeof Game !== 'undefined' && Game.state) {
+      this.showAuctionScreen(Game.state);
+      if (Game.state.awaitingLotStart) this.showLotStandby(Game.state);
+      else if (Game.state.lots[Game.state.currentLotIndex]) {
+        const lot = Game.state.lots[Game.state.currentLotIndex];
+        const fields = uiArtworkFields(lot);
+        this.pendingValues = fields;
+        Object.keys(fields).forEach((f) => {
+          const el = document.getElementById('field-' + f);
+          if (el && el.classList.contains('revealed')) {
+            el.querySelector('.field-value').textContent = fields[f];
+          }
+        });
+      }
+    }
   },
 
   showScreen(name) {
@@ -27,6 +92,8 @@ const UI = {
   // --- Brief screen -------------------------------------------------------
 
   showBrief(state, cfg) {
+    this._lastBriefState = state;
+    this._lastBriefCfg = cfg;
     this.showScreen('brief');
     document.getElementById('brief-day-number').textContent = state.day;
     this.updateBriefCapital(state.capital);
@@ -40,13 +107,13 @@ const UI = {
     const status = document.getElementById('brief-preload-status');
     if (ready || total === 0) {
       btn.disabled = false;
-      btn.textContent = 'Выйти в зал';
+      btn.textContent = I18n.t('brief.enterHall');
       status.classList.add('hidden');
       return;
     }
     btn.disabled = true;
-    btn.textContent = `Загрузка экспонатов (${loaded}/${total})…`;
-    status.textContent = `Подготовка зала: ${loaded} из ${total} картин`;
+    btn.textContent = I18n.t('brief.preloadBtn', { loaded, total });
+    status.textContent = I18n.t('brief.preloadStatus', { loaded, total });
     status.classList.remove('hidden');
   },
 
@@ -55,11 +122,7 @@ const UI = {
   },
 
   formatOrdersRemaining(n) {
-    if (n === 1) return 'Остался 1 заказ';
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `Осталось ${n} заказа`;
-    return `Осталось ${n} заказов`;
+    return I18n.ordersRemaining(n);
   },
 
   buildCollectorProgressMarkup(missionIndex, collector) {
@@ -73,13 +136,13 @@ const UI = {
       let cls = 'collector-progress-segment phase-' + phase;
       if (i < completed) cls += ' done';
       else if (i === missionIndex && !mastered) cls += ' current';
-      segments.push(`<div class="${cls}" title="Заказ ${i + 1}"></div>`);
+      segments.push(`<div class="${cls}" title="${I18n.t('collector.orderTitle', { n: i + 1 })}"></div>`);
     }
-    const labelRight = mastered ? 'Мастерство' : this.formatOrdersRemaining(remaining);
+    const labelRight = mastered ? I18n.t('collector.mastery') : this.formatOrdersRemaining(remaining);
     return `
       <div class="collector-progress">
         <div class="collector-progress-label">
-          <span>Заказ ${currentOrder} из ${total}</span>
+          <span>${I18n.t('collector.orderOf', { current: currentOrder, total })}</span>
           <span>${labelRight}</span>
         </div>
         <div class="collector-progress-track" role="progressbar" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${total}" aria-label="Прогресс заказчика">
@@ -99,15 +162,15 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'venue-card' + (state.selectedBranchId === c.id ? ' selected' : '');
       const portraitHtml = c.portraitUrl
-        ? `<div class="venue-card-portrait"><img src="${c.portraitUrl}" alt="${c.nameRu}"></div>`
+        ? `<div class="venue-card-portrait"><img src="${c.portraitUrl}" alt="${uiCollectorName(c)}"></div>`
         : '';
       card.innerHTML = `
         ${portraitHtml}
         <div class="venue-card-body">
-          <div class="venue-card-name">${c.nameRu}</div>
-          <div class="venue-card-desc">${c.taglineRu}</div>
+          <div class="venue-card-name">${uiCollectorName(c)}</div>
+          <div class="venue-card-desc">${uiCollectorTagline(c)}</div>
           ${this.buildCollectorProgressMarkup(missionIndex, c)}
-          <div class="venue-card-desc venue-card-venue">${venue.labelRu}</div>
+          <div class="venue-card-desc venue-card-venue">${uiVenueLabel(branchCfg.venueTier)}</div>
         </div>
       `;
       card.addEventListener('click', () => {
@@ -126,10 +189,10 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'shop-card' + (owned ? ' owned' : '');
       card.innerHTML = `
-        <div class="shop-card-name"><span class="shop-card-icon">${u.icon}</span>${u.nameRu}</div>
-        <div class="shop-card-desc">${u.descRu}</div>
+        <div class="shop-card-name"><span class="shop-card-icon">${u.icon}</span>${uiUpgradeName(u)}</div>
+        <div class="shop-card-desc">${uiUpgradeDesc(u)}</div>
         <button class="btn btn-secondary" ${owned || state.capital < u.cost ? 'disabled' : ''}>
-          ${owned ? 'Приобретено' : `Купить за ${formatMoney(u.cost)} ₽`}
+          ${owned ? I18n.t('shop.owned') : I18n.t('shop.buyFor', { price: `${formatMoney(u.cost)} ${I18n.currencySymbol()}` })}
         </button>
       `;
       if (!owned)
@@ -146,7 +209,7 @@ const UI = {
   showAuctionScreen(state) {
     this.showScreen('auction');
     document.getElementById('hud-day').textContent = state.day;
-    document.getElementById('hud-venue').textContent = VENUES[state.currentVenue].labelRu;
+    document.getElementById('hud-venue').textContent = uiVenueLabel(state.currentVenue);
     document.getElementById('hud-lot-total').textContent = state.lots.length;
     this.updateCapitalDisplays(state.capital);
     this.renderOrderBrief(state);
@@ -176,7 +239,7 @@ const UI = {
     document.getElementById('btn-buy').disabled = true;
     document.getElementById('btn-skip').disabled = true;
     document.getElementById('btn-finish-day').disabled = false;
-    document.getElementById('zoom-hint').textContent = 'Нажмите «Начать торги (Пробел)», когда будете готовы';
+    document.getElementById('zoom-hint').textContent = I18n.t('auction.zoomHintStandby');
   },
 
   hideLotStandby() {
@@ -184,7 +247,7 @@ const UI = {
     document.getElementById('btn-buy').classList.remove('hidden');
     document.getElementById('btn-skip').classList.remove('hidden');
     document.getElementById('lot-image-wrap').classList.remove('standby');
-    document.getElementById('zoom-hint').textContent = 'Нажмите на изображение, чтобы приблизить';
+    document.getElementById('zoom-hint').textContent = I18n.t('auction.zoomHint');
   },
 
   renderEffectIcons(elId, items) {
@@ -196,7 +259,7 @@ const UI = {
         (item) => `
         <span class="effect-icon" tabindex="0">
           ${item.icon}
-          <span class="effect-tooltip"><strong>${item.nameRu}</strong><br>${item.descRu}</span>
+          <span class="effect-tooltip"><strong>${item.type === 'upgrade' ? uiUpgradeName(item) : uiBoosterName(item)}</strong><br>${item.type === 'upgrade' ? uiUpgradeDesc(item) : uiBoosterDesc(item)}</span>
         </span>
       `
       )
@@ -206,24 +269,31 @@ const UI = {
   renderActiveBoosters(state) {
     this.renderEffectIcons(
       'hud-active-boosters',
-      BOOSTERS.filter((b) => state.activeBoosters.has(b.id))
+      BOOSTERS.filter((b) => state.activeBoosters.has(b.id)).map((b) => ({ ...b, type: 'booster' }))
     );
   },
 
   renderActiveUpgrades(state) {
     this.renderEffectIcons(
       'hud-active-upgrades',
-      META_UPGRADES.filter((u) => state.upgrades.has(u.id))
+      META_UPGRADES.filter((u) => state.upgrades.has(u.id)).map((u) => ({ ...u, type: 'upgrade' }))
     );
   },
 
   buildOrderTagsMarkup(order) {
-    const labels = { period: 'Период', genre: 'Жанр', artist: 'Автор', artwork: 'Работа' };
+    const labels = {
+      period: I18n.t('orderTag.period'),
+      genre: I18n.t('orderTag.genre'),
+      artist: I18n.t('orderTag.artist'),
+      artwork: I18n.t('orderTag.artwork'),
+    };
     const tags = (order.criteriaTags || []).map((tag) => {
       let value = tag.value;
       if (tag.type === 'artwork') {
         const art = ARTWORKS.find((a) => a.id === tag.value);
-        value = art ? `«${art.titleRu}»` : tag.value;
+        value = art ? `"${I18n.artwork(art, 'title')}"` : tag.value;
+      } else {
+        value = I18n.vocab(tag.value);
       }
       return {
         type: tag.type,
@@ -251,12 +321,12 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'order-brief-card';
       const portraitHtml = o.portraitUrl
-        ? `<div class="order-brief-portrait"><img src="${o.portraitUrl}" alt="${o.nameRu}"></div>`
+        ? `<div class="order-brief-portrait"><img src="${o.portraitUrl}" alt="${uiCollectorName(o)}"></div>`
         : '';
       card.innerHTML = `
         ${portraitHtml}
         <div class="order-brief-content">
-          <div class="order-brief-name">${o.nameRu}</div>
+          <div class="order-brief-name">${uiCollectorName(o)}</div>
           ${this.buildOrderTagsMarkup(o)}
         </div>
       `;
@@ -280,7 +350,7 @@ const UI = {
   updateCapitalDisplays(capital) {
     document.getElementById('hud-capital').textContent = formatMoney(capital);
     const live = document.getElementById('live-capital');
-    if (live) live.textContent = formatMoney(capital) + ' ₽';
+    if (live) live.textContent = I18n.formatMoneyWithCurrency(capital);
   },
 
   flashInsufficientFunds() {
@@ -312,13 +382,7 @@ const UI = {
     document.getElementById('btn-start-lot').classList.add('hidden');
     document.querySelectorAll('.rival-head.raised').forEach((h) => h.classList.remove('raised'));
 
-    this.pendingValues = {
-      title: lot.titleRu,
-      artist: lot.artistRu + (lot.year ? ` (${lot.year})` : ''),
-      period: lot.periodRu,
-      genre: lot.genreRu,
-      fact: lot.factRu,
-    };
+    this.pendingValues = uiArtworkFields(lot);
     Object.keys(this.pendingValues).forEach((f) => {
       const el = document.getElementById('field-' + f);
       el.classList.remove('revealed');
@@ -353,11 +417,11 @@ const UI = {
     if (kind === 'won') {
       wrap.classList.add('fx-won');
       fx.className = 'lot-fx lot-fx-won';
-      fx.textContent = 'ВАШ!';
+      fx.textContent = I18n.t('lotResult.fxWon');
     } else if (kind === 'lost') {
       wrap.classList.add('fx-lost');
       fx.className = 'lot-fx lot-fx-lost';
-      fx.textContent = 'ПРОДАН';
+      fx.textContent = I18n.t('lotResult.fxLost');
     }
   },
 
@@ -408,7 +472,7 @@ const UI = {
         cancelAnimationFrame(this._econAnim);
         this._econAnim = null;
       }
-      priceEl.textContent = formatMoney(price) + ' ₽';
+      priceEl.textContent = I18n.formatMoneyWithCurrency(price);
       return;
     }
 
@@ -430,7 +494,7 @@ const UI = {
       const t = Math.min(1, (now - start) / duration);
       const e = easeOut(t);
       const p = Math.round(fromPrice + (toPrice - fromPrice) * e);
-      priceEl.textContent = formatMoney(p) + ' ₽';
+      priceEl.textContent = I18n.formatMoneyWithCurrency(p);
       if (t < 1) this._econAnim = requestAnimationFrame(tick);
       else this._econAnim = null;
     };
@@ -439,16 +503,16 @@ const UI = {
 
   showWaitingHint() {
     const banner = document.getElementById('lot-result-banner');
-    banner.textContent = 'Конкуренты уже присматриваются к лоту...';
+    banner.textContent = I18n.t('lotResult.waiting');
     banner.className = 'lot-result-banner';
     banner.classList.remove('hidden');
   },
 
   showLotResult(kind) {
     const texts = {
-      won: 'Лот ваш!',
-      lost: 'Лот ушёл другому покупателю!',
-      skipped: 'Лот пропущен.',
+      won: I18n.t('lotResult.won'),
+      lost: I18n.t('lotResult.lost'),
+      skipped: I18n.t('lotResult.skipped'),
     };
     const banner = document.getElementById('lot-result-banner');
     banner.textContent = texts[kind] || '';
@@ -473,6 +537,8 @@ const UI = {
   // --- Report screen --------------------------------------------------------
 
   showReport(state, result) {
+    this._lastReportState = state;
+    this._lastReportResult = result;
     this.showScreen('report');
     document.getElementById('report-day-number').textContent = state.day;
 
@@ -480,24 +546,24 @@ const UI = {
     ordersEl.innerHTML = '';
     result.orderStats.forEach((o) => {
       const sign = o.commissionEarned >= 0 ? '+' : '−';
-      const status = o.fulfilled ? 'Заказ выполнен' : 'Заказ не выполнен';
+      const status = o.fulfilled ? I18n.t('report.orderFulfilled') : I18n.t('report.orderUnfulfilled');
       const row = document.createElement('div');
       row.className = 'order-report-card' + (o.fulfilled ? '' : ' unfulfilled');
       const portraitHtml = o.portraitUrl
-        ? `<div class="order-report-portrait"><img src="${o.portraitUrl}" alt="${o.nameRu}"></div>`
+        ? `<div class="order-report-portrait"><img src="${o.portraitUrl}" alt="${uiCollectorName(o)}"></div>`
         : '';
       row.innerHTML = `
         ${portraitHtml}
         <div class="order-report-body">
-          <div class="order-report-name">${o.nameRu} <span class="order-venue-tag">${VENUES[o.venue].labelRu}</span>
+          <div class="order-report-name">${uiCollectorName(o)} <span class="order-venue-tag">${uiVenueLabel(o.venue)}</span>
             <span class="order-fulfill-tag ${o.fulfilled ? 'ok' : 'bad'}">${status}</span>
           </div>
-          <div class="order-report-line">Бюджет: ${formatMoney(o.budget)} ₽ · Потрачено: ${formatMoney(o.spent)} ₽ · Списано неизрасходованного: ${formatMoney(o.leftover)} ₽</div>
-          <div class="order-report-line">Верно: ${o.correctCount} · Неверно: ${o.incorrectCount} · Комиссия: ${sign}${formatMoney(Math.abs(o.commissionEarned))} ₽</div>
+          <div class="order-report-line">${I18n.t('report.budget')} ${I18n.formatMoneyWithCurrency(o.budget)} · ${I18n.t('report.spent')} ${I18n.formatMoneyWithCurrency(o.spent)} · ${I18n.t('report.clawback')} ${I18n.formatMoneyWithCurrency(o.leftover)}</div>
+          <div class="order-report-line">${I18n.t('report.correct')} ${o.correctCount} · ${I18n.t('report.incorrect')} ${o.incorrectCount} · ${I18n.t('report.commission')} ${sign}${I18n.formatMoneyWithCurrency(Math.abs(o.commissionEarned))}</div>
           ${
             o.fulfilled
               ? ''
-              : '<div class="order-report-line order-unfulfilled-hint">Нужна хотя бы одна подходящая картина — иначе заказ остаётся открытым.</div>'
+              : `<div class="order-report-line order-unfulfilled-hint">${I18n.t('report.unfulfilledHint')}</div>`
           }
         </div>
       `;
@@ -507,7 +573,7 @@ const UI = {
     const txEl = document.getElementById('report-transactions');
     txEl.innerHTML = '';
     if (!result.purchaseDetails.length) {
-      txEl.innerHTML = '<div class="transaction-empty">Вы не купили ни одного лота за этот день.</div>';
+      txEl.innerHTML = `<div class="transaction-empty">${I18n.t('report.noPurchases')}</div>`;
     } else {
       result.purchaseDetails.forEach((p) => {
         const row = document.createElement('div');
@@ -515,17 +581,17 @@ const UI = {
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
         const sign = p.amount >= 0 ? '+' : '−';
+        const artwork = ARTWORKS.find((a) => a.id === p.artworkId);
+        const title = artwork ? I18n.artwork(artwork, 'title') : p.titleRu;
         row.innerHTML = `
           <div class="transaction-main">
-            <div class="transaction-title">${p.matched ? '✅' : '❌'} ${p.titleRu}
-              <span class="transaction-price">(${formatMoney(p.price)} ₽)</span>
+            <div class="transaction-title">${p.matched ? '✅' : '❌'} ${title}
+              <span class="transaction-price">(${I18n.formatMoneyWithCurrency(p.price)})</span>
             </div>
             <div class="transaction-reason">${p.reason}</div>
-            <div class="transaction-view-card-hint">Нажмите, чтобы открыть визиточку</div>
+            <div class="transaction-view-card-hint">${I18n.t('report.viewCard')}</div>
           </div>
-          <div class="transaction-amount ${p.amount >= 0 ? 'positive' : 'negative'}">${sign}${formatMoney(
-          Math.abs(p.amount)
-        )} ₽</div>
+          <div class="transaction-amount ${p.amount >= 0 ? 'positive' : 'negative'}">${sign}${I18n.formatMoneyWithCurrency(Math.abs(p.amount))}</div>
         `;
         row.addEventListener('click', () => {
           const artwork = ARTWORKS.find((a) => a.id === p.artworkId);
@@ -544,18 +610,18 @@ const UI = {
     const netSign = result.totalCommission >= 0 ? '+' : '−';
     const otherRow =
       result.otherSpend !== 0
-        ? `<div class="ledger-row negative"><span>− Билеты на аукционы / переплаты сверх бюджета</span><span>−${formatMoney(Math.abs(result.otherSpend))} ₽</span></div>`
+        ? `<div class="ledger-row negative"><span>${I18n.t('report.ledger.otherSpend')}</span><span>−${I18n.formatMoneyWithCurrency(Math.abs(result.otherSpend))}</span></div>`
         : '';
     const creditLineRow = result.savedByCreditLine
-      ? `<div class="ledger-row positive"><span>+ Кредитная линия (разово за карьеру)</span><span>+${formatMoney(result.creditLineCoverage)} ₽</span></div>`
+      ? `<div class="ledger-row positive"><span>${I18n.t('report.ledger.creditLine')}</span><span>+${I18n.formatMoneyWithCurrency(result.creditLineCoverage)}</span></div>`
       : '';
     document.getElementById('report-ledger').innerHTML = `
-      <div class="ledger-row"><span>Капитал на начало дня</span><span>${formatMoney(result.startingCapital)} ₽</span></div>
-      <div class="ledger-row ${result.totalCommission >= 0 ? 'positive' : 'negative'}"><span>Комиссии/штрафы (нетто)</span><span>${netSign}${formatMoney(Math.abs(result.totalCommission))} ₽</span></div>
-      <div class="ledger-row negative"><span>− Списано неизрасходованного бюджета заказов</span><span>−${formatMoney(result.totalClawback)} ₽</span></div>
+      <div class="ledger-row"><span>${I18n.t('report.ledger.start')}</span><span>${I18n.formatMoneyWithCurrency(result.startingCapital)}</span></div>
+      <div class="ledger-row ${result.totalCommission >= 0 ? 'positive' : 'negative'}"><span>${I18n.t('report.ledger.commission')}</span><span>${netSign}${I18n.formatMoneyWithCurrency(Math.abs(result.totalCommission))}</span></div>
+      <div class="ledger-row negative"><span>${I18n.t('report.ledger.clawback')}</span><span>−${I18n.formatMoneyWithCurrency(result.totalClawback)}</span></div>
       ${otherRow}
       ${creditLineRow}
-      <div class="ledger-row total"><span>Капитал на конец дня</span><span>${formatMoney(result.projectedCapital)} ₽</span></div>
+      <div class="ledger-row total"><span>${I18n.t('report.ledger.end')}</span><span>${I18n.formatMoneyWithCurrency(result.projectedCapital)}</span></div>
     `;
 
     const verdict = document.getElementById('report-verdict');
@@ -564,21 +630,21 @@ const UI = {
     if (result.pass) {
       Sound.playDayPass(result.ordersFulfilled);
       if (result.savedByCreditLine) {
-        verdict.textContent =
-          `Капитал ушёл в минус, но кредитная линия покрыла разницу (${formatMoney(result.creditLineCoverage)} ₽) — использована один раз за карьеру.`;
+        verdict.textContent = I18n.t('verdict.creditLine', {
+          amount: I18n.formatMoneyWithCurrency(result.creditLineCoverage),
+        });
         verdict.className = 'report-verdict warn';
       } else if (!result.ordersFulfilled) {
-        verdict.textContent =
-          'День пережит, но заказ не закрыт: нужна хотя бы одна подходящая картина. Заказ остаётся открытым.';
+        verdict.textContent = I18n.t('verdict.unfulfilled');
         verdict.className = 'report-verdict warn';
       } else if (state.day >= CAMPAIGN_LENGTH) {
-        verdict.textContent = 'День пройден! Кампания завершена.';
+        verdict.textContent = I18n.t('verdict.campaignComplete');
         verdict.className = 'report-verdict pass';
       } else {
-        verdict.textContent = 'День пройден! Переходим к следующему дню.';
+        verdict.textContent = I18n.t('verdict.dayPass');
         verdict.className = 'report-verdict pass';
       }
-      continueBtn.textContent = 'Продолжить';
+      continueBtn.textContent = I18n.t('report.continue');
       if (state.day < CAMPAIGN_LENGTH) {
         boostersSection.classList.remove('hidden');
         this.refreshBoosterShop(state);
@@ -587,23 +653,28 @@ const UI = {
       }
     } else {
       Sound.playDayFail();
-      verdict.textContent = 'БАНКРОТСТВО: капитал ушёл в минус. Карьера окончена.';
+      verdict.textContent = I18n.t('verdict.bankruptcy');
       verdict.className = 'report-verdict fail';
-      continueBtn.textContent = 'Закончить';
+      continueBtn.textContent = I18n.t('report.finish');
       boostersSection.classList.add('hidden');
     }
   },
 
   updateReportCapital(capital) {
     const row = document.querySelector('#report-ledger .ledger-row.total span:last-child');
-    if (row) row.textContent = formatMoney(capital) + ' ₽';
+    if (row) row.textContent = I18n.formatMoneyWithCurrency(capital);
   },
 
   refreshBoosterShop(state) {
     const offers = state.boosterOffers.map((id) => BOOSTERS.find((b) => b.id === id)).filter(Boolean);
 
     const heading = document.getElementById('report-boosters-heading');
-    if (heading) heading.textContent = `Бустеры на завтра (${state.pendingBoosters.size}/${offers.length})`;
+    if (heading) {
+      heading.textContent = I18n.t('report.boostersCount', {
+        owned: state.pendingBoosters.size,
+        total: offers.length,
+      });
+    }
 
     const el = document.getElementById('report-boosters');
     el.innerHTML = '';
@@ -614,10 +685,10 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'shop-card' + (owned ? ' owned' : '');
       card.innerHTML = `
-        <div class="shop-card-name"><span class="shop-card-icon">${b.icon}</span>${b.nameRu}</div>
-        <div class="shop-card-desc">${b.descRu}</div>
+        <div class="shop-card-name"><span class="shop-card-icon">${b.icon}</span>${uiBoosterName(b)}</div>
+        <div class="shop-card-desc">${uiBoosterDesc(b)}</div>
         <button class="btn btn-secondary" ${disabled ? 'disabled' : ''}>
-          ${owned ? 'Куплено на завтра' : `Купить за ${formatMoney(cost)} ₽`}
+          ${owned ? I18n.t('shop.boosterOwned') : I18n.t('shop.buyFor', { price: `${formatMoney(cost)} ${I18n.currencySymbol()}` })}
         </button>
       `;
       if (!owned)
@@ -634,19 +705,21 @@ const UI = {
   showCampaignEnd(state) {
     Sound.playCampaignEnd();
     this.showScreen('end');
-    document.getElementById('end-title').textContent = 'Карьера завершена!';
-    document.getElementById('end-message').textContent =
-      `Вы прошли все ${CAMPAIGN_LENGTH} дней аукциона с капиталом ${formatMoney(state.capital)} ₽. ` +
-      'Вы — признанный эксперт арт-рынка.';
+    document.getElementById('end-title').textContent = I18n.t('end.careerTitle');
+    document.getElementById('end-message').textContent = I18n.t('end.careerMessage', {
+      days: CAMPAIGN_LENGTH,
+      capital: I18n.formatMoneyWithCurrency(state.capital),
+    });
   },
 
   showGameOver(state, result) {
     Sound.playDayFail();
     this.showScreen('end');
-    document.getElementById('end-title').textContent = 'Банкротство';
-    document.getElementById('end-message').textContent =
-      `На дне ${state.day} ваш капитал ушёл в минус (${formatMoney(result.projectedCapital)} ₽). ` +
-      'Карьера скупщика окончена.';
+    document.getElementById('end-title').textContent = I18n.t('end.bankruptcyTitle');
+    document.getElementById('end-message').textContent = I18n.t('end.bankruptcyMessage', {
+      day: state.day,
+      capital: I18n.formatMoneyWithCurrency(result.projectedCapital),
+    });
   },
 
   revealAllLotFields() {
@@ -674,23 +747,20 @@ const UI = {
     }
 
     if (hintEl) {
-      hintEl.textContent = review
-        ? 'Визиточка купленного лота. Закройте, чтобы вернуться к итогам дня.'
-        : this.purchaseCardDefaultPauseHint;
+      hintEl.textContent = review ? I18n.t('purchaseCard.reviewHint') : I18n.t('purchaseCard.pauseHint');
     }
-    continueBtn.textContent = review ? 'Закрыть' : this.purchaseCardDefaultContinueLabel;
+    continueBtn.textContent = review ? I18n.t('purchaseCard.close') : I18n.t('purchaseCard.continue');
 
+    const fields = uiArtworkFields(lot);
     document.getElementById('purchase-card-image').src = lot.imageUrl;
-    document.getElementById('purchase-card-image').alt = lot.titleRu;
-    document.getElementById('purchase-card-title').textContent = lot.titleRu;
-    document.getElementById('purchase-card-artist').textContent =
-      lot.artistRu + (lot.year ? ` (${lot.year})` : '');
-    document.getElementById('purchase-card-period').textContent = lot.periodRu;
-    document.getElementById('purchase-card-genre').textContent = lot.genreRu;
-    document.getElementById('purchase-card-rarity').textContent =
-      this.RARITY_LABELS[lot.rarity] || lot.rarity;
-    document.getElementById('purchase-card-price').textContent = formatMoney(price) + ' ₽';
-    document.getElementById('purchase-card-fact').textContent = lot.factRu;
+    document.getElementById('purchase-card-image').alt = fields.title;
+    document.getElementById('purchase-card-title').textContent = fields.title;
+    document.getElementById('purchase-card-artist').textContent = fields.artist;
+    document.getElementById('purchase-card-period').textContent = fields.period;
+    document.getElementById('purchase-card-genre').textContent = fields.genre;
+    document.getElementById('purchase-card-rarity').textContent = I18n.t(`rarity.${lot.rarity}`);
+    document.getElementById('purchase-card-price').textContent = I18n.formatMoneyWithCurrency(price);
+    document.getElementById('purchase-card-fact').textContent = fields.fact;
 
     overlayEl.classList.remove('hidden');
     continueBtn.focus();
@@ -701,8 +771,8 @@ const UI = {
     Sound.playCardClose();
     document.getElementById('purchase-card-overlay').classList.add('hidden');
     const hintEl = document.getElementById('purchase-card-pause-hint');
-    if (hintEl) hintEl.textContent = this.purchaseCardDefaultPauseHint;
-    document.getElementById('btn-purchase-card-continue').textContent = this.purchaseCardDefaultContinueLabel;
+    if (hintEl) hintEl.textContent = I18n.t('purchaseCard.pauseHint');
+    document.getElementById('btn-purchase-card-continue').textContent = I18n.t('purchaseCard.continue');
     const dismiss = this.purchaseCardDismiss;
     this.purchaseCardDismiss = null;
     if (dismiss) dismiss();
