@@ -65,6 +65,8 @@
       <div class="hud-item">Площадка: <span id="hud-venue">Обычный аукцион</span></div>
       <div class="hud-item">Лот <span id="hud-lot-index">1</span>/<span id="hud-lot-total">10</span></div>
       <div class="hud-item">Капитал: <span id="hud-capital">0</span> ₽</div>
+      <div class="hud-item hud-effects hidden" id="hud-active-upgrades"></div>
+      <div class="hud-item hud-effects hidden" id="hud-active-boosters"></div>
     </header>
 
     <main class="auction-stage">
@@ -159,7 +161,7 @@
       <div id="report-verdict" class="report-verdict"></div>
 
       <div id="report-boosters-section" class="hidden">
-        <h3 class="report-subheading">Бустеры на завтра</h3>
+        <h3 class="report-subheading" id="report-boosters-heading">Бустеры на завтра</h3>
         <div id="report-boosters" class="upgrade-shop"></div>
       </div>
 

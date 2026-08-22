@@ -42,10 +42,6 @@ function describeCriteria(tags) {
   return tags.map((t) => `${labels[t.type]}: ${t.value}`).join(' И ');
 }
 
-function getBranchBudgetMultiplierBonus(state) {
-  return state.upgrades.has('gallery-connections') ? GALLERY_CONNECTIONS_BUDGET_BONUS : 0;
-}
-
 // Worst-case hammer price for an artwork: max jitter × full reveal steps.
 // Used so order budgets always cover every venue-eligible matching purchase.
 function maxPossibleLivePrice(artwork) {
@@ -79,14 +75,21 @@ function budgetFloorForArtworks(artworks) {
 // branchCfg (see campaign.js getBranchMissionConfig).
 function buildOrder(collector, branchCfg, venueConfig, state, tags) {
   const wantsTrophy = venueConfig.key !== 'local' && branchCfg.trophyChance > 0 && Math.random() < branchCfg.trophyChance;
-  const budgetMultiplier = branchCfg.branchBudgetMultiplier + getBranchBudgetMultiplierBonus(state);
-  let budget = Math.round((collector.baseBudget * budgetMultiplier * venueConfig.budgetFactor) / 100) * 100;
+  const budgetMultiplier = branchCfg.branchBudgetMultiplier;
+  const permanentAdvance = state.upgrades.has('standing-advance') ? 1.08 : 1;
+  const dailyAdvance = state.activeBoosters.has('budget-advance') ? 1.2 : 1;
+  const advanceMultiplier = permanentAdvance * dailyAdvance;
+  let budget = Math.round((collector.baseBudget * budgetMultiplier * venueConfig.budgetFactor * advanceMultiplier) / 100) * 100;
 
   if (wantsTrophy) {
     const candidates = matchingArtworksInVenue(tags, venueConfig);
     if (candidates.length) {
       const target = candidates[Math.floor(Math.random() * candidates.length)];
-      budget = Math.max(budget, maxPossibleLivePrice(target));
+      // The solvency floor gets the same advance multiplier applied — otherwise
+      // it silently swallows budget-advance/standing-advance whenever the floor
+      // (independent of collector budget) already exceeds the raw formula.
+      const floor = Math.round((maxPossibleLivePrice(target) * advanceMultiplier) / 100) * 100;
+      budget = Math.max(budget, floor);
       return {
         nameRu: collector.nameRu,
         taglineRu: collector.taglineRu,
@@ -101,8 +104,12 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
   }
 
   // Category orders: budget must cover every matching lot that can appear
-  // for this order (max jitter + all fields revealed), not just the formula.
-  budget = Math.max(budget, budgetFloorForArtworks(fulfillableMatchesForOrder(tags, venueConfig)));
+  // for this order (max jitter + all fields revealed), not just the formula —
+  // and that floor also gets the advance multiplier (see the trophy branch above).
+  const categoryFloor = Math.round(
+    (budgetFloorForArtworks(fulfillableMatchesForOrder(tags, venueConfig)) * advanceMultiplier) / 100
+  ) * 100;
+  budget = Math.max(budget, categoryFloor);
 
   return {
     nameRu: collector.nameRu,
@@ -159,7 +166,9 @@ function filterOffCooldown(artworks, currentDay, purchaseDays) {
 
 // Lots are drawn from the venue's rarity pool, but at least one order-matching
 // artwork is always seeded into the day — otherwise the order cannot be closed.
-function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, purchaseDays) {
+// guaranteeEpic (the 'lucky-lot' booster) seeds a second guaranteed slot with
+// an epic-rarity artwork, bypassing the venue's own rarity pool if needed.
+function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, purchaseDays, guaranteeEpic = false) {
   const rarityPool = venueConfig.rarityPool;
   const pool = filterOffCooldown(
     ARTWORKS.filter((a) => rarityPool.includes(a.rarity)),
@@ -177,6 +186,17 @@ function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, pu
   const guaranteed = guaranteedSource.length
     ? [guaranteedSource[Math.floor(Math.random() * guaranteedSource.length)]]
     : [];
+
+  if (guaranteeEpic && !guaranteed.some((a) => a.rarity === 'epic')) {
+    const epicOffCooldown = filterOffCooldown(
+      ARTWORKS.filter((a) => a.rarity === 'epic'),
+      currentDay,
+      purchaseDays
+    );
+    const epicPool = epicOffCooldown.length ? epicOffCooldown : ARTWORKS.filter((a) => a.rarity === 'epic');
+    if (epicPool.length) guaranteed.push(epicPool[Math.floor(Math.random() * epicPool.length)]);
+  }
+
   const guaranteedIds = new Set(guaranteed.map((a) => a.id));
 
   const fillerPool = pool.length ? pool : ARTWORKS.filter((a) => rarityPool.includes(a.rarity));
@@ -188,8 +208,23 @@ function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, pu
 
 // Price rises one step per revealed field; the same step drives the speed
 // multiplier down. There is exactly one multiplier behind both effects.
-function computeLivePrice(lot, step) {
-  return Math.round((lot.basePriceJittered * (1 + step * PRICE_STEP_PCT)) / 100) * 100;
+// priceStepPct defaults to the campaign constant but can be softened for the
+// day by the 'auction-discount' booster — see getPriceStepPct(state).
+function computeLivePrice(lot, step, priceStepPct = PRICE_STEP_PCT) {
+  return Math.round((lot.basePriceJittered * (1 + step * priceStepPct)) / 100) * 100;
+}
+
+function getPriceStepPct(state) {
+  const permanent = state.upgrades.has('cool-nerves') ? 0.9 : 1;
+  const daily = state.activeBoosters.has('auction-discount') ? 0.67 : 1;
+  return PRICE_STEP_PCT * permanent * daily;
+}
+
+// Booster costs read state for the 'loyal-client' permanent discount.
+function getBoosterCost(booster, state) {
+  const base = booster.cost(state.day + 1);
+  const discount = state.upgrades.has('loyal-client') ? 0.85 : 1;
+  return Math.round((base * discount) / 100) * 100;
 }
 
 function computeSpeedMultiplier(step, floor) {
@@ -209,6 +244,8 @@ function getSpeedFloor(state) {
 function computeSettlement(state) {
   const { dayOrders, purchasesToday, capital, dayStartCapital } = state;
   const speedFloor = getSpeedFloor(state);
+  const permanentCommissionMultiplier = state.upgrades.has('expert-reputation') ? 1.03 : 1;
+  const commissionBonusMultiplier = (state.activeBoosters.has('commission-bonus') ? 1.05 : 1) * permanentCommissionMultiplier;
 
   const orderStats = dayOrders.map((o) => ({
     ...o,
@@ -255,12 +292,14 @@ function computeSettlement(state) {
     } else {
       fitCoefficient = state.dayConfig.incorrectFitCoefficient;
       const venueDef = VENUES[p.venue];
-      const noFine = (venueDef && venueDef.guaranteedNonNegativeFine) || state.insuranceActiveToday;
+      const noFine = (venueDef && venueDef.guaranteedNonNegativeFine) || state.activeBoosters.has('insurance');
       if (noFine) fitCoefficient = Math.max(0, fitCoefficient);
       order.incorrectCount += 1;
     }
 
-    const commission = Math.round(rarityValue * speedMultiplier * fitCoefficient * order.personalModifier);
+    const commission = Math.round(
+      rarityValue * speedMultiplier * fitCoefficient * order.personalModifier * commissionBonusMultiplier
+    );
     order.commissionEarned += commission;
     totalCommission += commission;
 
@@ -321,7 +360,10 @@ const Game = {
       artworkPurchaseDays: {},
       upgrades: new Set(),
       pendingBoosters: new Set(),
-      insuranceActiveToday: false,
+      activeBoosters: new Set(),
+      boosterOffers: [],
+      lotMasterLucky: false,
+      creditLineUsed: false,
       dayConfig: null,
       dayOrders: [],
       lots: [],
@@ -350,13 +392,19 @@ const Game = {
     const { order, venueConfig } = buildDayOrder(this.state);
     this.state.pendingOrder = order;
     this.state.pendingVenueConfig = venueConfig;
+    const lotsCount =
+      venueConfig.lotsCount() +
+      (this.state.activeBoosters.has('marathon') ? 3 : 0) +
+      (this.state.upgrades.has('expanded-hall') ? 2 : 0);
+    const guaranteeEpic = this.state.activeBoosters.has('lucky-lot') || this.state.lotMasterLucky;
     this.state.lots = drawLots(
-      venueConfig.lotsCount(),
+      lotsCount,
       this.state.seenArtworkIds,
       venueConfig,
       order.criteriaTags,
       this.state.day,
-      this.state.artworkPurchaseDays
+      this.state.artworkPurchaseDays,
+      guaranteeEpic
     );
     this.state.currentLotIndex = 0;
     ImageCache.preloadUrls(
@@ -366,11 +414,19 @@ const Game = {
   },
 
   startDay() {
+    // 'investment-portfolio' compounds capital forever, before the day's
+    // ledger baseline (dayStartCapital) is captured.
+    if (this.state.upgrades.has('investment-portfolio')) {
+      this.state.capital = Math.round(this.state.capital * 1.01);
+    }
     this.state.dayStartCapital = this.state.capital;
-    const cfg = getWorldConfig(this.state.day);
+    const cfg = getWorldConfig(this.state.day, this.state);
     this.state.dayConfig = cfg;
     this.state.dayOrders = [];
     this.state.purchasesToday = [];
+    // 'lot-master' rolls once per day, not per prepareDayLots() call, so
+    // re-picking a branch on the brief screen can't be used to re-roll it.
+    this.state.lotMasterLucky = this.state.upgrades.has('lot-master') && Math.random() < 0.1;
     this.prepareDayLots();
     UI.showBrief(this.state, cfg);
   },
@@ -397,8 +453,9 @@ const Game = {
 
   buyBooster(id) {
     const booster = BOOSTERS.find((b) => b.id === id);
-    if (!booster || this.state.pendingBoosters.has(id)) return;
-    const cost = booster.cost(this.state.day + 1);
+    if (!booster || !this.state.boosterOffers.includes(id) || this.state.pendingBoosters.has(id)) return;
+    if (this.state.pendingBoosters.size >= getMaxDailyBoosters(this.state)) return;
+    const cost = getBoosterCost(booster, this.state);
     if (this.state.capital < cost) {
       UI.flashInsufficientFunds();
       return;
@@ -437,8 +494,17 @@ const Game = {
     this.state.fastForwarding = false;
     this.state.revealStep = 0;
     const lot = lots[currentLotIndex];
-    UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0));
+    const priceStepPct = getPriceStepPct(this.state);
+    UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0, priceStepPct));
     if (revealFromBlack) UI.revealLotFromBlack();
+
+    // 'expert-appraiser' booster: one random field is revealed for free, with
+    // no effect on price or the speed multiplier (revealStep stays at 0).
+    if (this.state.activeBoosters.has('expert-appraiser')) {
+      const freeField = REVEALABLE_FIELDS[Math.floor(Math.random() * REVEALABLE_FIELDS.length)];
+      UI.revealField(freeField);
+      Sound.playInsight();
+    }
 
     Sound.startTension();
     Sound.setTensionIntensity(0);
@@ -448,7 +514,7 @@ const Game = {
       setTimeout(() => {
         this.state.revealStep = i + 1;
         UI.revealField(f);
-        UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep));
+        UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep, priceStepPct));
         Sound.playReveal(i);
         Sound.setTensionIntensity(this.state.revealStep / maxStep);
       }, REVEAL_INTERVAL_MS * (i + 1))
@@ -459,9 +525,17 @@ const Game = {
       }, REVEAL_INTERVAL_MS * REVEALABLE_FIELDS.length + 400)
     );
 
+    // 'quiet-start' booster: no rival at all on the very first lot of the day.
+    if (this.state.activeBoosters.has('quiet-start') && currentLotIndex === 0) {
+      this.state.rivalTimer = null;
+      return;
+    }
+
     const cfg = this.state.dayConfig;
     const venueConfig = VENUES[this.state.currentVenue];
-    const rivalDelayMs = 1000 * randRange(cfg.rivalMinSec, cfg.rivalMaxSec) * venueConfig.rivalSpeedFactor;
+    let rivalDelayMs = 1000 * randRange(cfg.rivalMinSec, cfg.rivalMaxSec) * venueConfig.rivalSpeedFactor;
+    if (this.state.activeBoosters.has('sleepy-rivals')) rivalDelayMs *= 1.45;
+    if (this.state.upgrades.has('calm-hall')) rivalDelayMs *= 1.15;
     this.state.rivalTimer = setTimeout(() => this.onRivalWins(), rivalDelayMs);
   },
 
@@ -475,7 +549,7 @@ const Game = {
   onBuyClicked() {
     if (this.state.lotResolved || this.state.fastForwarding) return;
     const lot = this.state.lots[this.state.currentLotIndex];
-    const price = computeLivePrice(lot, this.state.revealStep);
+    const price = computeLivePrice(lot, this.state.revealStep, getPriceStepPct(this.state));
     if (price > this.state.capital) {
       UI.flashInsufficientFunds();
       return;
@@ -528,21 +602,25 @@ const Game = {
     Sound.playSkip();
 
     const maxStep = REVEALABLE_FIELDS.length;
+    const priceStepPct = getPriceStepPct(this.state);
     remainingFields.forEach((field, i) => {
       this.state.revealTimers.push(
         setTimeout(() => {
           if (this.state.lotResolved) return;
           this.state.revealStep = startStep + i + 1;
           UI.revealField(field);
-          UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep), { animate: false });
+          UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep, priceStepPct), { animate: false });
           Sound.playReveal(this.state.revealStep - 1, { fast: true });
           Sound.setTensionIntensity(this.state.revealStep / maxStep);
         }, SKIP_FAST_REVEAL_INTERVAL_MS * (i + 1))
       );
     });
 
-    const rivalDelayMs =
-      SKIP_FAST_REVEAL_INTERVAL_MS * remainingFields.length + SKIP_RIVAL_PAUSE_MS;
+    if (this.state.activeBoosters.has('quiet-start') && this.state.currentLotIndex === 0) return;
+
+    let rivalDelayMs = SKIP_FAST_REVEAL_INTERVAL_MS * remainingFields.length + SKIP_RIVAL_PAUSE_MS;
+    if (this.state.activeBoosters.has('sleepy-rivals')) rivalDelayMs *= 1.45;
+    if (this.state.upgrades.has('calm-hall')) rivalDelayMs *= 1.15;
     this.state.rivalTimer = setTimeout(() => this.onRivalWins(), rivalDelayMs);
   },
 
@@ -564,10 +642,23 @@ const Game = {
 
   finishDay() {
     const result = computeSettlement(this.state);
+    // 'credit-line': spend the one-per-campaign save instead of ending the
+    // career — the balance is clamped to zero and play continues. Keep the
+    // covered amount on the result so the ledger still reconciles exactly.
+    if (!result.pass && this.state.upgrades.has('credit-line') && !this.state.creditLineUsed) {
+      this.state.creditLineUsed = true;
+      result.savedByCreditLine = true;
+      result.creditLineCoverage = -result.projectedCapital;
+      result.pass = true;
+      result.projectedCapital = 0;
+    }
     this.state.pendingResult = result;
     if (result.pass) {
       this.state.capital = result.projectedCapital;
     }
+    // Re-rolled once per day: only these getMaxDailyBoosters() boosters are on
+    // offer tonight, and the player can afford to buy every one of them.
+    this.state.boosterOffers = shuffle(BOOSTERS.map((b) => b.id)).slice(0, getMaxDailyBoosters(this.state));
     UI.showReport(this.state, result);
   },
 
@@ -577,7 +668,7 @@ const Game = {
       UI.showGameOver(this.state, result);
       return;
     }
-    this.state.insuranceActiveToday = this.state.pendingBoosters.has('insurance');
+    this.state.activeBoosters = new Set(this.state.pendingBoosters);
     this.state.pendingBoosters = new Set();
     this.state.purchasesToday.forEach((p) => this.state.seenArtworkIds.add(p.id));
     const branchId = this.state.selectedBranchId;

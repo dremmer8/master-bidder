@@ -124,7 +124,6 @@ Typical authored shape (10 days): first three days a single tag, then a second A
 - Budget = `round(collector.baseBudget × branchBudgetMultiplier × venue.budgetFactor)` to the nearest 100 ₽.
   - Branch multiplier lerps **0.9 → 1.6** across that branch's authored ladder.
   - Venue factors: Local **0.45**, Regular **1.0**, Elite **2.4**.
-  - The `gallery-connections` upgrade adds **+0.15** to the branch multiplier.
 - At end-of-day settlement: `leftover = max(0, budget − total price of paintings attributed to that order)`. Leftover is **clawed back**. The collector keeps unspent budget and every painting attributed to them (right or wrong).
 - Soft cap, not a hard wall: the player can keep buying correct paintings past the budget, paying extra out of pooled capital. Those purchases still earn **full commission**. Nothing beyond the budget is refunded.
 - Net effect when spend stays within budget: the injection and the clawback cancel. The only real profit or loss is **commission**.
@@ -199,16 +198,38 @@ Both spend the same unified capital.
 
 | Id | Name | Effect | Cost |
 |---|---|---|---|
-| `gallery-connections` | Связи в галерее | +0.15 to the branch budget multiplier, forever | 60 000 ₽ |
 | `fast-appraisal` | Быстрая экспертиза | Speed-multiplier floor +0.10 forever | 80 000 ₽ |
+| `expert-reputation` | Репутация эксперта | All commission earned forever ×1.03 | 70 000 ₽ |
+| `cool-nerves` | Хладнокровие | Price grows forever ×0.9 per revealed field | 65 000 ₽ |
+| `standing-advance` | Постоянный аванс | Order budget(s) forever ×1.08 (stacks multiplicatively with `budget-advance`, and the same multiplier now also inflates the solvency floor so it always shows through) | 60 000 ₽ |
+| `legal-counsel` | Юридический советник | The late-campaign incorrect-fit floor is forever 0.1 less harsh | 90 000 ₽ |
+| `credit-line` | Кредитная линия | Once per career, a bankrupting day is clamped to 0 instead of ending the run | 120 000 ₽ |
+| `calm-hall` | Спокойный зал | Every rival's reaction delay is forever ×1.15 | 85 000 ₽ |
+| `expanded-hall` | Расширенный зал | +2 lots per day, forever | 55 000 ₽ |
+| `lot-master` | Мастер лотов | Each day, a 10% chance of a free guaranteed epic-rarity lot (rolled once at day start) | 70 000 ₽ |
+| `loyal-client` | Постоянный клиент | All booster prices forever ×0.85 | 50 000 ₽ |
+| `personal-secretary` | Личный секретарь | +1 to the daily booster offer count (and cap), forever | 95 000 ₽ |
+| `investment-portfolio` | Инвестиционный портфель | Capital forever ×1.01 at the start of each day | 100 000 ₽ |
 
 One-time; cannot be rebought.
 
 ### Boosters (bought on the end-of-day report, apply to the *next* day only)
 
+Each report re-rolls 3 random boosters (of the 9 below) to offer for sale; all
+three stack into a single `activeBoosters` set for the next day, so a lucky
+roll can be fully bought out.
+
 | Id | Name | Effect | Cost |
 |---|---|---|---|
 | `insurance` | Страховка на день | Tomorrow, incorrect-buy commission cannot go below zero | `15 000 + 1 000 × nextDay`, rounded to 100 ₽ |
+| `expert-appraiser` | Опытный оценщик | Tomorrow, one random field per lot is free-revealed at lot start — no effect on price or speed multiplier | `20 000 + 1 200 × nextDay`, rounded to 100 ₽ |
+| `quiet-start` | Тихий старт | Tomorrow, no rival ever appears on the first lot of the day | `9 000 + 600 × nextDay`, rounded to 100 ₽ |
+| `sleepy-rivals` | Сонные соперники | Tomorrow, every rival's reaction delay is ×1.45 | `24 000 + 1 400 × nextDay`, rounded to 100 ₽ |
+| `auction-discount` | Скидка аукциона | Tomorrow, price grows ×0.67 per revealed field instead of the campaign rate | `16 000 + 900 × nextDay`, rounded to 100 ₽ |
+| `budget-advance` | Аванс от заказчика | Tomorrow's order budget(s) ×1.2 | `14 000 + 900 × nextDay`, rounded to 100 ₽ |
+| `commission-bonus` | Комиссионный бонус | All commission earned tomorrow ×1.05 (correct and reduced-rate sales alike) | `10 000 + 700 × nextDay`, rounded to 100 ₽ |
+| `lucky-lot` | Счастливый лот | Tomorrow's lot draw guarantees at least one epic-rarity lot, bypassing the venue's own rarity pool if needed | `17 000 + 1 000 × nextDay`, rounded to 100 ₽ |
+| `marathon` | Марафон | Tomorrow's venue draws 3 extra lots | `15 000 + 900 × nextDay`, rounded to 100 ₽ |
 
 Cheap enough to be a repeatable tactical choice. Hidden on the final day's report and on bankruptcy.
 

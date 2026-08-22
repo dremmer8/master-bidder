@@ -123,7 +123,7 @@ const UI = {
       const card = document.createElement('div');
       card.className = 'shop-card' + (owned ? ' owned' : '');
       card.innerHTML = `
-        <div class="shop-card-name">${u.nameRu}</div>
+        <div class="shop-card-name"><span class="shop-card-icon">${u.icon}</span>${u.nameRu}</div>
         <div class="shop-card-desc">${u.descRu}</div>
         <button class="btn btn-secondary" ${owned || state.capital < u.cost ? 'disabled' : ''}>
           ${owned ? 'Приобретено' : `Купить за ${formatMoney(u.cost)} ₽`}
@@ -147,6 +147,38 @@ const UI = {
     document.getElementById('hud-lot-total').textContent = state.lots.length;
     this.updateCapitalDisplays(state.capital);
     this.renderOrderBrief(state);
+    this.renderActiveBoosters(state);
+    this.renderActiveUpgrades(state);
+  },
+
+  renderEffectIcons(elId, items) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.classList.toggle('hidden', items.length === 0);
+    el.innerHTML = items
+      .map(
+        (item) => `
+        <span class="effect-icon" tabindex="0">
+          ${item.icon}
+          <span class="effect-tooltip"><strong>${item.nameRu}</strong><br>${item.descRu}</span>
+        </span>
+      `
+      )
+      .join('');
+  },
+
+  renderActiveBoosters(state) {
+    this.renderEffectIcons(
+      'hud-active-boosters',
+      BOOSTERS.filter((b) => state.activeBoosters.has(b.id))
+    );
+  },
+
+  renderActiveUpgrades(state) {
+    this.renderEffectIcons(
+      'hud-active-upgrades',
+      META_UPGRADES.filter((u) => state.upgrades.has(u.id))
+    );
   },
 
   buildOrderTagsMarkup(order) {
@@ -474,11 +506,15 @@ const UI = {
       result.otherSpend !== 0
         ? `<div class="ledger-row negative"><span>− Билеты на аукционы / переплаты сверх бюджета</span><span>−${formatMoney(Math.abs(result.otherSpend))} ₽</span></div>`
         : '';
+    const creditLineRow = result.savedByCreditLine
+      ? `<div class="ledger-row positive"><span>+ Кредитная линия (разово за карьеру)</span><span>+${formatMoney(result.creditLineCoverage)} ₽</span></div>`
+      : '';
     document.getElementById('report-ledger').innerHTML = `
       <div class="ledger-row"><span>Капитал на начало дня</span><span>${formatMoney(result.startingCapital)} ₽</span></div>
       <div class="ledger-row ${result.totalCommission >= 0 ? 'positive' : 'negative'}"><span>Комиссии/штрафы (нетто)</span><span>${netSign}${formatMoney(Math.abs(result.totalCommission))} ₽</span></div>
       <div class="ledger-row negative"><span>− Списано неизрасходованного бюджета заказов</span><span>−${formatMoney(result.totalClawback)} ₽</span></div>
       ${otherRow}
+      ${creditLineRow}
       <div class="ledger-row total"><span>Капитал на конец дня</span><span>${formatMoney(result.projectedCapital)} ₽</span></div>
     `;
 
@@ -487,7 +523,11 @@ const UI = {
     const boostersSection = document.getElementById('report-boosters-section');
     if (result.pass) {
       Sound.playDayPass(result.ordersFulfilled);
-      if (!result.ordersFulfilled) {
+      if (result.savedByCreditLine) {
+        verdict.textContent =
+          `Капитал ушёл в минус, но кредитная линия покрыла разницу (${formatMoney(result.creditLineCoverage)} ₽) — использована один раз за карьеру.`;
+        verdict.className = 'report-verdict warn';
+      } else if (!result.ordersFulfilled) {
         verdict.textContent =
           'День пережит, но заказ не закрыт: нужна хотя бы одна подходящая картина. Заказ остаётся открытым.';
         verdict.className = 'report-verdict warn';
@@ -520,17 +560,23 @@ const UI = {
   },
 
   refreshBoosterShop(state) {
+    const offers = state.boosterOffers.map((id) => BOOSTERS.find((b) => b.id === id)).filter(Boolean);
+
+    const heading = document.getElementById('report-boosters-heading');
+    if (heading) heading.textContent = `Бустеры на завтра (${state.pendingBoosters.size}/${offers.length})`;
+
     const el = document.getElementById('report-boosters');
     el.innerHTML = '';
-    BOOSTERS.forEach((b) => {
-      const cost = b.cost(state.day + 1);
+    offers.forEach((b) => {
+      const cost = getBoosterCost(b, state);
       const owned = state.pendingBoosters.has(b.id);
+      const disabled = owned || state.capital < cost;
       const card = document.createElement('div');
       card.className = 'shop-card' + (owned ? ' owned' : '');
       card.innerHTML = `
-        <div class="shop-card-name">${b.nameRu}</div>
+        <div class="shop-card-name"><span class="shop-card-icon">${b.icon}</span>${b.nameRu}</div>
         <div class="shop-card-desc">${b.descRu}</div>
-        <button class="btn btn-secondary" ${owned || state.capital < cost ? 'disabled' : ''}>
+        <button class="btn btn-secondary" ${disabled ? 'disabled' : ''}>
           ${owned ? 'Куплено на завтра' : `Купить за ${formatMoney(cost)} ₽`}
         </button>
       `;

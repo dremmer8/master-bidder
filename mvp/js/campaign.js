@@ -40,7 +40,6 @@ const ORDER_PHASE_PERIOD_DAYS = 3;
 const ORDER_PHASE_ARTIST_DAYS = 4;
 const ORDER_LADDER_LENGTH =
   ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS + ORDER_PHASE_ARTIST_DAYS;
-const GALLERY_CONNECTIONS_BUDGET_BONUS = 0.15; // 'gallery-connections' upgrade effect
 
 // Venue definitions — differ in more than risk: content itself is scaled per venue
 // (see GAME_DESIGN.md, Venues: Regular / Local / Elite Auctions). Which tier a
@@ -87,12 +86,15 @@ function lerp(a, b, t) {
 // deliberately branch-agnostic: rivals get faster and mistakes get costlier
 // for everyone as the whole art market heats up over the campaign, regardless
 // of which collector branch the player is working that day.
-function getWorldConfig(day) {
+// state is optional (only 'legal-counsel' reads it, to soften the late-campaign
+// incorrect-fit floor forever).
+function getWorldConfig(day, state) {
   const t = (day - 1) / (CAMPAIGN_LENGTH - 1);
 
   const rivalMinSec = lerp(7.5, 2.25, t);
   const rivalMaxSec = lerp(13.5, 5.7, t);
-  const incorrectFitCoefficient = lerp(INCORRECT_FIT_START, INCORRECT_FIT_END, t);
+  const incorrectFitEnd = INCORRECT_FIT_END + (state && state.upgrades.has('legal-counsel') ? 0.1 : 0);
+  const incorrectFitCoefficient = lerp(INCORRECT_FIT_START, incorrectFitEnd, t);
 
   return { day, rivalMinSec, rivalMaxSec, incorrectFitCoefficient };
 }
@@ -153,25 +155,166 @@ function getCollectorBranchProgress(missionIndex) {
 // Permanent, one-time meta-progression upgrades (see GAME_DESIGN.md, Money Sinks).
 const META_UPGRADES = [
   {
-    id: 'gallery-connections',
-    nameRu: 'Связи в галерее',
-    descRu: 'Бюджеты заказчиков растут на 15% быстрее по мере роста доверия к вам навсегда.',
-    cost: 60000,
-  },
-  {
     id: 'fast-appraisal',
     nameRu: 'Быстрая экспертиза',
+    icon: '⚡',
     descRu: 'Порог падения множителя комиссии выше на 0.1 навсегда (меньше штраф за долгие раздумья).',
     cost: 80000,
   },
+  {
+    id: 'expert-reputation',
+    nameRu: 'Репутация эксперта',
+    icon: '⭐',
+    descRu: 'Вся заработанная комиссия навсегда увеличена на 3%.',
+    cost: 70000,
+  },
+  {
+    id: 'cool-nerves',
+    nameRu: 'Хладнокровие',
+    icon: '🧊',
+    descRu: 'Цена лота навсегда растёт на 10% медленнее за каждый раскрытый признак.',
+    cost: 65000,
+  },
+  {
+    id: 'standing-advance',
+    nameRu: 'Постоянный аванс',
+    icon: '💵',
+    descRu: 'Бюджет заказа(ов) навсегда увеличен на 8%.',
+    cost: 60000,
+  },
+  {
+    id: 'legal-counsel',
+    nameRu: 'Юридический советник',
+    icon: '⚖️',
+    descRu: 'Штраф за неверную покупку на поздних днях кампании навсегда мягче.',
+    cost: 90000,
+  },
+  {
+    id: 'credit-line',
+    nameRu: 'Кредитная линия',
+    icon: '🏦',
+    descRu: 'Один раз за карьеру капитал не уходит в минус: обнуляется вместо банкротства.',
+    cost: 120000,
+  },
+  {
+    id: 'calm-hall',
+    nameRu: 'Спокойный зал',
+    icon: '🕊️',
+    descRu: 'Соперники навсегда реагируют на 15% медленнее на каждом лоте.',
+    cost: 85000,
+  },
+  {
+    id: 'expanded-hall',
+    nameRu: 'Расширенный зал',
+    icon: '🏛️',
+    descRu: 'В подборке навсегда на 2 лота больше каждый день.',
+    cost: 55000,
+  },
+  {
+    id: 'lot-master',
+    nameRu: 'Мастер лотов',
+    icon: '🎯',
+    descRu: 'Каждый день есть 10% шанс, что в подборку бесплатно добавится гарантированный эпический лот.',
+    cost: 70000,
+  },
+  {
+    id: 'loyal-client',
+    nameRu: 'Постоянный клиент',
+    icon: '🎟️',
+    descRu: 'Цена всех бустеров навсегда ниже на 15%.',
+    cost: 50000,
+  },
+  {
+    id: 'personal-secretary',
+    nameRu: 'Личный секретарь',
+    icon: '🧑‍💼',
+    descRu: 'Каждый вечер предлагается на 1 бустер больше — и все их можно купить.',
+    cost: 95000,
+  },
+  {
+    id: 'investment-portfolio',
+    nameRu: 'Инвестиционный портфель',
+    icon: '💹',
+    descRu: 'В начале каждого дня капитал навсегда растёт на 1%.',
+    cost: 100000,
+  },
 ];
 
+// Each end-of-day report re-rolls this many random boosters to offer for sale
+// (see Game.finishDay -> state.boosterOffers) — the player can afford to buy
+// every one shown, so this also doubles as the per-day cap (see Game.buyBooster).
+// 'personal-secretary' bumps this by 1 forever — see getMaxDailyBoosters.
+const MAX_DAILY_BOOSTERS = 3;
+
+function getMaxDailyBoosters(state) {
+  return MAX_DAILY_BOOSTERS + (state.upgrades.has('personal-secretary') ? 1 : 0);
+}
+
 // One-day boosters, bought at the end of a day for the *next* day only.
+// All of them read state.activeBoosters (a Set of these ids, populated for the
+// upcoming day only in Game.continueAfterReport) — see engine.js call sites.
 const BOOSTERS = [
   {
     id: 'insurance',
     nameRu: 'Страховка на день',
+    icon: '🛡️',
     descRu: 'Завтра комиссия за ошибочную покупку не может стать штрафом (не уйдёт ниже нуля).',
     cost: (day) => Math.round((15000 + day * 1000) / 100) * 100,
+  },
+  {
+    id: 'expert-appraiser',
+    nameRu: 'Опытный оценщик',
+    icon: '🔍',
+    descRu: 'Завтра на каждом лоте один случайный признак раскрыт бесплатно с самого начала — без влияния на цену и скорость.',
+    cost: (day) => Math.round((20000 + day * 1200) / 100) * 100,
+  },
+  {
+    id: 'quiet-start',
+    nameRu: 'Тихий старт',
+    icon: '🤫',
+    descRu: 'Завтра на первом лоте дня соперник вообще не подключается — гарантированная разминка без риска.',
+    cost: (day) => Math.round((9000 + day * 600) / 100) * 100,
+  },
+  {
+    id: 'sleepy-rivals',
+    nameRu: 'Сонные соперники',
+    icon: '😴',
+    descRu: 'Завтра соперники реагируют на 45% медленнее на каждом лоте — больше времени на решение.',
+    cost: (day) => Math.round((24000 + day * 1400) / 100) * 100,
+  },
+  {
+    id: 'auction-discount',
+    nameRu: 'Скидка аукциона',
+    icon: '🏷️',
+    descRu: 'Завтра цена лота растёт на треть медленнее за каждый раскрытый признак.',
+    cost: (day) => Math.round((16000 + day * 900) / 100) * 100,
+  },
+  {
+    id: 'budget-advance',
+    nameRu: 'Аванс от заказчика',
+    icon: '💰',
+    descRu: 'Завтра бюджет заказа(ов) увеличен на 20%.',
+    cost: (day) => Math.round((14000 + day * 900) / 100) * 100,
+  },
+  {
+    id: 'commission-bonus',
+    nameRu: 'Комиссионный бонус',
+    icon: '📈',
+    descRu: 'Вся комиссия, заработанная завтра, увеличена на 5%.',
+    cost: (day) => Math.round((10000 + day * 700) / 100) * 100,
+  },
+  {
+    id: 'lucky-lot',
+    nameRu: 'Счастливый лот',
+    icon: '🍀',
+    descRu: 'В завтрашней подборке гарантированно будет хотя бы один эпический лот, даже если площадка обычно их не пускает.',
+    cost: (day) => Math.round((17000 + day * 1000) / 100) * 100,
+  },
+  {
+    id: 'marathon',
+    nameRu: 'Марафон',
+    icon: '🏃',
+    descRu: 'Завтра в зале на 3 лота больше — больше попыток закрыть заказ.',
+    cost: (day) => Math.round((15000 + day * 900) / 100) * 100,
   },
 ];

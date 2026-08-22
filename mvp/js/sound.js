@@ -274,6 +274,14 @@ const Sound = {
     });
   },
 
+  // Free bonus reveal ('expert-appraiser' booster) — an airy shimmer, distinct
+  // from playReveal's tick so it reads as a gift rather than a price step.
+  playInsight() {
+    this.ensureUnlocked();
+    this._tone({ freq: 1760, type: 'sine', attack: 0.006, decay: 0.22, peak: 0.06, reverb: 0.6 });
+    this._tone({ freq: 2637, type: 'sine', start: 0.03, attack: 0.006, decay: 0.28, peak: 0.04, reverb: 0.65 });
+  },
+
   playOutcome(kind) {
     this.ensureUnlocked();
     if (kind === 'won') this._playBuy();

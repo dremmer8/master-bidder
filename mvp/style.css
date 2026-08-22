@@ -357,14 +357,76 @@ h2 { margin-top: 0; }
 .auction-hud {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 6px;
   justify-content: space-between;
   background: var(--panel);
   border-radius: var(--radius);
-  padding: 10px 20px;
+  /* extra right padding clears the fixed sound-toggle button pinned to the viewport corner */
+  padding: 10px 56px 10px 20px;
   font-size: 0.95em;
   color: var(--text-dim);
 }
 .hud-item strong { color: var(--text); }
+
+.hud-effects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 260px;
+}
+
+.effect-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--panel-light);
+  border: 1px solid var(--accent-dim);
+  font-size: 1em;
+  line-height: 1;
+  cursor: default;
+}
+
+.effect-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -6px;
+  width: 230px;
+  background: var(--panel-light);
+  border: 1px solid var(--accent-dim);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.8em;
+  line-height: 1.4;
+  color: var(--text);
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+}
+.effect-tooltip strong { color: var(--accent); }
+
+.effect-icon:hover .effect-tooltip,
+.effect-icon:focus .effect-tooltip,
+.effect-icon:focus-visible .effect-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.shop-card-icon {
+  display: inline-block;
+  margin-right: 6px;
+}
 
 .auction-stage {
   flex: 1;
