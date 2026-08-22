@@ -157,8 +157,11 @@ const UI = {
     el.innerHTML = '';
     COLLECTORS.forEach((c) => {
       const missionIndex = state.branchProgress[c.id] || 0;
+      const { mastered } = getCollectorBranchProgress(missionIndex, c);
       const branchCfg = getBranchMissionConfig(missionIndex, getCollectorLadderLength(c));
-      const venue = VENUES[branchCfg.venueTier];
+      const orderTagsHtml = mastered
+        ? ''
+        : this.buildOrderTagsMarkup(getOrderTagsForMission(missionIndex, c));
       const card = document.createElement('div');
       card.className = 'venue-card' + (state.selectedBranchId === c.id ? ' selected' : '');
       const portraitHtml = c.portraitUrl
@@ -170,6 +173,7 @@ const UI = {
           <div class="venue-card-name">${uiCollectorName(c)}</div>
           <div class="venue-card-desc">${uiCollectorTagline(c)}</div>
           ${this.buildCollectorProgressMarkup(missionIndex, c)}
+          ${orderTagsHtml}
           <div class="venue-card-desc venue-card-venue">${uiVenueLabel(branchCfg.venueTier)}</div>
         </div>
       `;
@@ -280,14 +284,17 @@ const UI = {
     );
   },
 
-  buildOrderTagsMarkup(order) {
+  buildOrderTagsMarkup(orderOrTags) {
+    const criteriaTags = Array.isArray(orderOrTags)
+      ? orderOrTags
+      : orderOrTags.criteriaTags || [];
     const labels = {
       period: I18n.t('orderTag.period'),
       genre: I18n.t('orderTag.genre'),
       artist: I18n.t('orderTag.artist'),
       artwork: I18n.t('orderTag.artwork'),
     };
-    const tags = (order.criteriaTags || []).map((tag) => {
+    const tags = criteriaTags.map((tag) => {
       let value = tag.value;
       if (tag.type === 'artwork') {
         const art = ARTWORKS.find((a) => a.id === tag.value);

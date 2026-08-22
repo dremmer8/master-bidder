@@ -30,6 +30,7 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
 
 echo Game:   http://localhost:%PORT%/
 echo Editor: http://localhost:%PORT%/gamedesign.html
+echo Artworks: http://localhost:%PORT%/artworks.html
 echo.
 if defined LAN_IP (
   echo С телефона в той же Wi-Fi:

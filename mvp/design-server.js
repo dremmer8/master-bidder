@@ -232,6 +232,123 @@ function handleGetTagOptions(res) {
   }
 }
 
+const RARITIES = ['common', 'rare', 'epic'];
+
+function validateArtworks(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return 'Ожидается непустой массив картин.';
+  }
+  const ids = new Set();
+  for (const a of list) {
+    if (!a || typeof a !== 'object') return 'Каждая картина должна быть объектом.';
+    if (typeof a.id !== 'string' || !/^[a-z0-9-]+$/.test(a.id)) {
+      return `Некорректный id: "${a.id}". Разрешены строчные латинские буквы, цифры и дефис.`;
+    }
+    if (ids.has(a.id)) return `Повторяющийся id: "${a.id}".`;
+    ids.add(a.id);
+    if (typeof a.titleRu !== 'string' || !a.titleRu.trim()) {
+      return `У картины "${a.id}" отсутствует название (titleRu).`;
+    }
+    if (typeof a.artistRu !== 'string' || !a.artistRu.trim()) {
+      return `У картины "${a.id}" отсутствует автор (artistRu).`;
+    }
+    if (typeof a.year !== 'string' || !a.year.trim()) {
+      return `У картины "${a.id}" отсутствует год (year).`;
+    }
+    if (typeof a.periodRu !== 'string' || !a.periodRu.trim()) {
+      return `У картины "${a.id}" отсутствует период (periodRu).`;
+    }
+    if (typeof a.genreRu !== 'string' || !a.genreRu.trim()) {
+      return `У картины "${a.id}" отсутствует жанр (genreRu).`;
+    }
+    if (typeof a.factRu !== 'string' || !a.factRu.trim()) {
+      return `У картины "${a.id}" отсутствует факт (factRu).`;
+    }
+    if (a.imageSource != null && typeof a.imageSource !== 'string') {
+      return `imageSource у "${a.id}" должен быть строкой.`;
+    }
+    if (!RARITIES.includes(a.rarity)) {
+      return `У картины "${a.id}" некорректная редкость: "${a.rarity}". Допустимо: ${RARITIES.join(', ')}.`;
+    }
+    if (typeof a.basePrice !== 'number' || !(a.basePrice > 0)) {
+      return `basePrice у "${a.id}" должен быть положительным числом.`;
+    }
+  }
+  return null;
+}
+
+function serializeArtworksFile(list) {
+  const header = `// Curated set of real, public-domain artworks with verified Wikimedia Commons
+// image URLs. Tag vocabulary (periodRu/genreRu) must stay consistent with
+// COLLECTORS (js/collectors.js) so matchesCriteria() in engine.js can compare them.
+//
+// This file is generated/edited by artworks.html via design-server.js's
+// POST /api/artworks — hand edits are fine, just keep the shape intact.
+`;
+
+  const entries = list.map((a) => {
+    const lines = [
+      '  {',
+      `    id: ${jsString(a.id)},`,
+      `    titleRu: ${jsString(a.titleRu)},`,
+      `    artistRu: ${jsString(a.artistRu)},`,
+      `    year: ${jsString(a.year)},`,
+      `    periodRu: ${jsString(a.periodRu)},`,
+      `    genreRu: ${jsString(a.genreRu)},`,
+      `    factRu: ${jsString(a.factRu)},`,
+    ];
+    if (a.imageSource) {
+      lines.push(`    imageSource: ${jsString(a.imageSource)},`);
+    }
+    lines.push(`    rarity: ${jsString(a.rarity)},`);
+    lines.push(`    basePrice: ${a.basePrice},`);
+    lines.push('  },');
+    return lines.join('\n');
+  });
+
+  return (
+    header +
+    'const ARTWORKS = [\n' +
+    entries.join('\n') +
+    '\n];\n\n' +
+    'ARTWORKS.forEach((artwork) => {\n' +
+    '  artwork.imageUrl = `assets/art/${artwork.id}.webp`;\n' +
+    '});\n'
+  );
+}
+
+function handleGetArtworks(res) {
+  try {
+    sendJson(res, 200, loadArtworks());
+  } catch (e) {
+    sendJson(res, 500, { error: 'Не удалось прочитать data.js: ' + e.message });
+  }
+}
+
+function handlePostArtworks(req, res) {
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 5_000_000) req.destroy();
+  });
+  req.on('end', () => {
+    let list;
+    try {
+      list = JSON.parse(body);
+    } catch (e) {
+      return sendJson(res, 400, { error: 'Некорректный JSON: ' + e.message });
+    }
+    const validationError = validateArtworks(list);
+    if (validationError) return sendJson(res, 400, { error: validationError });
+    try {
+      fs.writeFileSync(DATA_PATH, serializeArtworksFile(list));
+      sendJson(res, 200, { ok: true, count: list.length });
+    } catch (e) {
+      sendJson(res, 500, { error: 'Не удалось записать data.js: ' + e.message });
+    }
+  });
+}
+
 function serveStatic(pathname, res) {
   const rel = pathname === '/' ? '/index.html' : pathname;
   const filePath = path.normalize(path.join(ROOT, rel));
@@ -255,12 +372,15 @@ const server = http.createServer((req, res) => {
 
   if (pathname === '/api/collectors' && req.method === 'GET') return handleGetCollectors(res);
   if (pathname === '/api/collectors' && req.method === 'POST') return handlePostCollectors(req, res);
+  if (pathname === '/api/artworks' && req.method === 'GET') return handleGetArtworks(res);
+  if (pathname === '/api/artworks' && req.method === 'POST') return handlePostArtworks(req, res);
   if (pathname === '/api/tag-options' && req.method === 'GET') return handleGetTagOptions(res);
 
   return serveStatic(pathname, res);
 });
 
 server.listen(PORT, () => {
-  console.log(`Game design server: http://localhost:${PORT}/gamedesign.html`);
+  console.log(`Collectors editor:  http://localhost:${PORT}/gamedesign.html`);
+  console.log(`Artworks editor:    http://localhost:${PORT}/artworks.html`);
   console.log(`Game itself:        http://localhost:${PORT}/index.html`);
 });

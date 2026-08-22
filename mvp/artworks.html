@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактор каталога картин</title>
+<style>
+  :root {
+    --bg: #14161b;
+    --panel: #1e2129;
+    --panel-light: #282c36;
+    --panel-lighter: #323744;
+    --border: #3a3f47;
+    --text: #eceef1;
+    --text-dim: #9aa1ab;
+    --accent: #d4a13a;
+    --accent-dim: #8c6f2c;
+    --good: #4caf7d;
+    --bad: #d4573a;
+    --radius: 10px;
+    --sidebar-w: 320px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(20, 22, 27, 0.96);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .topbar h1 { margin: 0; font-size: 1.25em; color: var(--accent); }
+  .topbar-meta { font-size: 0.82em; color: var(--text-dim); margin-top: 2px; }
+  .topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.92em;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #1a1a1a; }
+  .btn-primary:hover { background: #e3b355; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-secondary { background: var(--panel-light); color: var(--text); border: 1px solid var(--accent-dim); }
+  .btn-secondary:hover { background: var(--panel-lighter); }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+  .btn-danger { background: transparent; color: var(--bad); border: 1px solid var(--bad); padding: 8px 14px; font-size: 0.88em; }
+  .btn-danger:hover { background: rgba(212, 87, 58, 0.12); }
+  .btn-icon { padding: 7px 10px; min-width: 36px; justify-content: center; }
+
+  .statusbar {
+    padding: 8px 20px;
+    font-size: 0.88em;
+    border-bottom: 1px solid var(--border);
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .statusbar.ok { color: var(--good); background: rgba(76, 175, 125, 0.08); }
+  .statusbar.err { color: var(--bad); background: rgba(212, 87, 58, 0.08); }
+  .statusbar.dirty { color: var(--accent); background: rgba(212, 161, 58, 0.08); }
+  .statusbar.neutral { color: var(--text-dim); }
+
+  .layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    min-height: 0;
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 120px);
+  }
+  .sidebar-tools {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .search, .filter-select {
+    width: 100%;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.92em;
+    font-family: inherit;
+  }
+  .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sidebar-count { font-size: 0.78em; color: var(--text-dim); text-align: center; }
+  .sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: var(--panel-light);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    color: inherit;
+    font-family: inherit;
+  }
+  .nav-item:hover { border-color: var(--border); background: var(--panel-lighter); }
+  .nav-item.active {
+    border-color: var(--accent-dim);
+    background: rgba(212, 161, 58, 0.1);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav-thumb {
+    width: 48px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #1a1610;
+    border: 1px solid var(--accent-dim);
+    flex-shrink: 0;
+  }
+  .nav-thumb.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    color: var(--text-dim);
+  }
+  .nav-body { min-width: 0; flex: 1; }
+  .nav-name {
+    font-weight: 700;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-tags {
+    font-size: 0.72em;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  .rarity-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .rarity-dot.common { background: #8a9099; }
+  .rarity-dot.rare { background: #5b8fd4; }
+  .rarity-dot.epic { background: #c47fd4; }
+
+  .editor {
+    padding: 20px 24px 32px;
+    overflow-y: auto;
+    min-height: calc(100vh - 120px);
+  }
+  .editor-empty { color: var(--text-dim); padding: 40px 0; text-align: center; }
+
+  .editor-header {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .art-block { flex-shrink: 0; text-align: center; }
+  .art-preview {
+    width: 160px;
+    height: 120px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 2px solid var(--accent-dim);
+    background: #1a1610;
+    display: block;
+    margin: 0 auto 8px;
+  }
+  .art-preview.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    color: var(--text-dim);
+  }
+  .art-hint { font-size: 0.72em; color: var(--text-dim); max-width: 160px; line-height: 1.3; }
+
+  .editor-title-block { flex: 1; min-width: 220px; }
+  .editor-title-block h2 { margin: 0 0 4px; font-size: 1.4em; color: var(--accent); }
+  .editor-id { font-size: 0.82em; color: var(--text-dim); font-family: Consolas, monospace; }
+  .editor-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .card h3 {
+    margin: 0 0 12px;
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+  }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 0.72em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 5px;
+  }
+  .field-hint { font-size: 0.78em; color: var(--text-dim); margin-top: 4px; line-height: 1.35; }
+  .field-hint.warn { color: #e0a060; }
+  .field-hint.ok { color: var(--good); }
+
+  .field input[type=text],
+  .field input[type=url],
+  .field input[type=number],
+  .field textarea,
+  .field select {
+    width: 100%;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 0.95em;
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 72px; }
+  .field input.invalid, .field select.invalid { border-color: var(--bad); }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  .match-list { display: flex; flex-direction: column; gap: 6px; font-size: 0.88em; }
+  .match-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--panel-light);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .match-row.hit { border-color: rgba(76, 175, 125, 0.35); background: rgba(76, 175, 125, 0.06); }
+  .match-row.miss { opacity: 0.55; }
+  .match-badge {
+    font-size: 0.78em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(76, 175, 125, 0.12);
+    color: var(--good);
+    border: 1px solid rgba(76, 175, 125, 0.25);
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .json-panel {
+    margin: 0 24px 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .json-panel summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    color: var(--text-dim);
+    font-size: 0.88em;
+    user-select: none;
+  }
+  .json-panel pre {
+    margin: 0;
+    padding: 0 16px 16px;
+    overflow: auto;
+    max-height: 280px;
+    font-size: 0.8em;
+    white-space: pre-wrap;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { min-height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar-list { max-height: 240px; }
+    .row3, .row2, .filter-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="topbar">
+    <div>
+      <h1>Редактор каталога картин</h1>
+      <div class="topbar-meta">Изменения сохраняются в <code>js/data.js</code> — игра подхватывает их после перезагрузки</div>
+    </div>
+    <div class="topbar-actions">
+      <a href="gamedesign.html" class="btn btn-ghost">Заказчики</a>
+      <a href="index.html" class="btn btn-ghost" target="_blank">Открыть игру ↗</a>
+      <button type="button" id="btn-reload" class="btn btn-secondary">Обновить с диска</button>
+      <button type="button" id="btn-save" class="btn btn-primary">Сохранить</button>
+    </div>
+  </header>
+
+  <div id="status" class="statusbar neutral">Загрузка…</div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-tools">
+        <input type="search" id="search" class="search" placeholder="Поиск по названию, автору или ID…">
+        <div class="filter-row">
+          <select id="filter-rarity" class="filter-select">
+            <option value="">Все редкости</option>
+            <option value="common">Common</option>
+            <option value="rare">Rare</option>
+            <option value="epic">Epic</option>
+          </select>
+          <select id="filter-period" class="filter-select">
+            <option value="">Все периоды</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <select id="filter-genre" class="filter-select">
+            <option value="">Все жанры</option>
+          </select>
+          <select id="filter-artist" class="filter-select">
+            <option value="">Все авторы</option>
+          </select>
+        </div>
+        <div id="sidebar-count" class="sidebar-count"></div>
+        <button type="button" id="btn-add" class="btn btn-secondary" style="width:100%">+ Новая картина</button>
+      </div>
+      <div id="sidebar-list" class="sidebar-list"></div>
+    </aside>
+
+    <main id="editor" class="editor">
+      <div class="editor-empty">Выберите картину слева или создайте новую.</div>
+    </main>
+  </div>
+
+  <details class="json-panel">
+    <summary>Сырой JSON (для отладки)</summary>
+    <pre id="json-preview"></pre>
+  </details>
+</div>
+
+<script>
+  const RARITY_LABELS = { common: 'Common', rare: 'Rare', epic: 'Epic' };
+
+  let artworks = [];
+  let collectors = [];
+  let savedSnapshot = '[]';
+  let tagOptions = { periods: [], genres: [], artists: [] };
+  let selectedIdx = -1;
+  let searchQuery = '';
+  let filterRarity = '';
+  let filterPeriod = '';
+  let filterGenre = '';
+  let filterArtist = '';
+
+  const sidebarListEl = document.getElementById('sidebar-list');
+  const sidebarCountEl = document.getElementById('sidebar-count');
+  const editorEl = document.getElementById('editor');
+  const statusEl = document.getElementById('status');
+  const jsonPreviewEl = document.getElementById('json-preview');
+  const saveBtn = document.getElementById('btn-save');
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = 'statusbar' + (kind ? ' ' + kind : ' neutral');
+    saveBtn.disabled = kind === 'err';
+  }
+
+  function isDirty() {
+    return JSON.stringify(artworks) !== savedSnapshot;
+  }
+
+  function imageUrl(art) {
+    return `assets/art/${art.id}.webp`;
+  }
+
+  function formatMoney(n) {
+    return Math.round(n).toLocaleString('ru-RU');
+  }
+
+  function matchesCriteria(artwork, tags) {
+    return tags.every((tag) => {
+      if (tag.type === 'artwork') return artwork.id === tag.value;
+      if (tag.type === 'period') return artwork.periodRu === tag.value;
+      if (tag.type === 'genre') return artwork.genreRu === tag.value;
+      if (tag.type === 'artist') return artwork.artistRu === tag.value;
+      return false;
+    });
+  }
+
+  function getCollectorMissions(c) {
+    if (Array.isArray(c.missions) && c.missions.length) return c.missions;
+    if (c.orderGenre && c.orderPeriod && c.orderArtist) {
+      return [
+        { tags: [{ type: 'genre', value: c.orderGenre }] },
+        { tags: [{ type: 'period', value: c.orderPeriod }] },
+        { tags: [{ type: 'artist', value: c.orderArtist }] },
+      ];
+    }
+    return [];
+  }
+
+  function buildCollectorMatches(art) {
+    return collectors.map((c) => {
+      const missions = getCollectorMissions(c);
+      const hits = missions.filter((m) => matchesCriteria(art, m.tags || []));
+      return { collector: c, hits, total: missions.length };
+    });
+  }
+
+  function buildDatalistOptions(key) {
+    return (tagOptions[key] || [])
+      .map((opt) => `<option value="${escapeAttr(opt.value)}">`)
+      .join('');
+  }
+
+  function buildTagInput(field, value, listId) {
+    return `<input type="text" data-field="${field}" value="${escapeAttr(value || '')}" list="${listId}" spellcheck="false">`;
+  }
+
+  function onChange() {
+    if (isDirty()) setStatus('Есть несохранённые изменения — нажмите «Сохранить» (Ctrl+S).', 'dirty');
+    jsonPreviewEl.textContent = JSON.stringify(artworks, null, 2);
+    renderSidebar();
+    updateFilterOptions();
+  }
+
+  function filteredIndices() {
+    const q = searchQuery.trim().toLowerCase();
+    return artworks
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => {
+        if (filterRarity && a.rarity !== filterRarity) return false;
+        if (filterPeriod && a.periodRu !== filterPeriod) return false;
+        if (filterGenre && a.genreRu !== filterGenre) return false;
+        if (filterArtist && a.artistRu !== filterArtist) return false;
+        if (!q) return true;
+        return (
+          (a.titleRu || '').toLowerCase().includes(q) ||
+          (a.artistRu || '').toLowerCase().includes(q) ||
+          (a.id || '').toLowerCase().includes(q) ||
+          (a.periodRu || '').toLowerCase().includes(q) ||
+          (a.genreRu || '').toLowerCase().includes(q)
+        );
+      })
+      .map(({ i }) => i);
+  }
+
+  function updateFilterOptions() {
+    const fill = (selId, key, current) => {
+      const sel = document.getElementById(selId);
+      const prev = current || sel.value;
+      const opts = tagOptions[key] || [];
+      sel.innerHTML = `<option value="">${sel.options[0]?.textContent || ''}</option>`;
+      opts.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = `${opt.value} (${opt.count})`;
+        sel.appendChild(o);
+      });
+      sel.value = prev;
+    };
+    fill('filter-period', 'periods', filterPeriod);
+    fill('filter-genre', 'genres', filterGenre);
+    fill('filter-artist', 'artists', filterArtist);
+  }
+
+  function renderSidebar() {
+    sidebarListEl.innerHTML = '';
+    const indices = filteredIndices();
+    sidebarCountEl.textContent = `${indices.length} из ${artworks.length} картин`;
+    if (!indices.length) {
+      sidebarListEl.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:0.88em">Ничего не найдено</div>';
+      return;
+    }
+    indices.forEach((idx) => {
+      const a = artworks[idx];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'nav-item' + (idx === selectedIdx ? ' active' : '');
+      const url = imageUrl(a);
+      const thumb = `<img class="nav-thumb" src="${escapeAttr(url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'nav-thumb placeholder',textContent:'🖼'}))">`;
+      btn.innerHTML = `
+        ${thumb}
+        <div class="nav-body">
+          <div class="nav-name"><span class="rarity-dot ${a.rarity || 'common'}"></span>${escapeHtml(a.titleRu || '(без названия)')}</div>
+          <div class="nav-tags">${escapeHtml(a.artistRu || '—')} · ${formatMoney(a.basePrice || 0)} ₽</div>
+        </div>
+      `;
+      btn.addEventListener('click', () => selectArtwork(idx));
+      sidebarListEl.appendChild(btn);
+    });
+  }
+
+  function selectArtwork(idx) {
+    selectedIdx = idx;
+    renderSidebar();
+    renderEditor(idx);
+  }
+
+  function buildMatchesHtml(art) {
+    const rows = buildCollectorMatches(art);
+    if (!rows.length) {
+      return '<div class="field-hint">Заказчики не загружены.</div>';
+    }
+    const html = rows
+      .map(({ collector: c, hits, total }) => {
+        const hit = hits.length > 0;
+        const cls = hit ? 'match-row hit' : 'match-row miss';
+        const badge = hit
+          ? `<span class="match-badge">${hits.length} из ${total} заказов</span>`
+          : '';
+        return `<div class="${cls}"><span>${escapeHtml(c.nameRu)}</span>${badge}</div>`;
+      })
+      .join('');
+    const hitCount = rows.filter((r) => r.hits.length > 0).length;
+    return `
+      <div class="field-hint ${hitCount ? 'ok' : 'warn'}">
+        Подходит ${hitCount} из ${rows.length} заказчик(ов) — теги должны совпадать с missions в collectors.js.
+      </div>
+      <div class="match-list">${html}</div>
+    `;
+  }
+
+  function renderEditor(idx) {
+    const a = artworks[idx];
+    if (!a) {
+      editorEl.innerHTML = '<div class="editor-empty">Выберите картину слева или создайте новую.</div>';
+      return;
+    }
+
+    const url = imageUrl(a);
+    const artHtml = `<img class="art-preview" id="art-preview" src="${escapeAttr(url)}" alt="">`;
+
+    editorEl.innerHTML = `
+      <datalist id="dl-periods">${buildDatalistOptions('periods')}</datalist>
+      <datalist id="dl-genres">${buildDatalistOptions('genres')}</datalist>
+      <datalist id="dl-artists">${buildDatalistOptions('artists')}</datalist>
+
+      <div class="editor-header">
+        <div class="art-block">
+          ${artHtml}
+          <div class="art-hint">После смены URL запустите npm run fetch-artworks</div>
+        </div>
+        <div class="editor-title-block">
+          <h2 data-display-title>${escapeHtml(a.titleRu || '(без названия)')}</h2>
+          <div class="editor-id" data-display-id>${escapeHtml(a.id)}</div>
+          <div class="editor-actions">
+            <button type="button" class="btn btn-ghost btn-icon" data-move-up title="Выше">↑</button>
+            <button type="button" class="btn btn-ghost btn-icon" data-move-down title="Ниже">↓</button>
+            <button type="button" class="btn btn-ghost" data-duplicate>Дублировать</button>
+            <button type="button" class="btn btn-danger" data-delete>Удалить</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <h3>Основное</h3>
+        <div class="row2">
+          <div class="field">
+            <label>ID (латиница, цифры, дефис)</label>
+            <input type="text" data-field="id" value="${escapeAttr(a.id)}" spellcheck="false">
+            <div class="field-hint">Файл изображения: assets/art/{id}.webp</div>
+          </div>
+          <div class="field">
+            <label>Название (titleRu)</label>
+            <input type="text" data-field="titleRu" value="${escapeAttr(a.titleRu || '')}">
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Автор (artistRu)</label>
+            ${buildTagInput('artistRu', a.artistRu, 'dl-artists')}
+          </div>
+          <div class="field">
+            <label>Год (year)</label>
+            <input type="text" data-field="year" value="${escapeAttr(a.year || '')}" placeholder="1503–1519">
+          </div>
+        </div>
+        <div class="field">
+          <label>Интересный факт (factRu)</label>
+          <textarea data-field="factRu">${escapeHtml(a.factRu || '')}</textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Теги для подбора лотов</h3>
+        <div class="row2">
+          <div class="field">
+            <label>Период (periodRu)</label>
+            ${buildTagInput('periodRu', a.periodRu, 'dl-periods')}
+          </div>
+          <div class="field">
+            <label>Жанр (genreRu)</label>
+            ${buildTagInput('genreRu', a.genreRu, 'dl-genres')}
+          </div>
+        </div>
+        <div class="field-hint warn">Строки должны совпадать с тегами в заказах заказчиков — иначе лот не попадёт в аукцион.</div>
+      </section>
+
+      <section class="card">
+        <h3>Экономика и редкость</h3>
+        <div class="row2">
+          <div class="field">
+            <label>Базовая цена, ₽</label>
+            <input type="number" step="1000" min="0" data-field="basePrice" value="${a.basePrice || 0}">
+          </div>
+          <div class="field">
+            <label>Редкость (rarity)</label>
+            <select data-field="rarity">
+              ${['common', 'rare', 'epic']
+                .map(
+                  (r) =>
+                    `<option value="${r}"${a.rarity === r ? ' selected' : ''}>${RARITY_LABELS[r]}</option>`
+                )
+                .join('')}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Изображение</h3>
+        <div class="field">
+          <label>URL источника (imageSource)</label>
+          <input type="url" data-field="imageSource" value="${escapeAttr(a.imageSource || '')}" placeholder="https://commons.wikimedia.org/…">
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Совпадения с заказчиками</h3>
+        <div data-matches-root>${buildMatchesHtml(a)}</div>
+      </section>
+    `;
+
+    editorEl.querySelectorAll('[data-field]').forEach((input) => {
+      input.addEventListener('input', () => applyField(idx, input));
+      input.addEventListener('change', () => applyField(idx, input));
+    });
+
+    editorEl.querySelector('[data-delete]').addEventListener('click', () => deleteArtwork(idx));
+    editorEl.querySelector('[data-duplicate]').addEventListener('click', () => duplicateArtwork(idx));
+    editorEl.querySelector('[data-move-up]').addEventListener('click', () => moveArtwork(idx, -1));
+    editorEl.querySelector('[data-move-down]').addEventListener('click', () => moveArtwork(idx, 1));
+  }
+
+  function refreshMatches(idx) {
+    const root = editorEl.querySelector('[data-matches-root]');
+    if (root) root.innerHTML = buildMatchesHtml(artworks[idx]);
+  }
+
+  function applyField(idx, input) {
+    const a = artworks[idx];
+    const field = input.dataset.field;
+    let value = input.value;
+
+    if (field === 'basePrice') value = parseFloat(value) || 0;
+
+    if (field === 'id' && !/^[a-z0-9-]*$/.test(value)) {
+      input.classList.add('invalid');
+    } else {
+      input.classList.remove('invalid');
+    }
+
+    a[field] = value;
+
+    if (field === 'titleRu') {
+      const el = editorEl.querySelector('[data-display-title]');
+      if (el) el.textContent = value || '(без названия)';
+    }
+    if (field === 'id') {
+      const el = editorEl.querySelector('[data-display-id]');
+      if (el) el.textContent = value;
+      const preview = document.getElementById('art-preview');
+      if (preview && preview.tagName === 'IMG') preview.src = imageUrl(a);
+    }
+
+    if (['periodRu', 'genreRu', 'artistRu', 'id'].includes(field)) {
+      refreshMatches(idx);
+    }
+
+    onChange();
+  }
+
+  function addArtwork() {
+    const firstPeriod = tagOptions.periods[0]?.value || '';
+    const firstGenre = tagOptions.genres[0]?.value || '';
+    const firstArtist = tagOptions.artists[0]?.value || '';
+    artworks.push({
+      id: 'new-artwork-' + Date.now().toString(36),
+      titleRu: 'Новая картина',
+      artistRu: firstArtist,
+      year: '1900',
+      periodRu: firstPeriod,
+      genreRu: firstGenre,
+      factRu: 'Интересный факт о картине.',
+      imageSource: '',
+      rarity: 'common',
+      basePrice: 50000,
+    });
+    selectArtwork(artworks.length - 1);
+    onChange();
+  }
+
+  function duplicateArtwork(idx) {
+    const src = artworks[idx];
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.id = src.id + '-copy-' + Date.now().toString(36).slice(-4);
+    copy.titleRu = (src.titleRu || 'Картина') + ' (копия)';
+    artworks.splice(idx + 1, 0, copy);
+    selectArtwork(idx + 1);
+    onChange();
+  }
+
+  function deleteArtwork(idx) {
+    const a = artworks[idx];
+    if (!confirm(`Удалить картину «${a.titleRu}»?`)) return;
+    artworks.splice(idx, 1);
+    if (selectedIdx >= artworks.length) selectedIdx = artworks.length - 1;
+    if (selectedIdx < 0) {
+      editorEl.innerHTML = '<div class="editor-empty">Выберите картину слева или создайте новую.</div>';
+    } else {
+      renderEditor(selectedIdx);
+    }
+    onChange();
+  }
+
+  function moveArtwork(idx, dir) {
+    const next = idx + dir;
+    if (next < 0 || next >= artworks.length) return;
+    const tmp = artworks[idx];
+    artworks[idx] = artworks[next];
+    artworks[next] = tmp;
+    selectedIdx = next;
+    renderSidebar();
+    renderEditor(selectedIdx);
+    onChange();
+  }
+
+  function validateClientSide() {
+    const ids = new Set();
+    for (const a of artworks) {
+      if (!/^[a-z0-9-]+$/.test(a.id || '')) return `Некорректный ID «${a.id}» — только a-z, 0-9 и дефис.`;
+      if (ids.has(a.id)) return `Повторяющийся ID «${a.id}».`;
+      ids.add(a.id);
+      if (!a.titleRu || !a.titleRu.trim()) return `У картины «${a.id}» пустое название.`;
+      if (!a.artistRu || !a.artistRu.trim()) return `У «${a.titleRu}» пустой автор.`;
+      if (!a.year || !a.year.trim()) return `У «${a.titleRu}» пустой год.`;
+      if (!a.periodRu || !a.periodRu.trim()) return `У «${a.titleRu}» пустой период.`;
+      if (!a.genreRu || !a.genreRu.trim()) return `У «${a.titleRu}» пустой жанр.`;
+      if (!a.factRu || !a.factRu.trim()) return `У «${a.titleRu}» пустой факт.`;
+      if (!['common', 'rare', 'epic'].includes(a.rarity)) return `У «${a.titleRu}» некорректная редкость.`;
+      if (!(a.basePrice > 0)) return `У «${a.titleRu}» некорректная basePrice.`;
+    }
+    return null;
+  }
+
+  async function saveAll() {
+    const clientError = validateClientSide();
+    if (clientError) {
+      setStatus(clientError, 'err');
+      return;
+    }
+    setStatus('Сохранение…', 'neutral');
+    try {
+      const res = await fetch('/api/artworks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(artworks),
+      });
+      const raw = await res.text();
+      let body;
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        throw new Error(raw.trim() || 'Не удалось сохранить');
+      }
+      if (!res.ok) throw new Error(body.error || 'Не удалось сохранить');
+      savedSnapshot = JSON.stringify(artworks);
+      setStatus(
+        `Сохранено: ${body.count} картин(ы). Перезагрузите игру (F5), чтобы увидеть изменения.`,
+        'ok'
+      );
+    } catch (e) {
+      const hint =
+        e.message === 'Failed to fetch'
+          ? ' — запустите сервер: npm run design (или node design-server.js).'
+          : '';
+      setStatus('Ошибка сохранения: ' + e.message + hint, 'err');
+    }
+  }
+
+  async function parseApiError(res, fallback) {
+    const text = await res.text();
+    try {
+      const body = JSON.parse(text);
+      return body.error || fallback;
+    } catch {
+      return text.trim() || fallback;
+    }
+  }
+
+  async function loadAll() {
+    if (location.protocol === 'file:') {
+      setStatus(
+        'Откройте через сервер: npm run design → http://localhost:8935/artworks.html',
+        'err'
+      );
+      return;
+    }
+    setStatus('Загрузка…', 'neutral');
+    try {
+      const [artworksRes, optionsRes, collectorsRes] = await Promise.all([
+        fetch('/api/artworks'),
+        fetch('/api/tag-options'),
+        fetch('/api/collectors'),
+      ]);
+      if (!artworksRes.ok) {
+        throw new Error(await parseApiError(artworksRes, 'Ошибка загрузки каталога'));
+      }
+      if (!optionsRes.ok) {
+        throw new Error(await parseApiError(optionsRes, 'Ошибка загрузки справочника'));
+      }
+      artworks = await artworksRes.json();
+      tagOptions = await optionsRes.json();
+      if (collectorsRes.ok) collectors = await collectorsRes.json();
+      savedSnapshot = JSON.stringify(artworks);
+      selectedIdx = artworks.length ? 0 : -1;
+      updateFilterOptions();
+      renderSidebar();
+      if (selectedIdx >= 0) renderEditor(selectedIdx);
+      else editorEl.innerHTML = '<div class="editor-empty">Нет картин — создайте первую.</div>';
+      jsonPreviewEl.textContent = JSON.stringify(artworks, null, 2);
+      setStatus(`Загружено ${artworks.length} картин, ${collectors.length} заказчик(ов).`, 'ok');
+    } catch (e) {
+      const hint =
+        e.message === 'Failed to fetch'
+          ? ' — сервер не запущен. В папке mvp: npm run design'
+          : '';
+      setStatus('Ошибка: ' + e.message + hint, 'err');
+    }
+  }
+
+  document.getElementById('btn-save').addEventListener('click', saveAll);
+  document.getElementById('btn-add').addEventListener('click', addArtwork);
+  document.getElementById('btn-reload').addEventListener('click', () => {
+    if (isDirty() && !confirm('Есть несохранённые изменения — перезагрузить с диска?')) return;
+    loadAll();
+  });
+  document.getElementById('search').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderSidebar();
+  });
+  document.getElementById('filter-rarity').addEventListener('change', (e) => {
+    filterRarity = e.target.value;
+    renderSidebar();
+  });
+  document.getElementById('filter-period').addEventListener('change', (e) => {
+    filterPeriod = e.target.value;
+    renderSidebar();
+  });
+  document.getElementById('filter-genre').addEventListener('change', (e) => {
+    filterGenre = e.target.value;
+    renderSidebar();
+  });
+  document.getElementById('filter-artist').addEventListener('change', (e) => {
+    filterArtist = e.target.value;
+    renderSidebar();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveAll();
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  loadAll();
+</script>
+</body>
+</html>

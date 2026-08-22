@@ -314,6 +314,11 @@ h2 { margin-top: 0; }
 .venue-card-desc + .venue-card-desc { margin-top: 6px; }
 .venue-card-venue { margin-top: 8px; font-size: 0.78em; }
 
+.venue-card .order-brief-tags {
+  justify-content: center;
+  margin: 8px 0 2px;
+}
+
 .collector-progress {
   margin: 10px 0 4px;
   width: 100%;
