@@ -149,6 +149,33 @@ const UI = {
     this.renderOrderBrief(state);
   },
 
+  buildOrderTagsMarkup(order) {
+    const labels = { period: 'Период', genre: 'Жанр', artist: 'Автор', artwork: 'Работа' };
+    const tags = (order.criteriaTags || []).map((tag) => {
+      let value = tag.value;
+      if (tag.type === 'artwork') {
+        const art = ARTWORKS.find((a) => a.id === tag.value);
+        value = art ? `«${art.titleRu}»` : tag.value;
+      }
+      return {
+        type: tag.type,
+        label: labels[tag.type] || tag.type,
+        value,
+      };
+    });
+    if (!tags.length) return '';
+    return `
+      <div class="order-brief-tags">
+        ${tags
+          .map(
+            (t) =>
+              `<span class="order-tag order-tag-${t.type}"><span class="order-tag-label">${t.label}</span>${t.value}</span>`
+          )
+          .join('')}
+      </div>
+    `;
+  },
+
   renderOrderBrief(state) {
     const el = document.getElementById('order-brief');
     el.innerHTML = '';
@@ -158,15 +185,11 @@ const UI = {
       const portraitHtml = o.portraitUrl
         ? `<div class="order-brief-portrait"><img src="${o.portraitUrl}" alt="${o.nameRu}"></div>`
         : '';
-      const missionIndex = state.branchProgress[state.selectedBranchId] || 0;
       card.innerHTML = `
         ${portraitHtml}
         <div class="order-brief-content">
-          <div class="order-brief-kicker">Заказ</div>
           <div class="order-brief-name">${o.nameRu}</div>
-          ${this.buildCollectorProgressMarkup(missionIndex)}
-          <div class="order-brief-want">${o.criteriaLabel}</div>
-          <div class="order-brief-budget">Бюджет ${formatMoney(o.budget)} ₽</div>
+          ${this.buildOrderTagsMarkup(o)}
         </div>
       `;
       el.appendChild(card);
