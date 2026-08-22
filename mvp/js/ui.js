@@ -62,11 +62,14 @@ const UI = {
     return `Осталось ${n} заказов`;
   },
 
-  buildCollectorProgressMarkup(missionIndex) {
-    const { total, completed, remaining, mastered, currentOrder } = getCollectorBranchProgress(missionIndex);
+  buildCollectorProgressMarkup(missionIndex, collector) {
+    const { total, completed, remaining, mastered, currentOrder } = getCollectorBranchProgress(
+      missionIndex,
+      collector
+    );
     const segments = [];
     for (let i = 0; i < total; i++) {
-      const phase = getOrderPhaseForMission(i);
+      const phase = getOrderPhaseForMission(i, collector);
       let cls = 'collector-progress-segment phase-' + phase;
       if (i < completed) cls += ' done';
       else if (i === missionIndex && !mastered) cls += ' current';
@@ -91,7 +94,7 @@ const UI = {
     el.innerHTML = '';
     COLLECTORS.forEach((c) => {
       const missionIndex = state.branchProgress[c.id] || 0;
-      const branchCfg = getBranchMissionConfig(missionIndex, ORDER_LADDER_LENGTH);
+      const branchCfg = getBranchMissionConfig(missionIndex, getCollectorLadderLength(c));
       const venue = VENUES[branchCfg.venueTier];
       const card = document.createElement('div');
       card.className = 'venue-card' + (state.selectedBranchId === c.id ? ' selected' : '');
@@ -103,7 +106,7 @@ const UI = {
         <div class="venue-card-body">
           <div class="venue-card-name">${c.nameRu}</div>
           <div class="venue-card-desc">${c.taglineRu}</div>
-          ${this.buildCollectorProgressMarkup(missionIndex)}
+          ${this.buildCollectorProgressMarkup(missionIndex, c)}
           <div class="venue-card-desc venue-card-venue">${venue.labelRu}</div>
         </div>
       `;

@@ -124,27 +124,47 @@ function getBranchMissionConfig(missionIndex, ladderLength) {
 }
 
 // Returns the AND-matched tag set for a branch's Nth order (missionIndex, 0-based).
-// Phase 1: genre only · phase 2: period only · phase 3: artist only.
+// Each collector may define an explicit `missions` ladder; otherwise the shared
+// genre → period → artist template (ORDER_PHASE_*) is used as a fallback.
+function buildLegacyMissions(collector) {
+  const missions = [];
+  for (let i = 0; i < ORDER_PHASE_GENRE_DAYS; i++) {
+    missions.push({ tags: [{ type: 'genre', value: collector.orderGenre }] });
+  }
+  for (let i = 0; i < ORDER_PHASE_PERIOD_DAYS; i++) {
+    missions.push({ tags: [{ type: 'period', value: collector.orderPeriod }] });
+  }
+  for (let i = 0; i < ORDER_PHASE_ARTIST_DAYS; i++) {
+    missions.push({ tags: [{ type: 'artist', value: collector.orderArtist }] });
+  }
+  return missions;
+}
+
+function getCollectorMissions(collector) {
+  if (Array.isArray(collector.missions) && collector.missions.length > 0) {
+    return collector.missions;
+  }
+  return buildLegacyMissions(collector);
+}
+
+function getCollectorLadderLength(collector) {
+  return getCollectorMissions(collector).length;
+}
+
 function getOrderTagsForMission(missionIndex, collector) {
-  const idx = Math.min(missionIndex, ORDER_LADDER_LENGTH - 1);
-  if (idx < ORDER_PHASE_GENRE_DAYS) {
-    return [{ type: 'genre', value: collector.orderGenre }];
-  }
-  if (idx < ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS) {
-    return [{ type: 'period', value: collector.orderPeriod }];
-  }
-  return [{ type: 'artist', value: collector.orderArtist }];
+  const missions = getCollectorMissions(collector);
+  const idx = Math.min(missionIndex, missions.length - 1);
+  return missions[idx].tags.map((t) => ({ type: t.type, value: t.value }));
 }
 
-function getOrderPhaseForMission(missionIndex) {
-  const idx = Math.min(missionIndex, ORDER_LADDER_LENGTH - 1);
-  if (idx < ORDER_PHASE_GENRE_DAYS) return 'genre';
-  if (idx < ORDER_PHASE_GENRE_DAYS + ORDER_PHASE_PERIOD_DAYS) return 'period';
-  return 'artist';
+function getOrderPhaseForMission(missionIndex, collector) {
+  const tags = getOrderTagsForMission(missionIndex, collector);
+  if (tags.length === 1) return tags[0].type;
+  return 'mixed';
 }
 
-function getCollectorBranchProgress(missionIndex) {
-  const total = ORDER_LADDER_LENGTH;
+function getCollectorBranchProgress(missionIndex, collector) {
+  const total = getCollectorLadderLength(collector);
   const completed = Math.min(missionIndex, total);
   const remaining = Math.max(0, total - missionIndex);
   const mastered = missionIndex >= total;

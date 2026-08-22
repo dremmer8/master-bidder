@@ -130,7 +130,8 @@ function buildOrder(collector, branchCfg, venueConfig, state, tags) {
 function buildDayOrder(state) {
   const collector = COLLECTORS.find((c) => c.id === state.selectedBranchId);
   const missionIndex = state.branchProgress[collector.id] || 0;
-  const branchCfg = getBranchMissionConfig(missionIndex, ORDER_LADDER_LENGTH);
+  const ladderLength = getCollectorLadderLength(collector);
+  const branchCfg = getBranchMissionConfig(missionIndex, ladderLength);
   const venueConfig = VENUES[branchCfg.venueTier];
   const tags = getOrderTagsForMission(missionIndex, collector);
   return { order: buildOrder(collector, branchCfg, venueConfig, state, tags), venueConfig };

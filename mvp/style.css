@@ -64,6 +64,18 @@ h2 { margin-top: 0; }
 
 .rules-list { line-height: 1.7; }
 
+.editor-link {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 0.9em;
+}
+.editor-link a {
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-dim);
+}
+.editor-link a:hover { color: var(--accent); }
+
 .btn {
   display: inline-block;
   border: none;
@@ -330,6 +342,12 @@ h2 { margin-top: 0; }
 }
 .collector-progress-segment.phase-artist.current:not(.done) {
   background: rgba(212, 161, 58, 0.22);
+}
+.collector-progress-segment.phase-mixed.done {
+  background: rgba(154, 161, 171, 0.35);
+}
+.collector-progress-segment.phase-mixed.current:not(.done) {
+  background: rgba(154, 161, 171, 0.18);
 }
 
 .order-brief-content .collector-progress {

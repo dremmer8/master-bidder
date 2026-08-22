@@ -57,6 +57,15 @@ function uniqSorted(values) {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ru'));
 }
 
+function validateMissionTags(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) return 'нужен хотя бы один тег';
+  for (const tag of tags) {
+    if (!TAG_TYPES.includes(tag.type)) return `неизвестный тип тега «${tag.type}»`;
+    if (typeof tag.value !== 'string' || !tag.value.trim()) return 'пустое значение тега';
+  }
+  return null;
+}
+
 function validateCollectors(list) {
   if (!Array.isArray(list) || list.length === 0) {
     return 'Ожидается непустой массив заказчиков.';
@@ -75,14 +84,21 @@ function validateCollectors(list) {
     if (typeof c.taglineRu !== 'string' || !c.taglineRu.trim()) {
       return `У заказчика "${c.id}" отсутствует описание (taglineRu).`;
     }
-    if (typeof c.orderGenre !== 'string' || !c.orderGenre.trim()) {
-      return `У заказчика "${c.id}" отсутствует orderGenre.`;
-    }
-    if (typeof c.orderPeriod !== 'string' || !c.orderPeriod.trim()) {
-      return `У заказчика "${c.id}" отсутствует orderPeriod.`;
-    }
-    if (typeof c.orderArtist !== 'string' || !c.orderArtist.trim()) {
-      return `У заказчика "${c.id}" отсутствует orderArtist.`;
+    if (Array.isArray(c.missions) && c.missions.length > 0) {
+      for (let i = 0; i < c.missions.length; i++) {
+        const err = validateMissionTags(c.missions[i].tags);
+        if (err) return `«${c.nameRu}», заказ ${i + 1}: ${err}`;
+      }
+    } else {
+      if (typeof c.orderGenre !== 'string' || !c.orderGenre.trim()) {
+        return `У заказчика "${c.id}" отсутствует orderGenre (или массив missions).`;
+      }
+      if (typeof c.orderPeriod !== 'string' || !c.orderPeriod.trim()) {
+        return `У заказчика "${c.id}" отсутствует orderPeriod (или массив missions).`;
+      }
+      if (typeof c.orderArtist !== 'string' || !c.orderArtist.trim()) {
+        return `У заказчика "${c.id}" отсутствует orderArtist (или массив missions).`;
+      }
     }
     if (typeof c.personalModifier !== 'number' || !(c.personalModifier > 0)) {
       return `personalModifier у "${c.id}" должен быть положительным числом.`;
@@ -98,13 +114,21 @@ function jsString(value) {
   return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
 }
 
+function serializeMission(m) {
+  const tagLines = m.tags
+    .map((t) => `        { type: ${jsString(t.type)}, value: ${jsString(t.value)} },`)
+    .join('\n');
+  return `    {\n      tags: [\n${tagLines}\n      ],\n    }`;
+}
+
 function serializeCollectorsFile(list) {
   const header = `// Collector (client) definitions — each one is a campaign branch: a named,
 // recurring character with distinct tastes (see GAME_DESIGN.md, Orders & Collectors).
 //
-// orderGenre / orderPeriod / orderArtist — the collector's thematic focus. The
-// shared ladder in campaign.js applies the same phase structure to everyone:
-// ORDER_PHASE_GENRE_DAYS of genre-only orders, then period-only, then artist-only.
+// missions — explicit ladder of orders (day 1, day 2, …). Each entry is an AND-set
+// of tags ({ type: 'genre'|'period'|'artist', value }). After the last mission the
+// final entry repeats forever ("mastery"). If missions is omitted, campaign.js falls
+// back to orderGenre / orderPeriod / orderArtist with the shared 3+3+4 template.
 //
 // portraitSource — Wikimedia Commons URL for the collector's portrait.
 // Run \`npm run fetch-collectors\` after changing portraitSource.
@@ -114,22 +138,38 @@ function serializeCollectorsFile(list) {
 `;
 
   const entries = list.map((c) => {
-    return [
+    const lines = [
       '  {',
       `    id: ${jsString(c.id)},`,
       `    nameRu: ${jsString(c.nameRu)},`,
       `    taglineRu: ${jsString(c.taglineRu)},`,
-      ...(c.portraitSource ? [`    portraitSource:\n      ${jsString(c.portraitSource)},`] : []),
-      `    personalModifier: ${c.personalModifier},`,
-      `    baseBudget: ${c.baseBudget},`,
-      `    orderGenre: ${jsString(c.orderGenre)},`,
-      `    orderPeriod: ${jsString(c.orderPeriod)},`,
-      `    orderArtist: ${jsString(c.orderArtist)},`,
-      '  },',
-    ].join('\n');
+    ];
+    if (c.portraitSource) {
+      lines.push(`    portraitSource:\n      ${jsString(c.portraitSource)},`);
+    }
+    lines.push(`    personalModifier: ${c.personalModifier},`);
+    lines.push(`    baseBudget: ${c.baseBudget},`);
+    if (Array.isArray(c.missions) && c.missions.length > 0) {
+      lines.push(`    missions: [\n${c.missions.map((m) => serializeMission(m) + ',').join('\n')}\n    ],`);
+    }
+    if (c.orderGenre) lines.push(`    orderGenre: ${jsString(c.orderGenre)},`);
+    if (c.orderPeriod) lines.push(`    orderPeriod: ${jsString(c.orderPeriod)},`);
+    if (c.orderArtist) lines.push(`    orderArtist: ${jsString(c.orderArtist)},`);
+    lines.push('  },');
+    return lines.join('\n');
   });
 
-  return header + 'const COLLECTORS = [\n' + entries.join('\n') + '\n];\n';
+  return (
+    header +
+    'const COLLECTORS = [\n' +
+    entries.join('\n') +
+    '\n];\n\n' +
+    'COLLECTORS.forEach((collector) => {\n' +
+    '  if (collector.portraitSource) {\n' +
+    '    collector.portraitUrl = `assets/collectors/${collector.id}.webp`;\n' +
+    '  }\n' +
+    '});\n'
+  );
 }
 
 function handleGetCollectors(res) {
@@ -164,13 +204,28 @@ function handlePostCollectors(req, res) {
   });
 }
 
+function buildTagList(artworks, field) {
+  const counts = {};
+  for (const a of artworks) {
+    const v = a[field];
+    if (v) counts[v] = (counts[v] || 0) + 1;
+  }
+  return uniqSorted(Object.keys(counts)).map((value) => ({ value, count: counts[value] }));
+}
+
 function handleGetTagOptions(res) {
   try {
     const artworks = loadArtworks();
     sendJson(res, 200, {
-      periods: uniqSorted(artworks.map((a) => a.periodRu)),
-      genres: uniqSorted(artworks.map((a) => a.genreRu)),
-      artists: uniqSorted(artworks.map((a) => a.artistRu)),
+      periods: buildTagList(artworks, 'periodRu'),
+      genres: buildTagList(artworks, 'genreRu'),
+      artists: buildTagList(artworks, 'artistRu'),
+      artworkTotal: artworks.length,
+      artworkIndex: artworks.map((a) => ({
+        genre: a.genreRu,
+        period: a.periodRu,
+        artist: a.artistRu,
+      })),
     });
   } catch (e) {
     sendJson(res, 500, { error: 'Не удалось прочитать data.js: ' + e.message });
