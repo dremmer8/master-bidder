@@ -1,13 +1,45 @@
 document.addEventListener('DOMContentLoaded', () => {
   UI.init();
+  Sound.init();
 
-  document.getElementById('btn-start-campaign').addEventListener('click', () => Game.startCampaign());
-  document.getElementById('btn-start-day').addEventListener('click', () => Game.beginAuction());
+  const soundToggleBtn = document.getElementById('btn-sound-toggle');
+  const updateSoundToggleUI = () => {
+    const muted = Sound.isMuted();
+    soundToggleBtn.textContent = muted ? '🔇' : '🔊';
+    soundToggleBtn.setAttribute('aria-pressed', String(muted));
+    soundToggleBtn.title = muted ? 'Включить звук' : 'Выключить звук';
+  };
+  updateSoundToggleUI();
+  soundToggleBtn.addEventListener('click', () => {
+    Sound.toggleMute();
+    updateSoundToggleUI();
+    if (!Sound.isMuted()) Sound.playClick();
+  });
+  document.addEventListener('pointerdown', () => Sound.ensureUnlocked(), { once: true });
+  document.addEventListener('keydown', () => Sound.ensureUnlocked(), { once: true });
+
+  document.getElementById('btn-start-campaign').addEventListener('click', () => {
+    Sound.playClick();
+    Game.startCampaign();
+  });
+  document.getElementById('btn-start-day').addEventListener('click', () => {
+    Sound.playClick();
+    Game.beginAuction();
+  });
   document.getElementById('btn-buy').addEventListener('click', () => Game.onBuyClicked());
   document.getElementById('btn-skip').addEventListener('click', () => Game.onSkipClicked());
-  document.getElementById('btn-finish-day').addEventListener('click', () => Game.onFinishDayClicked());
-  document.getElementById('btn-report-continue').addEventListener('click', () => Game.continueAfterReport());
-  document.getElementById('btn-restart-campaign').addEventListener('click', () => Game.startCampaign());
+  document.getElementById('btn-finish-day').addEventListener('click', () => {
+    Sound.playClick();
+    Game.onFinishDayClicked();
+  });
+  document.getElementById('btn-report-continue').addEventListener('click', () => {
+    Sound.playClick();
+    Game.continueAfterReport();
+  });
+  document.getElementById('btn-restart-campaign').addEventListener('click', () => {
+    Sound.playClick();
+    Game.startCampaign();
+  });
 
   document.getElementById('lot-image-wrap').addEventListener('click', () => UI.openZoom());
   document.getElementById('zoom-modal').addEventListener('click', () => UI.closeZoom());

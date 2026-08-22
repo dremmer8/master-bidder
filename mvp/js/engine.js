@@ -440,11 +440,17 @@ const Game = {
     UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0));
     if (revealFromBlack) UI.revealLotFromBlack();
 
+    Sound.startTension();
+    Sound.setTensionIntensity(0);
+
+    const maxStep = REVEALABLE_FIELDS.length;
     this.state.revealTimers = REVEALABLE_FIELDS.map((f, i) =>
       setTimeout(() => {
         this.state.revealStep = i + 1;
         UI.revealField(f);
         UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep));
+        Sound.playReveal(i);
+        Sound.setTensionIntensity(this.state.revealStep / maxStep);
       }, REVEAL_INTERVAL_MS * (i + 1))
     );
     this.state.revealTimers.push(
@@ -475,6 +481,7 @@ const Game = {
       return;
     }
     this.clearLotTimers();
+    Sound.stopTension();
     this.state.lotResolved = true;
     this.state.capital -= price;
     this.state.artworkPurchaseDays[lot.id] = this.state.day;
@@ -498,6 +505,7 @@ const Game = {
     if (this.state.lotResolved) return;
     this.state.fastForwarding = false;
     this.clearLotTimers();
+    Sound.stopTension();
     this.state.lotResolved = true;
     UI.raiseRandomHand();
     setTimeout(() => {
@@ -517,7 +525,9 @@ const Game = {
     document.getElementById('btn-skip').disabled = true;
     document.getElementById('btn-buy').disabled = true;
     this.clearLotTimers();
+    Sound.playSkip();
 
+    const maxStep = REVEALABLE_FIELDS.length;
     remainingFields.forEach((field, i) => {
       this.state.revealTimers.push(
         setTimeout(() => {
@@ -525,6 +535,8 @@ const Game = {
           this.state.revealStep = startStep + i + 1;
           UI.revealField(field);
           UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep), { animate: false });
+          Sound.playReveal(this.state.revealStep - 1, { fast: true });
+          Sound.setTensionIntensity(this.state.revealStep / maxStep);
         }, SKIP_FAST_REVEAL_INTERVAL_MS * (i + 1))
       );
     });
@@ -538,6 +550,7 @@ const Game = {
     if (this.state.lotResolved) return;
     this.state.fastForwarding = false;
     this.clearLotTimers();
+    Sound.stopTension();
     this.state.lotResolved = true;
     this.finishDay();
   },

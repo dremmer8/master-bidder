@@ -107,7 +107,10 @@ const UI = {
           <div class="venue-card-desc venue-card-venue">${venue.labelRu}</div>
         </div>
       `;
-      card.addEventListener('click', () => Game.selectBranch(c.id));
+      card.addEventListener('click', () => {
+        Sound.playSelect();
+        Game.selectBranch(c.id);
+      });
       el.appendChild(card);
     });
   },
@@ -126,7 +129,11 @@ const UI = {
           ${owned ? 'Приобретено' : `Купить за ${formatMoney(u.cost)} ₽`}
         </button>
       `;
-      if (!owned) card.querySelector('button').addEventListener('click', () => Game.buyUpgrade(u.id));
+      if (!owned)
+        card.querySelector('button').addEventListener('click', () => {
+          Sound.playUpgrade();
+          Game.buyUpgrade(u.id);
+        });
       el.appendChild(card);
     });
   },
@@ -186,6 +193,7 @@ const UI = {
   },
 
   flashInsufficientFunds() {
+    Sound.playError();
     const hint = document.getElementById('insufficient-funds-hint');
     hint.classList.remove('hidden');
     if (this.insufficientFundsTimer) clearTimeout(this.insufficientFundsTimer);
@@ -355,9 +363,11 @@ const UI = {
     document.getElementById('btn-skip').disabled = true;
     document.getElementById('btn-finish-day').disabled = true;
     this.playLotOutcomeFx(kind);
+    Sound.playOutcome(kind);
   },
 
   raiseRandomHand() {
+    Sound.playRivalRaise();
     const heads = document.querySelectorAll('.rival-head');
     if (!heads.length) return;
     const head = heads[Math.floor(Math.random() * heads.length)];
@@ -453,6 +463,7 @@ const UI = {
     const continueBtn = document.getElementById('btn-report-continue');
     const boostersSection = document.getElementById('report-boosters-section');
     if (result.pass) {
+      Sound.playDayPass(result.ordersFulfilled);
       if (!result.ordersFulfilled) {
         verdict.textContent =
           'День пережит, но заказ не закрыт: нужна хотя бы одна подходящая картина. Заказ остаётся открытым.';
@@ -472,6 +483,7 @@ const UI = {
         boostersSection.classList.add('hidden');
       }
     } else {
+      Sound.playDayFail();
       verdict.textContent = 'БАНКРОТСТВО: капитал ушёл в минус. Карьера окончена.';
       verdict.className = 'report-verdict fail';
       continueBtn.textContent = 'Закончить';
@@ -499,7 +511,11 @@ const UI = {
           ${owned ? 'Куплено на завтра' : `Купить за ${formatMoney(cost)} ₽`}
         </button>
       `;
-      if (!owned) card.querySelector('button').addEventListener('click', () => Game.buyBooster(b.id));
+      if (!owned)
+        card.querySelector('button').addEventListener('click', () => {
+          Sound.playUpgrade();
+          Game.buyBooster(b.id);
+        });
       el.appendChild(card);
     });
   },
@@ -507,6 +523,7 @@ const UI = {
   // --- End screens --------------------------------------------------------
 
   showCampaignEnd(state) {
+    Sound.playCampaignEnd();
     this.showScreen('end');
     document.getElementById('end-title').textContent = 'Карьера завершена!';
     document.getElementById('end-message').textContent =
@@ -515,6 +532,7 @@ const UI = {
   },
 
   showGameOver(state, result) {
+    Sound.playDayFail();
     this.showScreen('end');
     document.getElementById('end-title').textContent = 'Банкротство';
     document.getElementById('end-message').textContent =
@@ -532,6 +550,7 @@ const UI = {
   },
 
   showPurchaseCard(lot, price, { onDismiss = null, review = false } = {}) {
+    Sound.playCardOpen();
     this.purchaseCardDismiss = onDismiss;
 
     if (!review) this.revealAllLotFields();
@@ -570,6 +589,7 @@ const UI = {
 
   closePurchaseCard() {
     if (!this.isPurchaseCardOpen()) return;
+    Sound.playCardClose();
     document.getElementById('purchase-card-overlay').classList.add('hidden');
     const hintEl = document.getElementById('purchase-card-pause-hint');
     if (hintEl) hintEl.textContent = this.purchaseCardDefaultPauseHint;
@@ -592,6 +612,7 @@ const UI = {
     const img = document.getElementById('zoom-image');
     if (!modal || !img) return;
 
+    Sound.playZoomOpen();
     if (this._zoomCloseTimer) {
       clearTimeout(this._zoomCloseTimer);
       this._zoomCloseTimer = null;
@@ -611,6 +632,7 @@ const UI = {
     const modal = document.getElementById('zoom-modal');
     if (!modal || !modal.classList.contains('open')) return;
 
+    Sound.playZoomClose();
     modal.classList.remove('open');
     modal.setAttribute('aria-hidden', 'true');
 

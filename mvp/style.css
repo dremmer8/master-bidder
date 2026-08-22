@@ -87,6 +87,29 @@ h2 { margin-top: 0; }
   font-size: 0.9em;
 }
 .btn-secondary:hover:not(:disabled) { background: #343943; }
+
+.sound-toggle {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 50;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-dim);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1.05em;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.sound-toggle:hover { opacity: 1; background: var(--panel-light); }
+.sound-toggle:active { transform: scale(0.92); }
 .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .action-row {
