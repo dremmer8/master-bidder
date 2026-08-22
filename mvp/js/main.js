@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     Sound.playClick();
     Game.beginAuction();
   });
+  document.getElementById('btn-start-lot').addEventListener('click', () => {
+    Sound.playClick();
+    Game.startCurrentLot();
+  });
   document.getElementById('btn-buy').addEventListener('click', () => Game.onBuyClicked());
   document.getElementById('btn-skip').addEventListener('click', () => Game.onSkipClicked());
   document.getElementById('btn-finish-day').addEventListener('click', () => {
@@ -79,9 +83,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (e.code === 'Space') {
       const auctionActive = document.getElementById('screen-auction').classList.contains('active');
+      const startLotBtn = document.getElementById('btn-start-lot');
+      if (auctionActive && startLotBtn && !startLotBtn.classList.contains('hidden')) {
+        e.preventDefault();
+        Game.startCurrentLot();
+        return;
+      }
       if (auctionActive) {
         e.preventDefault();
         Game.onBuyClicked();
+      }
+    }
+    if (e.code === 'Enter') {
+      const auctionActive = document.getElementById('screen-auction').classList.contains('active');
+      const startLotBtn = document.getElementById('btn-start-lot');
+      if (auctionActive && startLotBtn && !startLotBtn.classList.contains('hidden')) {
+        e.preventDefault();
+        Game.startCurrentLot();
       }
     }
   });

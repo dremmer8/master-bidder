@@ -151,6 +151,39 @@ const UI = {
     this.renderActiveUpgrades(state);
   },
 
+  showLotStandby(state) {
+    document.getElementById('hud-lot-index').textContent = state.lots.length ? '1' : '—';
+    document.getElementById('lot-fade').classList.add('on');
+    document.getElementById('lot-image-wrap').classList.add('standby');
+    document.getElementById('lot-image').removeAttribute('src');
+    document.getElementById('familiar-badge').classList.add('hidden');
+    document.getElementById('lot-result-banner').className = 'lot-result-banner hidden';
+    this.clearLotOutcomeFx();
+
+    document.querySelectorAll('.reveal-field').forEach((el) => {
+      el.classList.remove('revealed', 'order-target');
+      el.querySelector('.field-value').textContent = '—';
+    });
+    document.getElementById('live-price').textContent = '—';
+    this.highlightOrderFields(state);
+
+    document.getElementById('btn-start-lot').classList.remove('hidden');
+    document.getElementById('btn-buy').classList.add('hidden');
+    document.getElementById('btn-skip').classList.add('hidden');
+    document.getElementById('btn-buy').disabled = true;
+    document.getElementById('btn-skip').disabled = true;
+    document.getElementById('btn-finish-day').disabled = false;
+    document.getElementById('zoom-hint').textContent = 'Нажмите «Начать торги (Пробел)», когда будете готовы';
+  },
+
+  hideLotStandby() {
+    document.getElementById('btn-start-lot').classList.add('hidden');
+    document.getElementById('btn-buy').classList.remove('hidden');
+    document.getElementById('btn-skip').classList.remove('hidden');
+    document.getElementById('lot-image-wrap').classList.remove('standby');
+    document.getElementById('zoom-hint').textContent = 'Нажмите на изображение, чтобы приблизить';
+  },
+
   renderEffectIcons(elId, items) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -258,6 +291,7 @@ const UI = {
   renderLot(lot, index, total, initialPrice) {
     document.getElementById('hud-lot-index').textContent = index + 1;
     document.getElementById('hud-lot-total').textContent = total;
+    document.getElementById('lot-image-wrap').classList.remove('standby');
     document.getElementById('lot-image').src = lot.imageUrl;
     document.getElementById('familiar-badge').classList.toggle('hidden', !lot.familiar);
 
@@ -270,6 +304,9 @@ const UI = {
     document.getElementById('btn-buy').disabled = false;
     document.getElementById('btn-skip').disabled = false;
     document.getElementById('btn-finish-day').disabled = false;
+    document.getElementById('btn-buy').classList.remove('hidden');
+    document.getElementById('btn-skip').classList.remove('hidden');
+    document.getElementById('btn-start-lot').classList.add('hidden');
     document.querySelectorAll('.rival-head.raised').forEach((h) => h.classList.remove('raised'));
 
     this.pendingValues = {

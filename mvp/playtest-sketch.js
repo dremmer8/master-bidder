@@ -13,6 +13,7 @@ const { chromium } = require('playwright');
   await page.waitForFunction(() => !document.getElementById('btn-start-day').disabled, null, { timeout: 15000 });
   await page.click('#btn-start-day');
   await page.waitForSelector('#screen-auction.active');
+  await page.click('#btn-start-lot');
   await page.waitForTimeout(1700);
   await page.screenshot({ path: 'shots/7-sketch-layout.png' });
 

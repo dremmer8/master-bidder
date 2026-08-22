@@ -13,6 +13,7 @@ const { chromium } = require('playwright');
   await page.waitForFunction(() => !document.getElementById('btn-start-day').disabled, null, { timeout: 15000 });
   await page.click('#btn-start-day');
   await page.waitForSelector('#screen-auction.active');
+  await page.click('#btn-start-lot');
 
   // buy every lot regardless of match, to get a mix of correct/incorrect in the report
   for (let i = 0; i < 14; i++) {

@@ -26,6 +26,9 @@ const { chromium } = require('playwright');
     if (!auctionActive) break;
     lotCount++;
 
+    const startBtn = await page.$('#btn-start-lot:not(.hidden)');
+    if (startBtn) await startBtn.click();
+
     // Wait for genre + period fields to reveal (2nd/3rd fields ~ 3000-4500ms)
     await page.waitForTimeout(4700);
 

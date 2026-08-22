@@ -479,7 +479,15 @@ const Game = {
     this.state.dayOrders.push(order);
     this.state.currentVenue = venueConfig.key;
     this.state.currentLotIndex = 0;
+    this.state.awaitingLotStart = true;
     UI.showAuctionScreen(this.state);
+    UI.showLotStandby(this.state);
+  },
+
+  startCurrentLot() {
+    if (!this.state.awaitingLotStart || this.state.lotResolved) return;
+    this.state.awaitingLotStart = false;
+    UI.hideLotStandby();
     this.presentLot({ revealFromBlack: true });
   },
 
@@ -547,7 +555,7 @@ const Game = {
   },
 
   onBuyClicked() {
-    if (this.state.lotResolved || this.state.fastForwarding) return;
+    if (this.state.awaitingLotStart || this.state.lotResolved || this.state.fastForwarding) return;
     const lot = this.state.lots[this.state.currentLotIndex];
     const price = computeLivePrice(lot, this.state.revealStep, getPriceStepPct(this.state));
     if (price > this.state.capital) {
@@ -589,7 +597,7 @@ const Game = {
   },
 
   onSkipClicked() {
-    if (this.state.lotResolved || this.state.fastForwarding) return;
+    if (this.state.awaitingLotStart || this.state.lotResolved || this.state.fastForwarding) return;
 
     const lot = this.state.lots[this.state.currentLotIndex];
     const startStep = this.state.revealStep;
@@ -625,7 +633,8 @@ const Game = {
   },
 
   onFinishDayClicked() {
-    if (this.state.lotResolved) return;
+    if (this.state.lotResolved && !this.state.awaitingLotStart) return;
+    this.state.awaitingLotStart = false;
     this.state.fastForwarding = false;
     this.clearLotTimers();
     Sound.stopTension();
