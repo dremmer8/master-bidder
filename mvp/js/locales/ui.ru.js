@@ -18,7 +18,10 @@ I18n.registerUI('ru', {
   'intro.rule3': 'Правильную покупку вы узнаете только в конце дня.',
   'intro.rule4': 'Ваш капитал — это жизнь: закончились деньги — карьера окончена. Рейтинга больше нет.',
   'intro.start': 'Начать карьеру',
+  'intro.continue': 'Продолжить карьеру',
+  'intro.newCareer': 'Новая карьера',
   'intro.editorLink': 'Редактор кампаний заказчиков',
+  'intro.newCareerConfirm': 'Начать новую карьеру? Текущий прогресс на этом устройстве будет удалён.',
 
   'brief.day': 'День',
   'brief.capital': 'Капитал:',
@@ -27,6 +30,8 @@ I18n.registerUI('ru', {
   'brief.enterHall': 'Выйти в зал',
   'brief.preloadBtn': 'Загрузка экспонатов ({loaded}/{total})…',
   'brief.preloadStatus': 'Подготовка зала: {loaded} из {total} картин',
+  'brief.resetProgress': 'Обнулить прогресс',
+  'brief.resetConfirm': 'Обнулить весь прогресс на этом устройстве и вернуться на титульный экран?',
 
   'auction.day': 'День',
   'auction.venue': 'Площадка:',

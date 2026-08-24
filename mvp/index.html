@@ -38,7 +38,10 @@
         <li data-i18n="intro.rule3">Правильную покупку вы узнаете только в конце дня.</li>
         <li data-i18n="intro.rule4">Ваш капитал — это жизнь: закончились деньги — карьера окончена. Рейтинга больше нет.</li>
       </ul>
-      <button id="btn-start-campaign" class="btn btn-primary" data-i18n="intro.start">Начать карьеру</button>
+      <div class="intro-actions">
+        <button id="btn-continue-campaign" class="btn btn-primary hidden" data-i18n="intro.continue">Продолжить карьеру</button>
+        <button id="btn-start-campaign" class="btn btn-secondary" data-i18n="intro.start">Начать карьеру</button>
+      </div>
       <p class="editor-link">
         <a href="gamedesign.html" data-i18n="intro.editorLink">Редактор кампаний заказчиков</a>
         ·
@@ -67,8 +70,13 @@
     </div>
 
     <footer class="brief-footer">
-      <div id="brief-preload-status" class="brief-preload-status hidden"></div>
-      <button id="btn-start-day" class="btn btn-primary" data-i18n="brief.enterHall">Выйти в зал</button>
+      <div class="brief-footer-row">
+        <button id="btn-reset-progress" class="btn btn-danger-ghost" type="button" data-i18n="brief.resetProgress">Обнулить прогресс</button>
+        <div class="brief-footer-actions">
+          <div id="brief-preload-status" class="brief-preload-status hidden"></div>
+          <button id="btn-start-day" class="btn btn-primary" data-i18n="brief.enterHall">Выйти в зал</button>
+        </div>
+      </div>
     </footer>
   </section>
 
@@ -254,6 +262,7 @@
 <script src="js/collectors.js"></script>
 <script src="js/campaign.js"></script>
 <script src="js/assets.js"></script>
+<script src="js/save.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

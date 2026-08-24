@@ -42,13 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('pointerdown', () => Sound.ensureUnlocked(), { once: true });
   document.addEventListener('keydown', () => Sound.ensureUnlocked(), { once: true });
 
+  document.getElementById('btn-continue-campaign').addEventListener('click', () => {
+    Sound.playClick();
+    Game.continueCampaign();
+  });
   document.getElementById('btn-start-campaign').addEventListener('click', () => {
     Sound.playClick();
+    if (SaveGame.hasSave() && !window.confirm(I18n.t('intro.newCareerConfirm'))) return;
     Game.startCampaign();
+    UI.refreshIntroContinue();
   });
   document.getElementById('btn-start-day').addEventListener('click', () => {
     Sound.playClick();
     Game.beginAuction();
+  });
+  document.getElementById('btn-reset-progress').addEventListener('click', () => {
+    Sound.playClick();
+    if (!window.confirm(I18n.t('brief.resetConfirm'))) return;
+    Game.resetProgress();
   });
   document.getElementById('btn-start-lot').addEventListener('click', () => {
     Sound.playClick();
@@ -67,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-restart-campaign').addEventListener('click', () => {
     Sound.playClick();
     Game.startCampaign();
+    UI.refreshIntroContinue();
   });
 
   document.getElementById('lot-image-wrap').addEventListener('click', () => UI.openZoom());

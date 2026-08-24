@@ -18,7 +18,10 @@ I18n.registerUI('en', {
   'intro.rule3': 'You only learn whether a purchase was correct at the end of the day.',
   'intro.rule4': 'Your capital is your lifeline: run out of money and your career is over. There is no rating score.',
   'intro.start': 'Start career',
+  'intro.continue': 'Continue career',
+  'intro.newCareer': 'New career',
   'intro.editorLink': 'Collector campaign editor',
+  'intro.newCareerConfirm': 'Start a new career? Current progress on this device will be erased.',
 
   'brief.day': 'Day',
   'brief.capital': 'Capital:',
@@ -27,6 +30,8 @@ I18n.registerUI('en', {
   'brief.enterHall': 'Enter the hall',
   'brief.preloadBtn': 'Loading artworks ({loaded}/{total})…',
   'brief.preloadStatus': 'Preparing the hall: {loaded} of {total} paintings',
+  'brief.resetProgress': 'Reset progress',
+  'brief.resetConfirm': 'Reset all progress on this device and return to the title screen?',
 
   'auction.day': 'Day',
   'auction.venue': 'Venue:',

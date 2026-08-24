@@ -56,9 +56,22 @@ const UI = {
     ['intro', 'brief', 'auction', 'report', 'end'].forEach((name) => {
       this.screens[name] = document.getElementById('screen-' + name);
     });
+    this.refreshIntroContinue();
+  },
+
+  refreshIntroContinue() {
+    const continueBtn = document.getElementById('btn-continue-campaign');
+    const startBtn = document.getElementById('btn-start-campaign');
+    if (!continueBtn || !startBtn) return;
+    const hasSave = typeof SaveGame !== 'undefined' && SaveGame.hasSave();
+    continueBtn.classList.toggle('hidden', !hasSave);
+    startBtn.classList.toggle('btn-primary', !hasSave);
+    startBtn.classList.toggle('btn-secondary', hasSave);
+    startBtn.textContent = I18n.t(hasSave ? 'intro.newCareer' : 'intro.start');
   },
 
   onLocaleChange() {
+    this.refreshIntroContinue();
     if (this._lastBriefState) {
       this.showBrief(this._lastBriefState, this._lastBriefCfg);
       this.updateBriefPreload(ImageCache.progress());

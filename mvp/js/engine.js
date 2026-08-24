@@ -402,8 +402,48 @@ const Game = {
   },
 
   startCampaign() {
+    SaveGame.clear();
     this.init();
     this.startDay();
+  },
+
+  /** Resume from localStorage. Returns false if nothing to load. */
+  continueCampaign() {
+    const data = SaveGame.loadRaw();
+    if (!data) return false;
+    this.init();
+    SaveGame.hydrate(this.state, data);
+    if (data.phase === 'report' && this.state.pendingResult) {
+      UI.showReport(this.state, this.state.pendingResult);
+      return true;
+    }
+    if (!this.state.pendingOrder || !this.state.lots.length) {
+      this.prepareDayLots();
+    } else {
+      ImageCache.preloadUrls(
+        this.state.lots.map((lot) => lot.imageUrl),
+        (progress) => UI.updateBriefPreload(progress)
+      );
+    }
+    UI.showBrief(this.state, this.state.dayConfig);
+    return true;
+  },
+
+  /** Wipe save and return to intro (used by brief "reset progress"). */
+  resetProgress() {
+    SaveGame.clear();
+    this.state = null;
+    UI._lastBriefState = null;
+    UI._lastBriefCfg = null;
+    UI._lastReportState = null;
+    UI._lastReportResult = null;
+    UI.showScreen('intro');
+    UI.refreshIntroContinue();
+  },
+
+  saveProgress(phase) {
+    if (!this.state) return;
+    SaveGame.write(this.state, phase);
   },
 
   prepareDayLots() {
@@ -448,6 +488,7 @@ const Game = {
     this.state.lotMasterLucky = this.state.upgrades.has('lot-master') && Math.random() < 0.1;
     this.prepareDayLots();
     UI.showBrief(this.state, cfg);
+    this.saveProgress('brief');
   },
 
   selectBranch(id) {
@@ -455,6 +496,7 @@ const Game = {
     this.state.selectedBranchId = id;
     this.prepareDayLots();
     UI.refreshBranchChoice(this.state);
+    this.saveProgress('brief');
   },
 
   buyUpgrade(id) {
@@ -468,6 +510,7 @@ const Game = {
     this.state.upgrades.add(id);
     UI.updateBriefCapital(this.state.capital);
     UI.refreshUpgradeShop(this.state);
+    this.saveProgress('brief');
   },
 
   buyBooster(id) {
@@ -483,6 +526,7 @@ const Game = {
     this.state.pendingBoosters.add(id);
     UI.updateReportCapital(this.state.capital);
     UI.refreshBoosterShop(this.state);
+    this.saveProgress('report');
   },
 
   creditOrders(orders) {
@@ -688,12 +732,16 @@ const Game = {
     // offer tonight, and the player can afford to buy every one of them.
     this.state.boosterOffers = shuffle(BOOSTERS.map((b) => b.id)).slice(0, getMaxDailyBoosters(this.state));
     UI.showReport(this.state, result);
+    // Persist right after the auction ends so refresh keeps the day report.
+    this.saveProgress('report');
   },
 
   continueAfterReport() {
     const result = this.state.pendingResult;
     if (!result.pass) {
+      SaveGame.clear();
       UI.showGameOver(this.state, result);
+      UI.refreshIntroContinue();
       return;
     }
     this.state.activeBoosters = new Set(this.state.pendingBoosters);
@@ -707,7 +755,9 @@ const Game = {
     }
     this.state.day += 1;
     if (this.state.day > CAMPAIGN_LENGTH) {
+      SaveGame.clear();
       UI.showCampaignEnd(this.state);
+      UI.refreshIntroContinue();
       return;
     }
     this.startDay();
