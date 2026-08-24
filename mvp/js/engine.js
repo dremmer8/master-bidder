@@ -248,6 +248,10 @@ function getSpeedFloor(state) {
 // in every venue session played that day. There is no more rating — the only
 // question is whether the balance stays non-negative (see GAME_DESIGN.md,
 // Loss Condition & Campaign Progression).
+function getClientBudgetRemaining(state) {
+  return state.clientBudgetRemaining ?? 0;
+}
+
 function computeSettlement(state) {
   const { dayOrders, purchasesToday, capital, dayStartCapital } = state;
   const speedFloor = getSpeedFloor(state);
@@ -336,13 +340,14 @@ function computeSettlement(state) {
     totalClawback += o.leftover;
   });
 
-  const net = Math.round(totalCommission - totalClawback);
+  // Client budget is a separate pool — clawback only returns unspent order
+  // funds to the collector; it never touched player capital.
+  const net = Math.round(totalCommission);
   const projectedCapital = capital + net;
   const pass = projectedCapital >= 0;
   const ordersFulfilled = orderStats.length > 0 && orderStats.every((o) => o.fulfilled);
-  // dayNet is the true start-to-end delta for the ledger; it also folds in
-  // spends that aren't visible above (elite ticket cost, personal overspend
-  // beyond an order's budget) so the ledger always reconciles exactly.
+  // dayNet is the true start-to-end delta for the player ledger; otherSpend
+  // captures workshop upgrades bought on the brief before the auction.
   const dayNet = projectedCapital - dayStartCapital;
   const otherSpend = dayNet - net;
 
@@ -367,6 +372,7 @@ const Game = {
     this.state = {
       day: 1,
       capital: STARTING_CAPITAL,
+      clientBudgetRemaining: 0,
       dayStartCapital: STARTING_CAPITAL,
       seenArtworkIds: new Set(),
       artworkPurchaseDays: {},
@@ -436,6 +442,7 @@ const Game = {
     this.state.dayConfig = cfg;
     this.state.dayOrders = [];
     this.state.purchasesToday = [];
+    this.state.clientBudgetRemaining = 0;
     // 'lot-master' rolls once per day, not per prepareDayLots() call, so
     // re-picking a branch on the brief screen can't be used to re-roll it.
     this.state.lotMasterLucky = this.state.upgrades.has('lot-master') && Math.random() < 0.1;
@@ -454,7 +461,7 @@ const Game = {
     const upgrade = META_UPGRADES.find((u) => u.id === id);
     if (!upgrade || this.state.upgrades.has(id)) return;
     if (this.state.capital < upgrade.cost) {
-      UI.flashInsufficientFunds();
+      UI.flashInsufficientFunds('player');
       return;
     }
     this.state.capital -= upgrade.cost;
@@ -469,7 +476,7 @@ const Game = {
     if (this.state.pendingBoosters.size >= getMaxDailyBoosters(this.state)) return;
     const cost = getBoosterCost(booster, this.state);
     if (this.state.capital < cost) {
-      UI.flashInsufficientFunds();
+      UI.flashInsufficientFunds('player');
       return;
     }
     this.state.capital -= cost;
@@ -480,7 +487,7 @@ const Game = {
 
   creditOrders(orders) {
     const total = orders.reduce((sum, o) => sum + o.budget, 0);
-    this.state.capital += total;
+    this.state.clientBudgetRemaining = total;
   },
 
   beginAuction() {
@@ -570,14 +577,14 @@ const Game = {
     if (this.state.awaitingLotStart || this.state.lotResolved || this.state.fastForwarding) return;
     const lot = this.state.lots[this.state.currentLotIndex];
     const price = computeLivePrice(lot, this.state.revealStep, getPriceStepPct(this.state));
-    if (price > this.state.capital) {
-      UI.flashInsufficientFunds();
+    if (price > getClientBudgetRemaining(this.state)) {
+      UI.flashInsufficientFunds('client');
       return;
     }
     this.clearLotTimers();
     Sound.stopTension();
     this.state.lotResolved = true;
-    this.state.capital -= price;
+    this.state.clientBudgetRemaining -= price;
     this.state.artworkPurchaseDays[lot.id] = this.state.day;
     this.state.purchasesToday.push({
       id: lot.id,
@@ -591,7 +598,7 @@ const Game = {
       venue: this.state.currentVenue,
     });
     UI.showLotResult('won');
-    UI.updateCapitalDisplays(this.state.capital);
+    UI.updateClientBudgetDisplays(getClientBudgetRemaining(this.state));
     UI.showPurchaseCard(lot, price, { onDismiss: () => this.advanceLot() });
   },
 

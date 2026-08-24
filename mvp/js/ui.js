@@ -215,7 +215,7 @@ const UI = {
     document.getElementById('hud-day').textContent = state.day;
     document.getElementById('hud-venue').textContent = uiVenueLabel(state.currentVenue);
     document.getElementById('hud-lot-total').textContent = state.lots.length;
-    this.updateCapitalDisplays(state.capital);
+    this.updateClientBudgetDisplays(getClientBudgetRemaining(state));
     this.renderOrderBrief(state);
     this.renderActiveBoosters(state);
     this.renderActiveUpgrades(state);
@@ -235,6 +235,9 @@ const UI = {
       el.querySelector('.field-value').textContent = '—';
     });
     document.getElementById('live-price').textContent = '—';
+    if (typeof Game !== 'undefined' && Game.state) {
+      this.updateClientBudgetDisplays(getClientBudgetRemaining(Game.state));
+    }
     this.highlightOrderFields(state);
 
     document.getElementById('btn-start-lot').classList.remove('hidden');
@@ -354,15 +357,27 @@ const UI = {
     });
   },
 
-  updateCapitalDisplays(capital) {
-    document.getElementById('hud-capital').textContent = formatMoney(capital);
+  updateClientBudgetDisplays(clientBudget) {
+    document.getElementById('hud-capital').textContent = formatMoney(clientBudget);
     const live = document.getElementById('live-capital');
-    if (live) live.textContent = I18n.formatMoneyWithCurrency(capital);
+    if (live) live.textContent = I18n.formatMoneyWithCurrency(clientBudget);
   },
 
-  flashInsufficientFunds() {
+  updateBuyAffordability(price, clientBudget) {
+    const btn = document.getElementById('btn-buy');
+    if (!btn || btn.classList.contains('hidden')) return;
+    if (typeof Game !== 'undefined' && Game.state) {
+      const s = Game.state;
+      if (s.lotResolved || s.awaitingLotStart || s.fastForwarding) return;
+    }
+    btn.disabled = price > clientBudget;
+  },
+
+  flashInsufficientFunds(kind = 'player') {
     Sound.playError();
     const hint = document.getElementById('insufficient-funds-hint');
+    hint.textContent =
+      kind === 'client' ? I18n.t('auction.insufficientClientBudget') : I18n.t('auction.insufficientFunds');
     hint.classList.remove('hidden');
     if (this.insufficientFundsTimer) clearTimeout(this.insufficientFundsTimer);
     this.insufficientFundsTimer = setTimeout(() => hint.classList.add('hidden'), 1200);
@@ -398,7 +413,9 @@ const UI = {
 
     this.updateLiveEconomics(initialPrice, { animate: false });
     if (typeof Game !== 'undefined' && Game.state) {
-      this.updateCapitalDisplays(Game.state.capital);
+      const clientBudget = getClientBudgetRemaining(Game.state);
+      this.updateClientBudgetDisplays(clientBudget);
+      this.updateBuyAffordability(initialPrice, clientBudget);
     }
     this.zoomSrc = lot.imageUrl;
     if (typeof Game !== 'undefined' && Game.state) this.highlightOrderFields(Game.state);
@@ -473,6 +490,10 @@ const UI = {
     const priceEl = document.getElementById('live-price');
     const fromPrice = this._livePrice ?? price;
     this._livePrice = price;
+
+    if (typeof Game !== 'undefined' && Game.state) {
+      this.updateBuyAffordability(price, getClientBudgetRemaining(Game.state));
+    }
 
     if (!animate || fromPrice === price) {
       if (this._econAnim) {
@@ -625,7 +646,6 @@ const UI = {
     document.getElementById('report-ledger').innerHTML = `
       <div class="ledger-row"><span>${I18n.t('report.ledger.start')}</span><span>${I18n.formatMoneyWithCurrency(result.startingCapital)}</span></div>
       <div class="ledger-row ${result.totalCommission >= 0 ? 'positive' : 'negative'}"><span>${I18n.t('report.ledger.commission')}</span><span>${netSign}${I18n.formatMoneyWithCurrency(Math.abs(result.totalCommission))}</span></div>
-      <div class="ledger-row negative"><span>${I18n.t('report.ledger.clawback')}</span><span>−${I18n.formatMoneyWithCurrency(result.totalClawback)}</span></div>
       ${otherRow}
       ${creditLineRow}
       <div class="ledger-row total"><span>${I18n.t('report.ledger.end')}</span><span>${I18n.formatMoneyWithCurrency(result.projectedCapital)}</span></div>
