@@ -2,7 +2,7 @@
 // Game logic keeps Russian canonical values (periodRu, genreRu, etc.) for matching.
 
 const I18n = {
-  locale: 'ru',
+  locale: 'en',
   ui: { ru: {}, en: {} },
   content: null,
 
@@ -30,8 +30,8 @@ const I18n = {
     } catch (_) {}
 
     const nav = (navigator.language || '').slice(0, 2).toLowerCase();
-    if (nav === 'en') return 'en';
-    return 'ru';
+    if (nav === 'ru') return 'ru';
+    return 'en';
   },
 
   getLocale() {
