@@ -49,6 +49,7 @@ I18n.registerUI('en', {
   'auction.insufficientClientBudget': 'Insufficient client budget!',
   'auction.startLot': 'Start bidding (Space)',
   'auction.buy': 'BUY! (Space)',
+  'auction.noFunds': 'NO FUNDS',
   'auction.skip': 'Skip',
   'auction.finishDay': 'End day',
   'auction.zoomHint': 'Click the image to zoom in',
@@ -122,6 +123,11 @@ I18n.registerUI('en', {
   'purchaseCard.close': 'Close',
   'purchaseCard.reviewHint': 'Purchased lot card. Close to return to the day summary.',
   'purchaseCard.zoomAlt': 'Artwork close-up',
+
+  'collectorPopup.kicker': 'Client Instructions',
+  'collectorPopup.speech': '"Please only buy artworks for me that match the following criteria:"',
+  'collectorPopup.warning': 'Buying non-matching artworks will waste our budget and result in penalties.',
+  'collectorPopup.startBidding': 'Start bidding (Space)',
 
   'shop.owned': 'Owned',
   'shop.buyFor': 'Buy for {price}',

@@ -26,6 +26,9 @@ const { chromium } = require('playwright');
     if (!auctionActive) break;
     lotCount++;
 
+    const popupStart = await page.$('#btn-collector-popup-start:visible');
+    if (popupStart) await popupStart.click();
+
     const startBtn = await page.$('#btn-start-lot:not(.hidden)');
     if (startBtn) await startBtn.click();
 

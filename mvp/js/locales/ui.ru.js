@@ -49,6 +49,7 @@ I18n.registerUI('ru', {
   'auction.insufficientClientBudget': 'Недостаточно бюджета заказчика!',
   'auction.startLot': 'Начать торги (Пробел)',
   'auction.buy': 'КУПИТЬ! (Пробел)',
+  'auction.noFunds': 'НЕТ ДЕНЕГ',
   'auction.skip': 'Пропустить',
   'auction.finishDay': 'Закончить день',
   'auction.zoomHint': 'Нажмите на изображение, чтобы приблизить',
@@ -123,6 +124,11 @@ I18n.registerUI('ru', {
   'purchaseCard.close': 'Закрыть',
   'purchaseCard.reviewHint': 'Визиточка купленного лота. Закройте, чтобы вернуться к итогам дня.',
   'purchaseCard.zoomAlt': 'Экспонат крупным планом',
+
+  'collectorPopup.kicker': 'Инструктаж заказчика',
+  'collectorPopup.speech': '«Пожалуйста, покупайте для меня только картины со следующими параметрами:»',
+  'collectorPopup.warning': 'Покупка неподходящих картин приведет к штрафу и растрате бюджета.',
+  'collectorPopup.startBidding': 'Начать торги (Пробел)',
 
   'shop.owned': 'Приобретено',
   'shop.buyFor': 'Купить за {price}',

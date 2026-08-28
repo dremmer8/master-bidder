@@ -180,6 +180,15 @@ h2 { margin-top: 0; }
 .btn-start-lot:hover { background: #e0b04a; }
 .btn-buy:hover { background: #5fc990; }
 .btn-buy:disabled { background: #3a3f47; color: #6a7079; cursor: not-allowed; }
+.btn-buy.no-funds,
+.btn-buy.no-funds:disabled,
+.btn-buy.no-funds:hover {
+  background: #e67e22;
+  color: #16181d;
+  border-color: #d35400;
+  cursor: not-allowed;
+  font-weight: 700;
+}
 
 .btn-skip {
   width: 100%;
@@ -1125,6 +1134,159 @@ h2 { margin-top: 0; }
   max-height: 92vh;
   border-radius: 6px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* --- Collector briefing popup --- */
+.collector-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 10, 14, 0.85);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.collector-popup-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.collector-popup {
+  width: min(640px, 100%);
+  max-height: min(90vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 28px rgba(212, 161, 58, 0.16);
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform 0.2s ease;
+}
+.collector-popup-overlay.open .collector-popup {
+  transform: scale(1);
+}
+.collector-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #1a1d24;
+  border-bottom: 1px solid #3a3f47;
+}
+.collector-popup-kicker {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+}
+.collector-popup-body {
+  display: flex;
+  gap: 20px;
+  padding: 22px 24px;
+  overflow-y: auto;
+  align-items: flex-start;
+}
+.collector-popup-portrait {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--accent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(212, 161, 58, 0.25);
+  flex-shrink: 0;
+  background: #12141a;
+}
+.collector-popup-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+.collector-popup-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.collector-popup-name {
+  margin: 0;
+  font-size: 1.35em;
+  line-height: 1.2;
+  color: var(--accent);
+  font-weight: 700;
+}
+.collector-popup-tagline {
+  margin: 0 0 6px;
+  font-size: 0.88em;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.35;
+}
+.collector-popup-message {
+  background: #181b22;
+  border: 1px solid #323742;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.collector-popup-speech {
+  margin: 0;
+  font-size: 0.98em;
+  color: var(--text);
+  line-height: 1.45;
+}
+.collector-popup-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0;
+}
+.collector-popup-tags .order-brief-tags {
+  gap: 8px;
+}
+.collector-popup-tags .order-tag {
+  font-size: 0.88em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(212, 161, 58, 0.2);
+  border: 1px solid var(--accent);
+  color: #f7d58b;
+}
+.collector-popup-tags .order-tag-label {
+  color: #e0ca9b;
+  font-size: 0.95em;
+}
+.collector-popup-warning {
+  margin: 0;
+  font-size: 0.82em;
+  color: #e08b79;
+  line-height: 1.35;
+  border-top: 1px solid rgba(224, 106, 82, 0.2);
+  padding-top: 8px;
+}
+.collector-popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 20px;
+  background: #1a1d24;
+  border-top: 1px solid #3a3f47;
+}
+.btn-collector-start {
+  width: 100%;
+  font-size: 1.1em;
+  padding: 12px 20px;
+  font-weight: 700;
 }
 
 /* --- Purchase visiting card --- */

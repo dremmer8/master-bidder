@@ -93,11 +93,33 @@ const UI = {
             el.querySelector('.field-value').textContent = fields[f];
           }
         });
+        const price = computeLivePrice(lot, Game.state.revealStep, getPriceStepPct(Game.state));
+        this.updateBuyAffordability(price, getClientBudgetRemaining(Game.state));
       }
+    }
+    if (this._lastCollectorOrder && this.isCollectorPopupOpen()) {
+      const order = this._lastCollectorOrder;
+      const nameEl = document.getElementById('collector-popup-name');
+      if (nameEl) nameEl.textContent = uiCollectorName(order);
+      const taglineEl = document.getElementById('collector-popup-tagline');
+      if (taglineEl) {
+        taglineEl.textContent = order.taglineRu
+          ? I18n.entity('collectors', order.collectorId, 'tagline', order.taglineRu)
+          : '';
+      }
+      const speechEl = document.getElementById('collector-popup-speech');
+      if (speechEl) speechEl.textContent = I18n.t('collectorPopup.speech');
+      const tagsEl = document.getElementById('collector-popup-tags');
+      if (tagsEl) tagsEl.innerHTML = this.buildOrderTagsMarkup(order);
+      const warningEl = document.getElementById('collector-popup-warning');
+      if (warningEl) warningEl.textContent = I18n.t('collectorPopup.warning');
+      const startBtn = document.getElementById('btn-collector-popup-start');
+      if (startBtn) startBtn.textContent = I18n.t('collectorPopup.startBidding');
     }
   },
 
   showScreen(name) {
+    this.closeCollectorPopup({ startBidding: false });
     Object.values(this.screens).forEach((s) => s.classList.remove('active'));
     this.screens[name].classList.add('active');
   },
@@ -254,9 +276,12 @@ const UI = {
     this.highlightOrderFields(state);
 
     document.getElementById('btn-start-lot').classList.remove('hidden');
-    document.getElementById('btn-buy').classList.add('hidden');
+    const btnBuy = document.getElementById('btn-buy');
+    btnBuy.classList.add('hidden');
+    btnBuy.classList.remove('no-funds');
+    btnBuy.disabled = true;
+    btnBuy.textContent = I18n.t('auction.buy');
     document.getElementById('btn-skip').classList.add('hidden');
-    document.getElementById('btn-buy').disabled = true;
     document.getElementById('btn-skip').disabled = true;
     document.getElementById('btn-finish-day').disabled = false;
     document.getElementById('zoom-hint').textContent = I18n.t('auction.zoomHintStandby');
@@ -383,7 +408,10 @@ const UI = {
       const s = Game.state;
       if (s.lotResolved || s.awaitingLotStart || s.fastForwarding) return;
     }
-    btn.disabled = price > clientBudget;
+    const noFunds = price > clientBudget;
+    btn.disabled = noFunds;
+    btn.classList.toggle('no-funds', noFunds);
+    btn.textContent = noFunds ? I18n.t('auction.noFunds') : I18n.t('auction.buy');
   },
 
   flashInsufficientFunds(kind = 'player') {
@@ -409,11 +437,17 @@ const UI = {
 
     this.clearLotOutcomeFx();
 
-    document.getElementById('btn-buy').disabled = false;
-    document.getElementById('btn-skip').disabled = false;
+    const btnBuy = document.getElementById('btn-buy');
+    btnBuy.disabled = false;
+    btnBuy.classList.remove('no-funds');
+    btnBuy.textContent = I18n.t('auction.buy');
+    btnBuy.classList.remove('hidden');
+
+    const btnSkip = document.getElementById('btn-skip');
+    btnSkip.disabled = false;
+    btnSkip.classList.remove('hidden');
+
     document.getElementById('btn-finish-day').disabled = false;
-    document.getElementById('btn-buy').classList.remove('hidden');
-    document.getElementById('btn-skip').classList.remove('hidden');
     document.getElementById('btn-start-lot').classList.add('hidden');
     document.querySelectorAll('.rival-head.raised').forEach((h) => h.classList.remove('raised'));
 
@@ -559,7 +593,10 @@ const UI = {
     banner.textContent = texts[kind] || '';
     banner.className = 'lot-result-banner ' + kind;
     banner.classList.remove('hidden');
-    document.getElementById('btn-buy').disabled = true;
+    const btnBuy = document.getElementById('btn-buy');
+    btnBuy.disabled = true;
+    btnBuy.classList.remove('no-funds');
+    btnBuy.textContent = I18n.t('auction.buy');
     document.getElementById('btn-skip').disabled = true;
     document.getElementById('btn-finish-day').disabled = true;
     this.playLotOutcomeFx(kind);
@@ -866,5 +903,72 @@ const UI = {
     const img = document.getElementById('purchase-card-image');
     if (!img || !img.src) return;
     this.openZoom(img.src, img.alt);
+  },
+
+  showCollectorBriefPopup(order, onStart) {
+    this._lastCollectorOrder = order;
+    this.collectorPopupOnStart = onStart;
+    const overlay = document.getElementById('collector-popup-overlay');
+    if (!overlay) {
+      if (onStart) onStart();
+      return;
+    }
+
+    const portrait = document.getElementById('collector-popup-portrait-img');
+    if (portrait) {
+      portrait.src = order.portraitUrl || '';
+      portrait.alt = uiCollectorName(order);
+    }
+    const nameEl = document.getElementById('collector-popup-name');
+    if (nameEl) nameEl.textContent = uiCollectorName(order);
+
+    const taglineEl = document.getElementById('collector-popup-tagline');
+    if (taglineEl) {
+      taglineEl.textContent = order.taglineRu
+        ? I18n.entity('collectors', order.collectorId, 'tagline', order.taglineRu)
+        : '';
+    }
+
+    const speechEl = document.getElementById('collector-popup-speech');
+    if (speechEl) speechEl.textContent = I18n.t('collectorPopup.speech');
+
+    const tagsEl = document.getElementById('collector-popup-tags');
+    if (tagsEl) {
+      tagsEl.innerHTML = this.buildOrderTagsMarkup(order);
+    }
+
+    const warningEl = document.getElementById('collector-popup-warning');
+    if (warningEl) warningEl.textContent = I18n.t('collectorPopup.warning');
+
+    const startBtn = document.getElementById('btn-collector-popup-start');
+    if (startBtn) startBtn.textContent = I18n.t('collectorPopup.startBidding');
+
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+      startBtn?.focus();
+    });
+  },
+
+  isCollectorPopupOpen() {
+    const overlay = document.getElementById('collector-popup-overlay');
+    return overlay && !overlay.classList.contains('hidden');
+  },
+
+  closeCollectorPopup({ startBidding = true } = {}) {
+    const overlay = document.getElementById('collector-popup-overlay');
+    if (!overlay || overlay.classList.contains('hidden')) return;
+    overlay.classList.remove('open');
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+
+    if (startBidding && this.collectorPopupOnStart) {
+      const cb = this.collectorPopupOnStart;
+      this.collectorPopupOnStart = null;
+      cb();
+    } else {
+      this.collectorPopupOnStart = null;
+    }
   },
 };

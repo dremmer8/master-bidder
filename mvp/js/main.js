@@ -101,12 +101,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-purchase-card-collapse')?.addEventListener('click', () => UI.closePurchaseCard());
   document.getElementById('btn-purchase-card-continue')?.addEventListener('click', () => UI.closePurchaseCard());
+  document.getElementById('btn-collector-popup-start')?.addEventListener('click', () => {
+    Sound.playClick();
+    UI.closeCollectorPopup({ startBidding: true });
+  });
 
   document.addEventListener('keydown', (e) => {
     if (UI.isZoomOpen()) {
       if (e.code === 'Escape' || e.code === 'Space') {
         e.preventDefault();
         UI.closeZoom();
+      }
+      return;
+    }
+    if (UI.isCollectorPopupOpen()) {
+      if (e.code === 'Escape' || e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        Sound.playClick();
+        UI.closeCollectorPopup({ startBidding: true });
       }
       return;
     }

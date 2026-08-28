@@ -477,12 +477,18 @@ const Game = {
     if (this.state.upgrades.has('investment-portfolio')) {
       this.state.capital = Math.round(this.state.capital * 1.01);
     }
+    this.clearLotTimers();
     this.state.dayStartCapital = this.state.capital;
     const cfg = getWorldConfig(this.state.day, this.state);
     this.state.dayConfig = cfg;
     this.state.dayOrders = [];
     this.state.purchasesToday = [];
     this.state.clientBudgetRemaining = 0;
+    this.state.lotResolved = false;
+    this.state.fastForwarding = false;
+    this.state.awaitingLotStart = true;
+    this.state.currentLotIndex = 0;
+    this.state.revealStep = 0;
     // 'lot-master' rolls once per day, not per prepareDayLots() call, so
     // re-picking a branch on the brief screen can't be used to re-roll it.
     this.state.lotMasterLucky = this.state.upgrades.has('lot-master') && Math.random() < 0.1;
@@ -538,18 +544,28 @@ const Game = {
     if (!ImageCache.isReady()) return;
     const order = this.state.pendingOrder;
     const venueConfig = this.state.pendingVenueConfig;
+    this.clearLotTimers();
     this.creditOrders([order]);
     this.state.dayOrders.push(order);
     this.state.currentVenue = venueConfig.key;
     this.state.currentLotIndex = 0;
+    this.state.lotResolved = false;
+    this.state.fastForwarding = false;
     this.state.awaitingLotStart = true;
+    this.state.revealStep = 0;
     UI.showAuctionScreen(this.state);
     UI.showLotStandby(this.state);
+    UI.showCollectorBriefPopup(order, () => {
+      this.startCurrentLot();
+    });
   },
 
   startCurrentLot() {
-    if (!this.state.awaitingLotStart || this.state.lotResolved) return;
+    if (!this.state.awaitingLotStart) return;
+    UI.closeCollectorPopup({ startBidding: false });
     this.state.awaitingLotStart = false;
+    this.state.lotResolved = false;
+    this.state.fastForwarding = false;
     UI.hideLotStandby();
     this.presentLot({ revealFromBlack: true });
   },
@@ -668,7 +684,10 @@ const Game = {
 
     this.state.fastForwarding = true;
     document.getElementById('btn-skip').disabled = true;
-    document.getElementById('btn-buy').disabled = true;
+    const btnBuy = document.getElementById('btn-buy');
+    btnBuy.disabled = true;
+    btnBuy.classList.remove('no-funds');
+    btnBuy.textContent = I18n.t('auction.buy');
     this.clearLotTimers();
     Sound.playSkip();
 

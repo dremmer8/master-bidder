@@ -20,7 +20,12 @@ const { chromium } = require('playwright');
 
   await page.click('#btn-start-day');
   await page.waitForSelector('#screen-auction.active');
-  await page.click('#btn-start-lot');
+  const popupStart = await page.$('#btn-collector-popup-start:visible');
+  if (popupStart) {
+    await popupStart.click();
+  } else {
+    await page.click('#btn-start-lot');
+  }
   await page.waitForTimeout(1700); // let title field reveal
   await page.screenshot({ path: 'shots/3-auction-mid-reveal.png' });
 

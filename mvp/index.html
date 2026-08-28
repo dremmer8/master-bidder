@@ -208,6 +208,32 @@
     </div>
   </div>
 
+  <!-- COLLECTOR BRIEFING POPUP (shown upon entering auction hall) -->
+  <div id="collector-popup-overlay" class="collector-popup-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="collector-popup-name">
+    <div class="collector-popup">
+      <header class="collector-popup-header">
+        <div class="collector-popup-kicker" data-i18n="collectorPopup.kicker">Инструктаж заказчика</div>
+      </header>
+      <div class="collector-popup-body">
+        <div class="collector-popup-portrait">
+          <img id="collector-popup-portrait-img" src="" alt="">
+        </div>
+        <div class="collector-popup-details">
+          <h2 id="collector-popup-name" class="collector-popup-name"></h2>
+          <p id="collector-popup-tagline" class="collector-popup-tagline"></p>
+          <div class="collector-popup-message">
+            <p id="collector-popup-speech" class="collector-popup-speech" data-i18n="collectorPopup.speech">«Пожалуйста, покупайте для меня только картины со следующими параметрами:»</p>
+            <div id="collector-popup-tags" class="collector-popup-tags"></div>
+            <p id="collector-popup-warning" class="collector-popup-warning" data-i18n="collectorPopup.warning">Покупка неподходящих картин приведет к штрафу и растрате бюджета.</p>
+          </div>
+        </div>
+      </div>
+      <footer class="collector-popup-footer">
+        <button type="button" id="btn-collector-popup-start" class="btn btn-primary btn-collector-start" data-i18n="collectorPopup.startBidding">Начать торги (Пробел)</button>
+      </footer>
+    </div>
+  </div>
+
   <!-- PURCHASE VISITING CARD (pauses auction until player dismisses) -->
   <div id="purchase-card-overlay" class="purchase-card-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="purchase-card-title">
     <div class="purchase-card">
