@@ -43,6 +43,9 @@ namespace NineSlice3D.Editor
             DrawHeader();
 
             EditorGUILayout.Space(6);
+            DrawPaintingConfigSection();
+
+            EditorGUILayout.Space(6);
             DrawEditModeToolbar();
 
             EditorGUILayout.Space(6);
@@ -74,6 +77,37 @@ namespace NineSlice3D.Editor
                 Vector3 orig = slicer.OriginalSizeMeters;
                 Vector3 origCm = orig * 100f;
                 EditorGUILayout.LabelField($"Original Size: {origCm.x:F1}cm × {origCm.y:F1}cm × {origCm.z:F1}cm ({orig.x:F3}m × {orig.y:F3}m × {orig.z:F3}m)", EditorStyles.miniBoldLabel);
+            }
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawPaintingConfigSection()
+        {
+            SerializedProperty configProp = serializedObject.FindProperty("activePaintingConfig");
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(configProp, new GUIContent("Painting Config Asset"));
+            if (EditorGUI.EndChangeCheck())
+            {
+                serializedObject.ApplyModifiedProperties();
+                if (configProp.objectReferenceValue != null)
+                {
+                    PaintingData config = configProp.objectReferenceValue as PaintingData;
+                    slicer.ApplyPaintingConfig(config);
+                    EditorUtility.SetDirty(slicer);
+                }
+            }
+
+            if (configProp.objectReferenceValue != null)
+            {
+                PaintingData config = configProp.objectReferenceValue as PaintingData;
+                EditorGUILayout.LabelField($"Loaded: {config.paintingTitle} ({config.width}×{config.height} cm)", EditorStyles.miniBoldLabel);
+                if (GUILayout.Button("Re-apply Config to Mesh"))
+                {
+                    slicer.ApplyPaintingConfig(config);
+                    EditorUtility.SetDirty(slicer);
+                }
             }
             EditorGUILayout.EndVertical();
         }

@@ -22,6 +22,10 @@ namespace NineSlice3D
             public Matrix4x4 rootToLocal;
         }
 
+        [Header("Active Painting Config")]
+        [Tooltip("Assign a PaintingData config asset to automatically set dimensions and albedo texture.")]
+        [SerializeField] private PaintingData activePaintingConfig;
+
         [Header("Size & Units")]
         [Tooltip("The unit of measurement used in the inspector fields below.")]
         [SerializeField] private MeasurementUnit measurementUnit = MeasurementUnit.Centimeters;
@@ -60,6 +64,19 @@ namespace NineSlice3D
         private bool isDirty = false;
 
         #region Properties
+
+        public PaintingData ActivePainting
+        {
+            get => activePaintingConfig;
+            set
+            {
+                activePaintingConfig = value;
+                if (activePaintingConfig != null)
+                {
+                    ApplyPaintingConfig(activePaintingConfig);
+                }
+            }
+        }
 
         public MeasurementUnit DisplayUnit
         {
@@ -617,6 +634,14 @@ namespace NineSlice3D
         #endregion
 
         #region Public Runtime Sizing API
+
+        public void ApplyPaintingConfig(PaintingData config)
+        {
+            if (config == null) return;
+            activePaintingConfig = config;
+            config.ApplyTo(this);
+            SetDirty();
+        }
 
         /// <summary>
         /// Sets the size of the mesh at runtime in specified units.
