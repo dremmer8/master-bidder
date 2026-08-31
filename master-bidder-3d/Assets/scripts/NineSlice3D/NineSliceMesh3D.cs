@@ -10,6 +10,13 @@ namespace NineSlice3D
     public class NineSliceMesh3D : MonoBehaviour
     {
         [Serializable]
+        public class SourceMeshBinding
+        {
+            public MeshFilter filter;
+            public Mesh sourceMesh;
+        }
+
+        [Serializable]
         public class MeshData
         {
             public MeshFilter filter;
@@ -61,6 +68,7 @@ namespace NineSlice3D
 
         [SerializeField, HideInInspector] private Bounds originalCombinedBounds;
         [SerializeField, HideInInspector] private bool isInitialized = false;
+        [SerializeField, HideInInspector] private List<SourceMeshBinding> sourceMeshBindings = new List<SourceMeshBinding>();
 
         private readonly List<MeshData> meshDataList = new List<MeshData>();
         private MaterialPropertyBlock propertyBlock;
@@ -192,17 +200,30 @@ namespace NineSlice3D
         private void Awake()
         {
             if (propertyBlock == null) propertyBlock = new MaterialPropertyBlock();
-            InitializeMeshes(forceRebind: false);
+            InitializeMeshes(forceRebind: true);
+            ApplyDeformation();
         }
 
         private void OnEnable()
         {
             if (propertyBlock == null) propertyBlock = new MaterialPropertyBlock();
-            if (!isInitialized || meshDataList.Count == 0)
+            if (meshDataList.Count == 0 || NeedsRebind())
             {
                 InitializeMeshes(forceRebind: true);
             }
             ApplyDeformation();
+        }
+
+        private void Start()
+        {
+            if (activePaintingConfig != null)
+            {
+                ApplyPaintingConfig(activePaintingConfig);
+            }
+            else
+            {
+                ApplyDeformation();
+            }
         }
 
         private void Update()
@@ -222,9 +243,39 @@ namespace NineSlice3D
             SetDirty();
         }
 
+        private void OnDisable()
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                // In Editor, restore source meshes on filters so scene saving doesn't save null mesh overrides
+                foreach (var item in meshDataList)
+                {
+                    if (item.filter != null && item.sourceMesh != null)
+                    {
+                        item.filter.sharedMesh = item.sourceMesh;
+                    }
+                }
+            }
+#endif
+        }
+
         private void OnDestroy()
         {
             CleanupInstancedMeshes();
+        }
+
+        private bool NeedsRebind()
+        {
+            if (meshDataList.Count == 0) return true;
+            foreach (var item in meshDataList)
+            {
+                if (item.filter == null || item.instancedMesh == null || item.filter.sharedMesh != item.instancedMesh)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         #endregion
@@ -233,7 +284,7 @@ namespace NineSlice3D
 
         public void InitializeMeshes(bool forceRebind = false)
         {
-            if (isInitialized && !forceRebind && meshDataList.Count > 0)
+            if (isInitialized && !forceRebind && meshDataList.Count > 0 && !NeedsRebind())
             {
                 return;
             }
@@ -263,14 +314,55 @@ namespace NineSlice3D
 
             foreach (var mf in filters)
             {
-                if (mf == null || mf.sharedMesh == null) continue;
+                if (mf == null) continue;
 
-                Mesh src = mf.sharedMesh;
-                if (!src.isReadable)
+                Mesh src = null;
+
+                // 1. Check if mf.sharedMesh is an original asset mesh
+                if (mf.sharedMesh != null && !mf.sharedMesh.name.EndsWith("_9Sliced"))
                 {
+                    src = mf.sharedMesh;
+                }
+
+                // 2. Check saved serialized binding
+                if (src == null)
+                {
+                    var binding = sourceMeshBindings.Find(b => b.filter == mf);
+                    if (binding != null && binding.sourceMesh != null)
+                    {
+                        src = binding.sourceMesh;
+                    }
+                }
+
+                // 3. Fallback in Editor from prefab source
 #if UNITY_EDITOR
-                    Debug.LogWarning($"[NineSliceMesh3D] Mesh '{src.name}' is not readable. Enable 'Read/Write' in its FBX import settings.", this);
+                if (src == null)
+                {
+                    MeshFilter prefabMf = UnityEditor.PrefabUtility.GetCorrespondingObjectFromSource(mf);
+                    if (prefabMf != null && prefabMf.sharedMesh != null)
+                    {
+                        src = prefabMf.sharedMesh;
+                    }
+                }
 #endif
+
+                // 4. Fallback if sharedMesh was already instanced
+                if (src == null && mf.sharedMesh != null)
+                {
+                    src = mf.sharedMesh;
+                }
+
+                if (src == null) continue;
+
+                // Save or update serialized binding
+                var existingBinding = sourceMeshBindings.Find(b => b.filter == mf);
+                if (existingBinding != null)
+                {
+                    existingBinding.sourceMesh = src;
+                }
+                else
+                {
+                    sourceMeshBindings.Add(new SourceMeshBinding { filter = mf, sourceMesh = src });
                 }
 
                 Matrix4x4 localToRoot = transform.worldToLocalMatrix * mf.transform.localToWorldMatrix;
@@ -407,9 +499,9 @@ namespace NineSlice3D
 
         public void ApplyDeformation()
         {
-            if (!isInitialized || meshDataList.Count == 0)
+            if (!isInitialized || meshDataList.Count == 0 || NeedsRebind())
             {
-                InitializeMeshes(forceRebind: false);
+                InitializeMeshes(forceRebind: true);
                 if (!isInitialized || meshDataList.Count == 0) return;
             }
 
@@ -581,7 +673,6 @@ namespace NineSlice3D
                 }
             }
 
-            // Also check configs label
             for (int i = 0; i < submeshTilingConfigs.Count; i++)
             {
                 if (submeshTilingConfigs[i].label.Equals(slotOrMaterialName, StringComparison.OrdinalIgnoreCase))
@@ -653,8 +744,11 @@ namespace NineSlice3D
 
         #endregion
 
-        #region Public Runtime Sizing API
+        #region Public Runtime Sizing & Config API
 
+        /// <summary>
+        /// Applies a PaintingData config asset at runtime or in editor.
+        /// </summary>
         public void ApplyPaintingConfig(PaintingData config)
         {
             if (config == null) return;
