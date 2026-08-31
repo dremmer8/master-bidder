@@ -3,7 +3,7 @@ using UnityEngine;
 namespace NineSlice3D.Demo
 {
     /// <summary>
-    /// Demonstrates runtime control over dimensions, submesh materials, and constant texel density tiling.
+    /// Demonstrates runtime control over dimensions, pivot points, submesh materials, and constant texel density tiling.
     /// </summary>
     public class NineSliceRuntimeDemo : MonoBehaviour
     {
@@ -12,6 +12,9 @@ namespace NineSlice3D.Demo
 
         [Header("Runtime Dimensions (Centimeters)")]
         [SerializeField] private Vector3 testSizeCm = new Vector3(80f, 120f, 5f);
+
+        [Header("Pivot Alignment Test")]
+        [SerializeField] private PivotAnchor initialPivot = PivotAnchor.Center;
 
         [Header("Submesh Material Swap Test")]
         [Tooltip("Material slot index to swap (0 = Canvas Body Picture, 1 = Frame Sides, etc.).")]
@@ -34,6 +37,9 @@ namespace NineSlice3D.Demo
 
             if (nineSliceMesh != null)
             {
+                // Set initial pivot
+                nineSliceMesh.SetPivot(initialPivot);
+
                 // Set initial size in centimeters
                 nineSliceMesh.SetSize(testSizeCm, MeasurementUnit.Centimeters);
 
@@ -56,6 +62,28 @@ namespace NineSlice3D.Demo
                 float t = (Mathf.Sin(Time.time * animationSpeed) + 1f) * 0.5f;
                 Vector3 currentSize = Vector3.Lerp(minAnimatedSize, maxAnimatedSize, t);
                 nineSliceMesh.SetSize(currentSize, MeasurementUnit.Centimeters);
+            }
+        }
+
+        /// <summary>
+        /// Sets pivot anchor preset at runtime (e.g. TopCenter for hanging on wall, BottomCenter for floor/easel).
+        /// </summary>
+        public void SetPivotAnchor(PivotAnchor anchor)
+        {
+            if (nineSliceMesh != null)
+            {
+                nineSliceMesh.SetPivot(anchor);
+            }
+        }
+
+        /// <summary>
+        /// Sets custom normalized pivot at runtime (0..1 on X, Y, Z).
+        /// </summary>
+        public void SetCustomPivot(float normX, float normY, float normZ = 0.5f)
+        {
+            if (nineSliceMesh != null)
+            {
+                nineSliceMesh.SetCustomPivot(new Vector3(normX, normY, normZ));
             }
         }
 

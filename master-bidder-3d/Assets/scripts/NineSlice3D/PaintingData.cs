@@ -39,6 +39,16 @@ namespace NineSlice3D
         [Min(0.01f)]
         public float depth = 4f;
 
+        [Header("Pivot Alignment (Optional Override)")]
+        [Tooltip("If enabled, applies this specific pivot anchor when loading the painting.")]
+        public bool overridePivot = false;
+
+        [Tooltip("Pivot anchor preset to use when override is enabled.")]
+        public PivotAnchor pivotAnchor = PivotAnchor.Center;
+
+        [Tooltip("Custom normalized pivot (0..1) when pivotAnchor is set to Custom.")]
+        public Vector3 customPivot = new Vector3(0.5f, 0.5f, 0.5f);
+
         [Header("Target Submesh")]
         [Tooltip("Material slot index for the painting canvas (default: 0).")]
         public int canvasMaterialSlotIndex = 0;
@@ -72,7 +82,17 @@ namespace NineSlice3D
             // 1. Apply dimensions (X = width, Y = height, Z = depth)
             meshDeformer.SetSize(Size, unit);
 
-            // 2. Apply texture to the canvas material slot
+            // 2. Apply pivot if overridden
+            if (overridePivot)
+            {
+                meshDeformer.Pivot = pivotAnchor;
+                if (pivotAnchor == PivotAnchor.Custom)
+                {
+                    meshDeformer.CustomPivot = customPivot;
+                }
+            }
+
+            // 3. Apply texture to the canvas material slot
             if (albedoTexture != null)
             {
                 meshDeformer.SetSubmeshTexture(canvasMaterialSlotIndex, albedoTexture, texturePropertyName);

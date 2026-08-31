@@ -7,11 +7,17 @@ namespace NineSlice3D
     {
         PreserveOriginalPivot,
         Center,
-        BottomCenter,
+        TopLeft,
         TopCenter,
-        MinCorner,
+        TopRight,
+        MiddleLeft,
+        MiddleRight,
+        BottomLeft,
+        BottomCenter,
+        BottomRight,
         BackCenter,
-        FrontCenter
+        FrontCenter,
+        Custom
     }
 
     public enum MeasurementUnit

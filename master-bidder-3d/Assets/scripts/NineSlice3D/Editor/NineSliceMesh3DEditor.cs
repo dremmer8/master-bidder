@@ -12,12 +12,14 @@ namespace NineSlice3D.Editor
         {
             None,
             Borders,
-            TargetBounds
+            TargetBounds,
+            Pivot
         }
 
         private EditMode currentEditMode = EditMode.Borders;
         private bool showBordersFoldout = true;
         private bool showSizeFoldout = true;
+        private bool showPivotFoldout = true;
         private bool showSubmeshesFoldout = true;
         private bool showAdvancedFoldout = false;
 
@@ -50,6 +52,9 @@ namespace NineSlice3D.Editor
 
             EditorGUILayout.Space(6);
             DrawSizeSection();
+
+            EditorGUILayout.Space(6);
+            DrawPivotSection();
 
             EditorGUILayout.Space(6);
             DrawBordersSection();
@@ -155,7 +160,7 @@ namespace NineSlice3D.Editor
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PrefixLabel("Scene View Tool");
-            int selected = GUILayout.Toolbar((int)currentEditMode, new[] { "None", "Edit Borders", "Edit Target Size" });
+            int selected = GUILayout.Toolbar((int)currentEditMode, new[] { "None", "Borders", "Dimensions", "Pivot" });
             if (selected != (int)currentEditMode)
             {
                 currentEditMode = (EditMode)selected;
@@ -188,12 +193,104 @@ namespace NineSlice3D.Editor
                 EditorGUILayout.PropertyField(sizeProp, new GUIContent($"Dimensions ({unitLabel})"));
                 EditorGUILayout.EndHorizontal();
 
+                EditorGUI.indentLevel--;
+            }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        private void DrawPivotSection()
+        {
+            showPivotFoldout = EditorGUILayout.BeginFoldoutHeaderGroup(showPivotFoldout, "Pivot Point & Alignment");
+            if (showPivotFoldout)
+            {
+                EditorGUI.indentLevel++;
+
                 SerializedProperty pivotProp = serializedObject.FindProperty("pivotAnchor");
+                SerializedProperty customPivotProp = serializedObject.FindProperty("customPivot");
+
+                EditorGUI.BeginChangeCheck();
                 EditorGUILayout.PropertyField(pivotProp, new GUIContent("Pivot Anchor"));
+                if (EditorGUI.EndChangeCheck())
+                {
+                    serializedObject.ApplyModifiedProperties();
+                    slicer.Pivot = (PivotAnchor)pivotProp.enumValueIndex;
+                }
+
+                EditorGUILayout.Space(4);
+                EditorGUILayout.LabelField("Quick 2D Alignment Presets:", EditorStyles.miniBoldLabel);
+
+                // 3x3 Button Grid for 2D Anchors
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+                EditorGUILayout.BeginHorizontal();
+                DrawPivotPresetButton("Top-Left", PivotAnchor.TopLeft, pivotProp);
+                DrawPivotPresetButton("Top", PivotAnchor.TopCenter, pivotProp);
+                DrawPivotPresetButton("Top-Right", PivotAnchor.TopRight, pivotProp);
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginHorizontal();
+                DrawPivotPresetButton("Left", PivotAnchor.MiddleLeft, pivotProp);
+                DrawPivotPresetButton("Center", PivotAnchor.Center, pivotProp);
+                DrawPivotPresetButton("Right", PivotAnchor.MiddleRight, pivotProp);
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginHorizontal();
+                DrawPivotPresetButton("Bottom-Left", PivotAnchor.BottomLeft, pivotProp);
+                DrawPivotPresetButton("Bottom", PivotAnchor.BottomCenter, pivotProp);
+                DrawPivotPresetButton("Bottom-Right", PivotAnchor.BottomRight, pivotProp);
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.EndVertical();
+
+                EditorGUILayout.Space(2);
+                EditorGUILayout.BeginHorizontal();
+                DrawPivotPresetButton("Back (Z=0)", PivotAnchor.BackCenter, pivotProp);
+                DrawPivotPresetButton("Front (Z=1)", PivotAnchor.FrontCenter, pivotProp);
+                DrawPivotPresetButton("Original (0,0,0)", PivotAnchor.PreserveOriginalPivot, pivotProp);
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.Space(4);
+
+                if ((PivotAnchor)pivotProp.enumValueIndex == PivotAnchor.Custom)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.PropertyField(customPivotProp, new GUIContent("Custom Pivot (0..1)"));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        customPivotProp.vector3Value = new Vector3(
+                            Mathf.Clamp01(customPivotProp.vector3Value.x),
+                            Mathf.Clamp01(customPivotProp.vector3Value.y),
+                            Mathf.Clamp01(customPivotProp.vector3Value.z)
+                        );
+                        serializedObject.ApplyModifiedProperties();
+                        slicer.CustomPivot = customPivotProp.vector3Value;
+                    }
+                }
+                else
+                {
+                    Vector3 norm = slicer.NormalizedPivot;
+                    EditorGUILayout.LabelField($"Active Normalized Pivot (X,Y,Z): ({norm.x:F2}, {norm.y:F2}, {norm.z:F2})", EditorStyles.miniLabel);
+                }
 
                 EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        private void DrawPivotPresetButton(string label, PivotAnchor anchor, SerializedProperty pivotProp)
+        {
+            bool isSelected = (PivotAnchor)pivotProp.enumValueIndex == anchor;
+            Color oldColor = GUI.backgroundColor;
+            if (isSelected) GUI.backgroundColor = new Color(0.3f, 0.9f, 0.4f);
+
+            if (GUILayout.Button(label, GUILayout.Height(22)))
+            {
+                pivotProp.enumValueIndex = (int)anchor;
+                serializedObject.ApplyModifiedProperties();
+                slicer.Pivot = anchor;
+                EditorUtility.SetDirty(slicer);
+            }
+            GUI.backgroundColor = oldColor;
         }
 
         private void DrawBordersSection()
@@ -465,8 +562,51 @@ namespace NineSlice3D.Editor
             {
                 DrawTargetBoundsHandles(t, origBounds, borders);
             }
+            else if (currentEditMode == EditMode.Pivot)
+            {
+                DrawPivotHandles(t, origBounds, borders);
+            }
 
             DrawSliceGridGizmo(t, origBounds, borders);
+            DrawPivotGizmoMarker(t);
+        }
+
+        private void DrawPivotHandles(Transform rootTransform, Bounds origBounds, SliceBorder3D borders)
+        {
+            Vector3 sizeMeters = slicer.SizeMeters;
+            Mesh3DSlicer.CalculateTargetBounds(origBounds, sizeMeters, slicer.Pivot, slicer.CustomPivot, borders, out Vector3 targetMin, out Vector3 targetMax);
+
+            Vector3 worldPivot = rootTransform.position;
+
+            EditorGUI.BeginChangeCheck();
+            Vector3 newWorldPivot = Handles.PositionHandle(worldPivot, rootTransform.rotation);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(slicer, "Change Pivot Position");
+
+                Vector3 newLocal = rootTransform.InverseTransformPoint(newWorldPivot);
+                Vector3 span = targetMax - targetMin;
+
+                float px = span.x > 0.0001f ? (newLocal.x - targetMin.x) / span.x : 0.5f;
+                float py = span.y > 0.0001f ? (newLocal.y - targetMin.y) / span.y : 0.5f;
+                float pz = span.z > 0.0001f ? (newLocal.z - targetMin.z) / span.z : 0.5f;
+
+                Vector3 newNorm = new Vector3(Mathf.Clamp01(px), Mathf.Clamp01(py), Mathf.Clamp01(pz));
+                slicer.SetCustomPivot(newNorm);
+                EditorUtility.SetDirty(slicer);
+            }
+        }
+
+        private void DrawPivotGizmoMarker(Transform rootTransform)
+        {
+            Vector3 worldPivot = rootTransform.position;
+            float size = HandleUtility.GetHandleSize(worldPivot) * 0.12f;
+
+            Handles.color = new Color(1f, 0.6f, 0.1f, 0.9f);
+            Handles.SphereHandleCap(0, worldPivot, Quaternion.identity, size, EventType.Repaint);
+
+            Handles.color = Color.white;
+            Handles.Label(worldPivot + rootTransform.up * (size * 1.5f), "Pivot (0,0,0)", EditorStyles.miniBoldLabel);
         }
 
         private void DrawBorderHandles(Transform rootTransform, Bounds origBounds, SliceBorder3D borders)
@@ -580,7 +720,7 @@ namespace NineSlice3D.Editor
         private void DrawTargetBoundsHandles(Transform rootTransform, Bounds origBounds, SliceBorder3D borders)
         {
             Vector3 sizeMeters = slicer.SizeMeters;
-            Mesh3DSlicer.CalculateTargetBounds(origBounds, sizeMeters, slicer.Pivot, borders, out Vector3 targetMin, out Vector3 targetMax);
+            Mesh3DSlicer.CalculateTargetBounds(origBounds, sizeMeters, slicer.Pivot, slicer.CustomPivot, borders, out Vector3 targetMin, out Vector3 targetMax);
 
             Vector3 targetCenter = (targetMin + targetMax) * 0.5f;
 
@@ -627,7 +767,7 @@ namespace NineSlice3D.Editor
         private void DrawSliceGridGizmo(Transform rootTransform, Bounds origBounds, SliceBorder3D borders)
         {
             Vector3 sizeMeters = slicer.SizeMeters;
-            Mesh3DSlicer.CalculateTargetBounds(origBounds, sizeMeters, slicer.Pivot, borders, out Vector3 targetMin, out Vector3 targetMax);
+            Mesh3DSlicer.CalculateTargetBounds(origBounds, sizeMeters, slicer.Pivot, slicer.CustomPivot, borders, out Vector3 targetMin, out Vector3 targetMax);
 
             Matrix4x4 origMatrix = Handles.matrix;
             Handles.matrix = rootTransform.localToWorldMatrix;

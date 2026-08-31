@@ -36,6 +36,9 @@ namespace NineSlice3D
         [Header("Pivot Alignment")]
         [SerializeField] private PivotAnchor pivotAnchor = PivotAnchor.PreserveOriginalPivot;
 
+        [Tooltip("Custom normalized pivot (0..1 on X, Y, Z). (0,0,0) is bottom-left-back, (0.5,0.5,0.5) is center, (1,1,1) is top-right-front.")]
+        [SerializeField] private Vector3 customPivot = new Vector3(0.5f, 0.5f, 0.5f);
+
         [Header("9-Slice Borders (Original Local Units)")]
         [SerializeField] private SliceBorder3D borders = SliceBorder3D.Default;
 
@@ -159,6 +162,22 @@ namespace NineSlice3D
                 SetDirty();
             }
         }
+
+        public Vector3 CustomPivot
+        {
+            get => customPivot;
+            set
+            {
+                customPivot = new Vector3(
+                    Mathf.Clamp01(value.x),
+                    Mathf.Clamp01(value.y),
+                    Mathf.Clamp01(value.z)
+                );
+                SetDirty();
+            }
+        }
+
+        public Vector3 NormalizedPivot => Mesh3DSlicer.GetNormalizedPivot(pivotAnchor, customPivot, originalCombinedBounds);
 
         public List<SubmeshTilingConfig> SubmeshConfigs => submeshTilingConfigs;
         public Bounds OriginalBounds => originalCombinedBounds;
@@ -400,6 +419,7 @@ namespace NineSlice3D
                 originalCombinedBounds,
                 sizeInMeters,
                 pivotAnchor,
+                customPivot,
                 borders,
                 out Vector3 targetMin,
                 out Vector3 targetMax
@@ -641,6 +661,23 @@ namespace NineSlice3D
             activePaintingConfig = config;
             config.ApplyTo(this);
             SetDirty();
+        }
+
+        /// <summary>
+        /// Sets the pivot anchor preset.
+        /// </summary>
+        public void SetPivot(PivotAnchor anchor)
+        {
+            Pivot = anchor;
+        }
+
+        /// <summary>
+        /// Sets custom normalized pivot coordinates (0..1 across X, Y, Z).
+        /// </summary>
+        public void SetCustomPivot(Vector3 normalizedPivot)
+        {
+            pivotAnchor = PivotAnchor.Custom;
+            CustomPivot = normalizedPivot;
         }
 
         /// <summary>

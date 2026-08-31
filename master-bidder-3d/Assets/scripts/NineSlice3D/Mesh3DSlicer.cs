@@ -5,12 +5,66 @@ namespace NineSlice3D
     public static class Mesh3DSlicer
     {
         /// <summary>
+        /// Resolves a PivotAnchor enum and custom normalized pivot vector into normalized (0..1) coordinates across X, Y, Z.
+        /// </summary>
+        public static Vector3 GetNormalizedPivot(PivotAnchor pivotAnchor, Vector3 customPivot, Bounds origBounds)
+        {
+            switch (pivotAnchor)
+            {
+                case PivotAnchor.Center:
+                    return new Vector3(0.5f, 0.5f, 0.5f);
+
+                case PivotAnchor.TopLeft:
+                    return new Vector3(0f, 1f, 0.5f);
+
+                case PivotAnchor.TopCenter:
+                    return new Vector3(0.5f, 1f, 0.5f);
+
+                case PivotAnchor.TopRight:
+                    return new Vector3(1f, 1f, 0.5f);
+
+                case PivotAnchor.MiddleLeft:
+                    return new Vector3(0f, 0.5f, 0.5f);
+
+                case PivotAnchor.MiddleRight:
+                    return new Vector3(1f, 0.5f, 0.5f);
+
+                case PivotAnchor.BottomLeft:
+                    return new Vector3(0f, 0f, 0.5f);
+
+                case PivotAnchor.BottomCenter:
+                    return new Vector3(0.5f, 0f, 0.5f);
+
+                case PivotAnchor.BottomRight:
+                    return new Vector3(1f, 0f, 0.5f);
+
+                case PivotAnchor.BackCenter:
+                    return new Vector3(0.5f, 0.5f, 0f);
+
+                case PivotAnchor.FrontCenter:
+                    return new Vector3(0.5f, 0.5f, 1f);
+
+                case PivotAnchor.Custom:
+                    return customPivot;
+
+                case PivotAnchor.PreserveOriginalPivot:
+                default:
+                    Vector3 size = origBounds.size;
+                    float px = size.x > 0.0001f ? Mathf.Clamp01((0f - origBounds.min.x) / size.x) : 0.5f;
+                    float py = size.y > 0.0001f ? Mathf.Clamp01((0f - origBounds.min.y) / size.y) : 0.5f;
+                    float pz = size.z > 0.0001f ? Mathf.Clamp01((0f - origBounds.min.z) / size.z) : 0.5f;
+                    return new Vector3(px, py, pz);
+            }
+        }
+
+        /// <summary>
         /// Calculates target min/max bounds in root space based on original bounds, target size, and pivot anchor.
         /// </summary>
         public static void CalculateTargetBounds(
             Bounds origBounds,
             Vector3 targetSize,
             PivotAnchor pivotAnchor,
+            Vector3 customPivot,
             SliceBorder3D borders,
             out Vector3 targetMin,
             out Vector3 targetMax)
@@ -21,48 +75,35 @@ namespace NineSlice3D
                 Mathf.Max(0.0001f, targetSize.z)
             );
 
-            switch (pivotAnchor)
+            if (pivotAnchor == PivotAnchor.PreserveOriginalPivot)
             {
-                case PivotAnchor.Center:
-                    targetMin = -targetSize * 0.5f;
-                    targetMax = targetSize * 0.5f;
-                    break;
-
-                case PivotAnchor.MinCorner:
-                    targetMin = Vector3.zero;
-                    targetMax = targetSize;
-                    break;
-
-                case PivotAnchor.BottomCenter:
-                    targetMin = new Vector3(-targetSize.x * 0.5f, 0f, -targetSize.z * 0.5f);
-                    targetMax = new Vector3(targetSize.x * 0.5f, targetSize.y, targetSize.z * 0.5f);
-                    break;
-
-                case PivotAnchor.TopCenter:
-                    targetMin = new Vector3(-targetSize.x * 0.5f, -targetSize.y, -targetSize.z * 0.5f);
-                    targetMax = new Vector3(targetSize.x * 0.5f, 0f, targetSize.z * 0.5f);
-                    break;
-
-                case PivotAnchor.BackCenter:
-                    targetMin = new Vector3(-targetSize.x * 0.5f, -targetSize.y * 0.5f, 0f);
-                    targetMax = new Vector3(targetSize.x * 0.5f, targetSize.y * 0.5f, targetSize.z);
-                    break;
-
-                case PivotAnchor.FrontCenter:
-                    targetMin = new Vector3(-targetSize.x * 0.5f, -targetSize.y * 0.5f, -targetSize.z);
-                    targetMax = new Vector3(targetSize.x * 0.5f, targetSize.y * 0.5f, 0f);
-                    break;
-
-                case PivotAnchor.PreserveOriginalPivot:
-                default:
-                    targetMin = new Vector3(
-                        CalculateAxisPivotOffset(origBounds.min.x, origBounds.max.x, borders.x, targetSize.x),
-                        CalculateAxisPivotOffset(origBounds.min.y, origBounds.max.y, borders.y, targetSize.y),
-                        CalculateAxisPivotOffset(origBounds.min.z, origBounds.max.z, borders.z, targetSize.z)
-                    );
-                    targetMax = targetMin + targetSize;
-                    break;
+                targetMin = new Vector3(
+                    CalculateAxisPivotOffset(origBounds.min.x, origBounds.max.x, borders.x, targetSize.x),
+                    CalculateAxisPivotOffset(origBounds.min.y, origBounds.max.y, borders.y, targetSize.y),
+                    CalculateAxisPivotOffset(origBounds.min.z, origBounds.max.z, borders.z, targetSize.z)
+                );
+                targetMax = targetMin + targetSize;
+                return;
             }
+
+            Vector3 normPivot = GetNormalizedPivot(pivotAnchor, customPivot, origBounds);
+            targetMin = new Vector3(
+                -targetSize.x * normPivot.x,
+                -targetSize.y * normPivot.y,
+                -targetSize.z * normPivot.z
+            );
+            targetMax = targetMin + targetSize;
+        }
+
+        public static void CalculateTargetBounds(
+            Bounds origBounds,
+            Vector3 targetSize,
+            PivotAnchor pivotAnchor,
+            SliceBorder3D borders,
+            out Vector3 targetMin,
+            out Vector3 targetMax)
+        {
+            CalculateTargetBounds(origBounds, targetSize, pivotAnchor, new Vector3(0.5f, 0.5f, 0.5f), borders, out targetMin, out targetMax);
         }
 
         private static float CalculateAxisPivotOffset(float origMin, float origMax, SliceAxisSettings axis, float targetSize)
