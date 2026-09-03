@@ -108,6 +108,8 @@ const SaveGame = {
     state.rivalTimer = null;
     state.fastForwarding = false;
     state.awaitingLotStart = false;
+    state.tutorialPaused = false;
+    state.tutorialStep = null;
   },
 
   hydrateLots(savedLots, seenSet) {

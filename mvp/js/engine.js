@@ -171,11 +171,58 @@ function filterOffCooldown(artworks, currentDay, purchaseDays) {
   return artworks.filter((a) => !isArtworkOnSaleCooldown(a.id, currentDay, purchaseDays));
 }
 
+// Day-1 onboarding: first lot must match the order, second must miss.
+// Remaining lots are shuffled fillers (plus any epic guarantee).
+function orderLotsForDay1Tutorial(count, matchSeed, mismatchSeed, fillerPool, orderCriteriaTags, guaranteeEpic) {
+  const ordered = [];
+  const used = new Set();
+
+  if (matchSeed) {
+    ordered.push(matchSeed);
+    used.add(matchSeed.id);
+  }
+
+  let mismatch = mismatchSeed;
+  if (!mismatch) {
+    const fromPool = shuffle(
+      fillerPool.filter((a) => !used.has(a.id) && !matchesCriteria(a, orderCriteriaTags))
+    );
+    mismatch = fromPool[0] || null;
+  }
+  if (mismatch && !used.has(mismatch.id)) {
+    ordered.push(mismatch);
+    used.add(mismatch.id);
+  }
+
+  if (guaranteeEpic && !ordered.some((a) => a.rarity === 'epic')) {
+    const epicPool = ARTWORKS.filter((a) => a.rarity === 'epic' && !used.has(a.id));
+    if (epicPool.length) {
+      const epic = epicPool[Math.floor(Math.random() * epicPool.length)];
+      ordered.push(epic);
+      used.add(epic.id);
+    }
+  }
+
+  const fillers = shuffle(fillerPool.filter((a) => !used.has(a.id)));
+  const need = Math.max(0, count - ordered.length);
+  return ordered.concat(fillers.slice(0, need));
+}
+
 // Lots are drawn from the venue's rarity pool, but at least one order-matching
 // artwork is always seeded into the day — otherwise the order cannot be closed.
 // guaranteeEpic (the 'lucky-lot' booster) seeds a second guaranteed slot with
 // an epic-rarity artwork, bypassing the venue's own rarity pool if needed.
-function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, purchaseDays, guaranteeEpic = false) {
+// tutorialFirstDay pins lot 0 to a match and lot 1 to a mismatch for onboarding.
+function drawLots(
+  count,
+  seenSet,
+  venueConfig,
+  orderCriteriaTags,
+  currentDay,
+  purchaseDays,
+  guaranteeEpic = false,
+  { tutorialFirstDay = false } = {}
+) {
   const rarityPool = venueConfig.rarityPool;
   const pool = filterOffCooldown(
     ARTWORKS.filter((a) => rarityPool.includes(a.rarity)),
@@ -190,9 +237,37 @@ function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, pu
   const fallbackMatches = fulfillableMatchesForOrder(orderCriteriaTags, venueConfig);
 
   const guaranteedSource = matches.length ? matches : fallbackMatches;
-  const guaranteed = guaranteedSource.length
-    ? [guaranteedSource[Math.floor(Math.random() * guaranteedSource.length)]]
-    : [];
+  const matchSeed = guaranteedSource.length
+    ? guaranteedSource[Math.floor(Math.random() * guaranteedSource.length)]
+    : null;
+
+  const fillerPool = pool.length ? pool : ARTWORKS.filter((a) => rarityPool.includes(a.rarity));
+
+  if (tutorialFirstDay) {
+    const mismatchCandidates = shuffle(
+      fillerPool.filter(
+        (a) => (!matchSeed || a.id !== matchSeed.id) && !matchesCriteria(a, orderCriteriaTags)
+      )
+    );
+    const mismatchFallback = ARTWORKS.filter(
+      (a) => (!matchSeed || a.id !== matchSeed.id) && !matchesCriteria(a, orderCriteriaTags)
+    );
+    const mismatchSeed =
+      mismatchCandidates[0] ||
+      (mismatchFallback.length
+        ? mismatchFallback[Math.floor(Math.random() * mismatchFallback.length)]
+        : null);
+    return orderLotsForDay1Tutorial(
+      count,
+      matchSeed,
+      mismatchSeed,
+      fillerPool,
+      orderCriteriaTags,
+      guaranteeEpic
+    ).map((a) => toPresentedLot(a, seenSet));
+  }
+
+  const guaranteed = matchSeed ? [matchSeed] : [];
 
   if (guaranteeEpic && !guaranteed.some((a) => a.rarity === 'epic')) {
     const epicOffCooldown = filterOffCooldown(
@@ -205,8 +280,6 @@ function drawLots(count, seenSet, venueConfig, orderCriteriaTags, currentDay, pu
   }
 
   const guaranteedIds = new Set(guaranteed.map((a) => a.id));
-
-  const fillerPool = pool.length ? pool : ARTWORKS.filter((a) => rarityPool.includes(a.rarity));
   const fillers = shuffle(fillerPool.filter((a) => !guaranteedIds.has(a.id)));
   const need = Math.max(0, count - guaranteed.length);
   const picked = guaranteed.concat(fillers.slice(0, need));
@@ -398,6 +471,8 @@ const Game = {
       branchProgress: {},
       selectedBranchId: COLLECTORS[0].id,
       currentVenue: 'regular',
+      tutorialPaused: false,
+      tutorialStep: null,
     };
   },
 
@@ -462,7 +537,8 @@ const Game = {
       order.criteriaTags,
       this.state.day,
       this.state.artworkPurchaseDays,
-      guaranteeEpic
+      guaranteeEpic,
+      { tutorialFirstDay: this.state.day === 1 }
     );
     this.state.currentLotIndex = 0;
     ImageCache.preloadUrls(
@@ -489,6 +565,9 @@ const Game = {
     this.state.awaitingLotStart = true;
     this.state.currentLotIndex = 0;
     this.state.revealStep = 0;
+    this.state.tutorialPaused = false;
+    this.state.tutorialStep = null;
+    UI.hideTutorialCoach();
     // 'lot-master' rolls once per day, not per prepareDayLots() call, so
     // re-picking a branch on the brief screen can't be used to re-roll it.
     this.state.lotMasterLucky = this.state.upgrades.has('lot-master') && Math.random() < 0.1;
@@ -553,6 +632,9 @@ const Game = {
     this.state.fastForwarding = false;
     this.state.awaitingLotStart = true;
     this.state.revealStep = 0;
+    this.state.tutorialPaused = false;
+    this.state.tutorialStep = null;
+    UI.hideTutorialCoach();
     UI.showAuctionScreen(this.state);
     UI.showLotStandby(this.state);
     UI.showCollectorBriefPopup(order, () => {
@@ -580,6 +662,9 @@ const Game = {
     this.state.lotResolved = false;
     this.state.fastForwarding = false;
     this.state.revealStep = 0;
+    this.state.tutorialPaused = false;
+    this.state.tutorialStep = null;
+    UI.hideTutorialCoach();
     const lot = lots[currentLotIndex];
     const priceStepPct = getPriceStepPct(this.state);
     UI.renderLot(lot, currentLotIndex, lots.length, computeLivePrice(lot, 0, priceStepPct));
@@ -597,6 +682,7 @@ const Game = {
     Sound.setTensionIntensity(0);
 
     const maxStep = REVEALABLE_FIELDS.length;
+    const tutorialStep = this.getDay1TutorialStep(currentLotIndex);
     this.state.revealTimers = REVEALABLE_FIELDS.map((f, i) =>
       setTimeout(() => {
         this.state.revealStep = i + 1;
@@ -604,16 +690,28 @@ const Game = {
         UI.updateLiveEconomics(computeLivePrice(lot, this.state.revealStep, priceStepPct));
         Sound.playReveal(i);
         Sound.setTensionIntensity(this.state.revealStep / maxStep);
+
+        // Day-1 coach: freeze after genre so the player can act on the tip.
+        if (f === 'genre' && tutorialStep) {
+          this.pauseForTutorial(tutorialStep);
+        }
       }, REVEAL_INTERVAL_MS * (i + 1))
     );
     this.state.revealTimers.push(
       setTimeout(() => {
-        if (!this.state.lotResolved) UI.showWaitingHint();
+        if (!this.state.lotResolved && !this.state.tutorialPaused) UI.showWaitingHint();
       }, REVEAL_INTERVAL_MS * REVEALABLE_FIELDS.length + 400)
     );
 
     // 'quiet-start' booster: no rival at all on the very first lot of the day.
     if (this.state.activeBoosters.has('quiet-start') && currentLotIndex === 0) {
+      this.state.rivalTimer = null;
+      return;
+    }
+
+    // Tutorial pause clears the rival timer when genre lands; skip scheduling
+    // one now so a rival can't beat the player to the coach prompt.
+    if (tutorialStep) {
       this.state.rivalTimer = null;
       return;
     }
@@ -626,6 +724,28 @@ const Game = {
     this.state.rivalTimer = setTimeout(() => this.onRivalWins(), rivalDelayMs);
   },
 
+  getDay1TutorialStep(lotIndex) {
+    if (!this.state || this.state.day !== 1) return null;
+    if (lotIndex === 0) return 'buy-match';
+    if (lotIndex === 1) return 'skip-miss';
+    return null;
+  },
+
+  pauseForTutorial(step) {
+    this.clearLotTimers();
+    this.state.tutorialPaused = true;
+    this.state.tutorialStep = step;
+    Sound.stopTension();
+    UI.showTutorialCoach(step);
+  },
+
+  dismissTutorialCoach() {
+    if (!this.state.tutorialPaused) return;
+    this.state.tutorialPaused = false;
+    this.state.tutorialStep = null;
+    UI.hideTutorialCoach();
+  },
+
   clearLotTimers() {
     this.state.revealTimers.forEach(clearTimeout);
     this.state.revealTimers = [];
@@ -635,12 +755,14 @@ const Game = {
 
   onBuyClicked() {
     if (this.state.awaitingLotStart || this.state.lotResolved || this.state.fastForwarding) return;
+    if (this.state.tutorialPaused && this.state.tutorialStep !== 'buy-match') return;
     const lot = this.state.lots[this.state.currentLotIndex];
     const price = computeLivePrice(lot, this.state.revealStep, getPriceStepPct(this.state));
     if (price > getClientBudgetRemaining(this.state)) {
       UI.flashInsufficientFunds('client');
       return;
     }
+    if (this.state.tutorialPaused) this.dismissTutorialCoach();
     this.clearLotTimers();
     Sound.stopTension();
     this.state.lotResolved = true;
@@ -663,7 +785,7 @@ const Game = {
   },
 
   onRivalWins() {
-    if (this.state.lotResolved) return;
+    if (this.state.lotResolved || this.state.tutorialPaused) return;
     this.state.fastForwarding = false;
     this.clearLotTimers();
     Sound.stopTension();
@@ -677,6 +799,8 @@ const Game = {
 
   onSkipClicked() {
     if (this.state.awaitingLotStart || this.state.lotResolved || this.state.fastForwarding) return;
+    if (this.state.tutorialPaused && this.state.tutorialStep !== 'skip-miss') return;
+    if (this.state.tutorialPaused) this.dismissTutorialCoach();
 
     const lot = this.state.lots[this.state.currentLotIndex];
     const startStep = this.state.revealStep;
@@ -715,6 +839,7 @@ const Game = {
   },
 
   onFinishDayClicked() {
+    if (this.state.tutorialPaused) return;
     if (this.state.lotResolved && !this.state.awaitingLotStart) return;
     this.state.awaitingLotStart = false;
     this.state.fastForwarding = false;

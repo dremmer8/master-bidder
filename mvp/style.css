@@ -1136,6 +1136,51 @@ h2 { margin-top: 0; }
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
 }
 
+/* --- Day-1 tutorial coach --- */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  pointer-events: none;
+  background: transparent;
+}
+.tutorial-overlay.hidden {
+  display: none;
+}
+.tutorial-tooltip {
+  position: fixed;
+  z-index: 162;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 12px 14px;
+  background: #1a1d24;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 18px rgba(212, 161, 58, 0.18);
+  color: #f0e6d2;
+  font-size: 0.95em;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.tutorial-spotlight {
+  position: relative;
+  z-index: 161 !important;
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 22px rgba(212, 161, 58, 0.55) !important;
+  animation: tutorial-pulse 1.4s ease-in-out infinite;
+}
+.reveal-field.tutorial-spotlight {
+  background: rgba(26, 29, 36, 0.98);
+  border-radius: 6px;
+}
+.btn.tutorial-spotlight {
+  opacity: 1 !important;
+}
+@keyframes tutorial-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(212, 161, 58, 0.4); }
+  50% { box-shadow: 0 0 28px rgba(212, 161, 58, 0.75); }
+}
+
 /* --- Collector briefing popup --- */
 .collector-popup-overlay {
   position: fixed;

@@ -130,6 +130,10 @@ I18n.registerUI('ru', {
   'collectorPopup.warning': 'Покупка неподходящих картин приведет к штрафу и растрате бюджета.',
   'collectorPopup.startBidding': 'Начать торги (Пробел)',
 
+  'tutorial.buyMatch':
+    'Кажется, эта картина подходит по тегу заказчика — стоит её купить.',
+  'tutorial.skipMiss': 'Эта картина мимо — лучше пропустить.',
+
   'shop.owned': 'Приобретено',
   'shop.buyFor': 'Купить за {price}',
   'shop.boosterOwned': 'Куплено на завтра',

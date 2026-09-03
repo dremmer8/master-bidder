@@ -116,10 +116,14 @@ const UI = {
       const startBtn = document.getElementById('btn-collector-popup-start');
       if (startBtn) startBtn.textContent = I18n.t('collectorPopup.startBidding');
     }
+    if (typeof Game !== 'undefined' && Game.state?.tutorialPaused && Game.state.tutorialStep) {
+      this.showTutorialCoach(Game.state.tutorialStep);
+    }
   },
 
   showScreen(name) {
     this.closeCollectorPopup({ startBidding: false });
+    this.hideTutorialCoach();
     Object.values(this.screens).forEach((s) => s.classList.remove('active'));
     this.screens[name].classList.add('active');
   },
@@ -407,6 +411,10 @@ const UI = {
     if (typeof Game !== 'undefined' && Game.state) {
       const s = Game.state;
       if (s.lotResolved || s.awaitingLotStart || s.fastForwarding) return;
+      if (s.tutorialPaused && s.tutorialStep === 'skip-miss') {
+        btn.disabled = true;
+        return;
+      }
     }
     const noFunds = price > clientBudget;
     btn.disabled = noFunds;
@@ -970,5 +978,70 @@ const UI = {
     } else {
       this.collectorPopupOnStart = null;
     }
+  },
+
+  showTutorialCoach(step) {
+    this._tutorialStep = step;
+    const overlay = document.getElementById('tutorial-overlay');
+    const tip = document.getElementById('tutorial-tooltip');
+    if (!overlay || !tip) return;
+
+    tip.textContent = I18n.t(step === 'buy-match' ? 'tutorial.buyMatch' : 'tutorial.skipMiss');
+
+    document.querySelectorAll('.tutorial-spotlight').forEach((el) => el.classList.remove('tutorial-spotlight'));
+    const genreField = document.getElementById('field-genre');
+    const actionBtn = document.getElementById(step === 'buy-match' ? 'btn-buy' : 'btn-skip');
+    const otherBtn = document.getElementById(step === 'buy-match' ? 'btn-skip' : 'btn-buy');
+    const finishBtn = document.getElementById('btn-finish-day');
+
+    if (genreField) genreField.classList.add('tutorial-spotlight');
+    if (actionBtn) {
+      actionBtn.classList.add('tutorial-spotlight');
+      actionBtn.disabled = false;
+      if (step === 'buy-match') {
+        actionBtn.classList.remove('no-funds');
+        actionBtn.textContent = I18n.t('auction.buy');
+      }
+    }
+    if (otherBtn) otherBtn.disabled = true;
+    if (finishBtn) finishBtn.disabled = true;
+
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => this.positionTutorialTip(actionBtn));
+  },
+
+  positionTutorialTip(anchorEl) {
+    const tip = document.getElementById('tutorial-tooltip');
+    if (!tip || !anchorEl) return;
+    const rect = anchorEl.getBoundingClientRect();
+    const tipWidth = Math.min(320, window.innerWidth - 24);
+    tip.style.width = tipWidth + 'px';
+    const tipHeight = tip.offsetHeight || 80;
+    let left = rect.left + rect.width / 2 - tipWidth / 2;
+    left = Math.max(12, Math.min(left, window.innerWidth - tipWidth - 12));
+    let top = rect.top - tipHeight - 14;
+    if (top < 12) top = Math.min(window.innerHeight - tipHeight - 12, rect.bottom + 14);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  },
+
+  hideTutorialCoach() {
+    this._tutorialStep = null;
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    document.querySelectorAll('.tutorial-spotlight').forEach((el) => el.classList.remove('tutorial-spotlight'));
+    const finishBtn = document.getElementById('btn-finish-day');
+    if (finishBtn && typeof Game !== 'undefined' && Game.state && !Game.state.lotResolved) {
+      finishBtn.disabled = false;
+    }
+  },
+
+  isTutorialOpen() {
+    const overlay = document.getElementById('tutorial-overlay');
+    return !!(overlay && !overlay.classList.contains('hidden'));
   },
 };

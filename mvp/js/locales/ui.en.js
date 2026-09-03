@@ -129,6 +129,10 @@ I18n.registerUI('en', {
   'collectorPopup.warning': 'Buying non-matching artworks will waste our budget and result in penalties.',
   'collectorPopup.startBidding': 'Start bidding (Space)',
 
+  'tutorial.buyMatch':
+    'This painting seems to match the client\'s tag — you should buy it.',
+  'tutorial.skipMiss': 'This painting is a miss — skip it.',
+
   'shop.owned': 'Owned',
   'shop.buyFor': 'Buy for {price}',
   'shop.boosterOwned': 'Bought for tomorrow',
