@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4cb6cb6e111111111111111111100001, type: 3}
+  m_Name: Painting_RegentessesOfTheOldMensAlmshouse
+  paintingTitle: "Regentesses of the Old Men's Almshouse"
+  artist: "Frans Hals"
+  albedoTexture: {fileID: 2800000, guid: 6440a14facaabcfc84d8aa087ca13ada, type: 3}
+  unit: 1
+  width: 250.1
+  height: 170.5
+  depth: 4
+  overridePivot: 0
+  pivotAnchor: 1
+  customPivot: {x: 0.5, y: 0.5, z: 0.5}
+  canvasMaterialSlotIndex: 0
+  texturePropertyName: _MainTex

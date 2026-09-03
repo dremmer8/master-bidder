@@ -194,6 +194,104 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d31f6c3543f62e34a9044c13efb6028c, type: 3}
   m_PrefabInstance: {fileID: 60133114}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &137997376
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 137997380}
+  - component: {fileID: 137997379}
+  - component: {fileID: 137997378}
+  - component: {fileID: 137997377}
+  m_Layer: 0
+  m_Name: Plane
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &137997377
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137997376}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1771fb5869b59304e82522e24e85fd40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  center: {x: 0, y: 0, z: 0}
+  size: {x: 0, y: 0, z: 0}
+--- !u!23 &137997378
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137997376}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &137997379
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137997376}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &137997380
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 137997376}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -5.8704143, y: 0.44, z: 1.4388224}
+  m_LocalScale: {x: 0.41126, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &157885299
 GameObject:
   m_ObjectHideFlags: 0
@@ -2228,9 +2326,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb53d0ed97213f64686408df4dd2b8d5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  activePaintingConfig: {fileID: 11400000, guid: 5ab11111111111111111111111100001, type: 2}
+  activePaintingConfig: {fileID: 11400000, guid: 9863832e54ccd2719e6de4bdb15a1aca, type: 2}
   measurementUnit: 1
-  targetSize: {x: 53, y: 77, z: 4}
+  targetSize: {x: 24.4, y: 37, z: 3}
   pivotAnchor: 8
   customPivot: {x: 0.5, y: 0.5, z: 0.5}
   borders:
@@ -3240,6 +3338,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: cloth_1
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 147b34de76a2d4349a2c0a0a4bfecfda, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3247,6 +3349,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 147b34de76a2d4349a2c0a0a4bfecfda, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1214226743}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 147b34de76a2d4349a2c0a0a4bfecfda, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1214226746}
   m_SourcePrefab: {fileID: 100100000, guid: 147b34de76a2d4349a2c0a0a4bfecfda, type: 3}
 --- !u!1 &1214226741 stripped
 GameObject:
@@ -3296,7 +3401,7 @@ MonoBehaviour:
       cameraCullingMethod: 0
       cameraCullingRenderers: []
     normalAxis: 1
-    gravity: 5
+    gravity: 7
     gravityDirection:
       x: 0
       y: -1
@@ -3304,7 +3409,7 @@ MonoBehaviour:
     gravityFalloff: 0
     stablizationTimeAfterReset: 0.1
     damping:
-      value: 0.05
+      value: 0.1
       useCurve: 0
       curve:
         serializedVersion: 2
@@ -3361,7 +3466,7 @@ MonoBehaviour:
       anchor: {fileID: 0}
       anchorInertia: 0
       worldInertia: 1
-      movementInertiaSmoothing: 0.5
+      movementInertiaSmoothing: 0.6
       movementSpeedLimit:
         value: 5
         use: 1
@@ -3375,7 +3480,7 @@ MonoBehaviour:
       localRotationSpeedLimit:
         value: 720
         use: 0
-      depthInertia: 0
+      depthInertia: 0.7
       centrifualAcceleration: 0
       particleSpeedLimit:
         value: 4
@@ -3384,7 +3489,7 @@ MonoBehaviour:
       teleportDistance: 0.5
       teleportRotation: 90
     tetherConstraint:
-      distanceCompression: 0.9
+      distanceCompression: 0.5
     distanceConstraint:
       stiffness:
         value: 1
@@ -3418,7 +3523,7 @@ MonoBehaviour:
     angleRestorationConstraint:
       useAngleRestoration: 1
       stiffness:
-        value: 0.2
+        value: 0.15
         useCurve: 1
         curve:
           serializedVersion: 2
@@ -3427,16 +3532,16 @@ MonoBehaviour:
             time: 0
             value: 1
             inSlope: 0
-            outSlope: -0.8
+            outSlope: 0
             tangentMode: 0
             weightedMode: 0
             inWeight: 0
             outWeight: 0
           - serializedVersion: 3
             time: 1
-            value: 0.2
-            inSlope: -0.8
-            outSlope: 0
+            value: 0.09678346
+            inSlope: -0.7
+            outSlope: -0.7
             tangentMode: 0
             weightedMode: 0
             inWeight: 0
@@ -3447,9 +3552,9 @@ MonoBehaviour:
       velocityAttenuation: 0.8
       gravityFalloff: 0
     angleLimitConstraint:
-      useAngleLimit: 0
+      useAngleLimit: 1
       limitAngle:
-        value: 60
+        value: 45
         useCurve: 1
         curve:
           serializedVersion: 2
@@ -3457,8 +3562,8 @@ MonoBehaviour:
           - serializedVersion: 3
             time: 0
             value: 0
-            inSlope: 0
-            outSlope: 1
+            inSlope: 2
+            outSlope: 2
             tangentMode: 0
             weightedMode: 0
             inWeight: 0
@@ -3466,7 +3571,7 @@ MonoBehaviour:
           - serializedVersion: 3
             time: 1
             value: 1
-            inSlope: 1
+            inSlope: 0
             outSlope: 0
             tangentMode: 0
             weightedMode: 0
@@ -3537,8 +3642,9 @@ MonoBehaviour:
       stiffness: 1
     colliderCollisionConstraint:
       mode: 1
-      friction: 0.05
-      colliderList: []
+      friction: 0.1
+      colliderList:
+      - {fileID: 137997377}
       collisionBones: []
       limitDistance:
         value: 0.05
@@ -13276,6 +13382,28 @@ MonoBehaviour:
   localInertiaProperty: 0
   windInfluenceProperty: 0
   blendWeightProperty: 0
+--- !u!95 &1214226746
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1214226741}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: f6daaf15d1ec10b4a92a385266cd4f29, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &1231322509
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -15634,3 +15762,4 @@ SceneRoots:
   - {fileID: 653223876}
   - {fileID: 690424469}
   - {fileID: 507802786}
+  - {fileID: 137997380}
