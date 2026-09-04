@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using MasterBidder.Content;
 using MasterBidder.Flow;
+using MasterBidder.UI;
 using NineSlice3D;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -220,12 +221,40 @@ namespace MasterBidder.Editor
             so.FindProperty("disablePresentationDemoHotkeys").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();
 
+            AssignUiPrefabs(go);
+
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Selection.activeGameObject = go;
             EditorUtility.DisplayDialog(
                 "Setup AppFlow",
-                "GameFlow object is in the open scene with GameCatalog assigned.\nSave the scene (Ctrl+S).",
+                "GameFlow object is in the open scene with GameCatalog + UI prefabs assigned.\nSave the scene (Ctrl+S).",
                 "OK");
+        }
+
+        static void AssignUiPrefabs(GameObject flowGo)
+        {
+            var shell = flowGo.GetComponent<GameUiShell>();
+            if (shell == null) shell = flowGo.AddComponent<GameUiShell>();
+
+            var gameUi = AssetDatabase.LoadAssetAtPath<GameObject>(GameUiPrefabGenerator.GameUiPrefabPath);
+            var card = AssetDatabase.LoadAssetAtPath<GameObject>(GameUiPrefabGenerator.CollectorCardPath);
+            var upgrade = AssetDatabase.LoadAssetAtPath<GameObject>(GameUiPrefabGenerator.UpgradeRowPath);
+            var booster = AssetDatabase.LoadAssetAtPath<GameObject>(GameUiPrefabGenerator.BoosterRowPath);
+
+            if (gameUi == null)
+            {
+                Debug.LogWarning(
+                    "[MvpContentImporter] UI prefabs missing. Run Master Bidder → Generate UI Prefabs.");
+                return;
+            }
+
+            var so = new SerializedObject(shell);
+            so.FindProperty("gameUiPrefab").objectReferenceValue = gameUi;
+            so.FindProperty("collectorCardPrefab").objectReferenceValue = card;
+            so.FindProperty("upgradeRowPrefab").objectReferenceValue = upgrade;
+            so.FindProperty("boosterRowPrefab").objectReferenceValue = booster;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(shell);
         }
 
         static ArtworkDto[] LoadArtworks()

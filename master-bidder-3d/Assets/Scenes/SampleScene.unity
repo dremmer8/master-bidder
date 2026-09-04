@@ -3170,6 +3170,7 @@ GameObject:
   m_Component:
   - component: {fileID: 979414325}
   - component: {fileID: 979414324}
+  - component: {fileID: 979414326}
   m_Layer: 0
   m_Name: GameFlow
   m_TagString: Untagged
@@ -3207,6 +3208,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &979414326
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 979414323}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06c1b517a57b4c64c8c2ad05a7e5f832, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameUiPrefab: {fileID: 4095935922001379115, guid: 6b000f325502d4a499acd4eb6a0a024b, type: 3}
+  collectorCardPrefab: {fileID: 6214594991594453258, guid: 0a99d36de1afd4d4c8888cd147d19e82, type: 3}
+  upgradeRowPrefab: {fileID: 2540454464059006800, guid: f2cc6a275be773b44a15d535383b0142, type: 3}
+  boosterRowPrefab: {fileID: 5253892432031418403, guid: 66cc9f8b254010f4fab2d88886ec0876, type: 3}
 --- !u!1 &1028323243
 GameObject:
   m_ObjectHideFlags: 0
