@@ -10,6 +10,8 @@ namespace MasterBidder.UI
         const string ResPath = "UiSprites/";
 
         static Sprite _panel;
+        static Sprite _panelBody;
+        static Sprite _panelOrnament;
         static Sprite _panelCard;
         static Sprite _btnPrimary;
         static Sprite _btnDanger;
@@ -29,6 +31,8 @@ namespace MasterBidder.UI
         static bool _loaded;
 
         public static Sprite Panel => Ensure(ref _panel, "panel");
+        public static Sprite PanelBody => Ensure(ref _panelBody, "panel_body");
+        public static Sprite PanelOrnament => Ensure(ref _panelOrnament, "panel_ornament");
         public static Sprite PanelCard => Ensure(ref _panelCard, "panel_card");
         public static Sprite BtnPrimary => Ensure(ref _btnPrimary, "btn_primary");
         public static Sprite BtnDanger => Ensure(ref _btnDanger, "btn_danger");
@@ -50,6 +54,8 @@ namespace MasterBidder.UI
         {
             if (_loaded) return;
             _ = Panel;
+            _ = PanelBody;
+            _ = PanelOrnament;
             _ = PanelCard;
             _ = BtnPrimary;
             _ = BtnDanger;

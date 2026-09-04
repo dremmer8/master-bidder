@@ -76,7 +76,501 @@ namespace MasterBidder.UI
             GameUiSprites.Warmup();
             _canvas = _b.canvas != null ? _b.canvas : instance.GetComponent<Canvas>();
             ApplyBindings(_b);
+            DressIntroScreen();
+            DressBriefScreen();
+            DressAuctionScreen();
+            DressCollectorPopup();
+            DressTutorialHint();
             WireListeners();
+        }
+
+        void DressIntroScreen()
+        {
+            if (_intro == null) return;
+            var rootImg = _intro.GetComponent<Image>();
+            if (rootImg != null)
+            {
+                rootImg.sprite = null;
+                rootImg.color = GameUiStyle.ScreenBg;
+            }
+
+            var card = _intro.transform.Find("Card");
+            if (card == null) return;
+            var cardImg = card.GetComponent<Image>();
+            if (cardImg != null)
+                GameUiStyle.ApplyFramedPanel(cardImg);
+
+            var cardRt = card.GetComponent<RectTransform>();
+            if (cardRt != null)
+            {
+                cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+                cardRt.pivot = new Vector2(0.5f, 0.5f);
+                cardRt.anchoredPosition = new Vector2(0f, -8f);
+                cardRt.sizeDelta = new Vector2(620f, 400f);
+            }
+
+            if (_b.introTitle != null)
+            {
+                _b.introTitle.fontSize = 34;
+                _b.introTitle.alignment = TextAnchor.MiddleCenter;
+                StretchUi(_b.introTitle.rectTransform, new Vector2(0, 0.84f), Vector2.one, new Vector2(24, -18), new Vector2(-24, -8));
+            }
+
+            if (_b.introSubtitle != null)
+            {
+                _b.introSubtitle.fontSize = 20;
+                _b.introSubtitle.fontStyle = FontStyle.Bold;
+                _b.introSubtitle.color = GameUiStyle.TextColor;
+                _b.introSubtitle.alignment = TextAnchor.MiddleCenter;
+                _b.introSubtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
+                StretchUi(_b.introSubtitle.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.84f), new Vector2(24, 0), new Vector2(-24, 0));
+            }
+
+            if (_b.introLede != null)
+            {
+                _b.introLede.fontSize = 15;
+                _b.introLede.lineSpacing = 1.1f;
+                StretchUi(_b.introLede.rectTransform, new Vector2(0, 0.54f), new Vector2(1, 0.70f), new Vector2(28, 0), new Vector2(-28, 0));
+            }
+
+            if (_b.introRules != null)
+            {
+                _b.introRules.fontSize = 14;
+                _b.introRules.lineSpacing = 1.15f;
+                StretchUi(_b.introRules.rectTransform, new Vector2(0, 0.18f), new Vector2(1, 0.52f), new Vector2(28, 0), new Vector2(-28, 0));
+            }
+
+            if (_b.btnContinue != null)
+                StretchUi(_b.btnContinue.GetComponent<RectTransform>(), new Vector2(0.06f, 0.04f), new Vector2(0.48f, 0.15f), Vector2.zero, Vector2.zero);
+            if (_b.btnStart != null)
+                StretchUi(_b.btnStart.GetComponent<RectTransform>(), new Vector2(0.52f, 0.04f), new Vector2(0.94f, 0.15f), Vector2.zero, Vector2.zero);
+        }
+
+        void DressBriefScreen()
+        {
+            if (_brief == null) return;
+
+            var rootImg = _brief.GetComponent<Image>();
+            if (rootImg != null)
+            {
+                rootImg.sprite = null;
+                rootImg.color = GameUiStyle.ScreenBg;
+            }
+
+            DressFixedBar(_brief.transform.Find("DayBar"), new Vector2(0f, 1f), new Vector2(20f, -12f), new Vector2(220f, 44f), GameUiSprites.BarDay);
+            DressFixedBar(_brief.transform.Find("CapBar"), new Vector2(1f, 1f), new Vector2(-20f, -12f), new Vector2(250f, 44f), GameUiSprites.BarCurrency);
+
+            if (_b.briefDay != null)
+            {
+                _b.briefDay.fontSize = 17;
+                _b.briefDay.fontStyle = FontStyle.Bold;
+                _b.briefDay.color = GameUiStyle.OnDark;
+            }
+
+            if (_b.briefCapital != null)
+            {
+                _b.briefCapital.fontSize = 17;
+                _b.briefCapital.fontStyle = FontStyle.Bold;
+                _b.briefCapital.color = GameUiStyle.OnDark;
+            }
+
+            var clients = _brief.transform.Find("Clients");
+            if (clients != null)
+            {
+                StretchUi(clients.GetComponent<RectTransform>(), new Vector2(0, 0.12f), new Vector2(0.56f, 0.9f), new Vector2(16, 0), new Vector2(-6, -64));
+                var clientsImg = clients.GetComponent<Image>();
+                if (clientsImg != null) GameUiStyle.ApplyFramedPanel(clientsImg);
+
+                if (_b.briefClientHeading != null)
+                {
+                    _b.briefClientHeading.fontSize = 20;
+                    _b.briefClientHeading.fontStyle = FontStyle.Bold;
+                    _b.briefClientHeading.color = GameUiStyle.Accent;
+                    _b.briefClientHeading.alignment = TextAnchor.MiddleLeft;
+                    StretchUi(_b.briefClientHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
+                }
+
+                var collectorScroll = clients.Find("CollectorScroll");
+                if (collectorScroll != null)
+                {
+                    StretchUi(collectorScroll.GetComponent<RectTransform>(), new Vector2(0, 0.22f), new Vector2(1, 0.9f), new Vector2(14, 10), new Vector2(-14, -10));
+                    TightenScrollSpacing(collectorScroll, 5);
+                }
+
+                EnsureOrderPreviewPlate(clients);
+            }
+
+            var workshop = _brief.transform.Find("Workshop");
+            if (workshop != null)
+            {
+                StretchUi(workshop.GetComponent<RectTransform>(), new Vector2(0.56f, 0.12f), new Vector2(1, 0.9f), new Vector2(6, 0), new Vector2(-16, -64));
+                var workshopImg = workshop.GetComponent<Image>();
+                if (workshopImg != null) GameUiStyle.ApplyFramedPanel(workshopImg);
+
+                if (_b.briefWorkshopHeading != null)
+                {
+                    _b.briefWorkshopHeading.fontSize = 20;
+                    _b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
+                    _b.briefWorkshopHeading.color = GameUiStyle.Accent;
+                    _b.briefWorkshopHeading.alignment = TextAnchor.MiddleLeft;
+                    StretchUi(_b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
+                }
+
+                var upgradeScroll = workshop.Find("UpgradeScroll");
+                if (upgradeScroll != null)
+                {
+                    StretchUi(upgradeScroll.GetComponent<RectTransform>(), new Vector2(0, 0.02f), new Vector2(1, 0.9f), new Vector2(14, 10), new Vector2(-14, -10));
+                    TightenScrollSpacing(upgradeScroll, 4);
+                }
+            }
+
+            if (_b.btnReset != null)
+                StretchUi(_b.btnReset.GetComponent<RectTransform>(), new Vector2(0.02f, 0.02f), new Vector2(0.2f, 0.095f), Vector2.zero, Vector2.zero);
+            if (_b.btnEnterHall != null)
+                StretchUi(_b.btnEnterHall.GetComponent<RectTransform>(), new Vector2(0.72f, 0.02f), new Vector2(0.98f, 0.095f), Vector2.zero, Vector2.zero);
+        }
+
+        void DressAuctionScreen()
+        {
+            if (_auction == null) return;
+
+            var rootImg = _auction.GetComponent<Image>();
+            if (rootImg != null)
+            {
+                rootImg.sprite = null;
+                rootImg.color = new Color(0, 0, 0, 0);
+                rootImg.raycastTarget = false;
+            }
+
+            var audience = _auction.transform.Find("Audience");
+            if (audience != null)
+            {
+                audience.gameObject.SetActive(false);
+                var audImg = audience.GetComponent<Image>();
+                if (audImg != null)
+                {
+                    audImg.sprite = null;
+                    audImg.color = new Color(0, 0, 0, 0);
+                    audImg.raycastTarget = false;
+                }
+            }
+
+            if (_b != null)
+                _b.rivalHeads = System.Array.Empty<Image>();
+
+            var hud = _auction.transform.Find("HudRight");
+            if (hud == null) return;
+
+            // Narrow side rail — leave the painting room breathing room.
+            StretchUi(hud.GetComponent<RectTransform>(), new Vector2(0.72f, 0.03f), new Vector2(0.985f, 0.97f), new Vector2(6, 8), new Vector2(-12, -8));
+            var hudImg = hud.GetComponent<Image>();
+            if (hudImg != null) GameUiStyle.ApplyFramedPanel(hudImg);
+
+            if (_b.aucHud != null)
+            {
+                _b.aucHud.fontSize = 13;
+                _b.aucHud.fontStyle = FontStyle.Bold;
+                _b.aucHud.color = GameUiStyle.TextColor;
+                _b.aucHud.alignment = TextAnchor.MiddleLeft;
+                _b.aucHud.horizontalOverflow = HorizontalWrapMode.Wrap;
+                StretchUi(_b.aucHud.rectTransform, new Vector2(0, 0.91f), Vector2.one, new Vector2(16, -10), new Vector2(-16, -6));
+            }
+
+            EnsurePopupPlate(hud, "OrderPlate", _b.orderCard,
+                new Vector2(0, 0.76f), new Vector2(1, 0.91f), new Vector2(14, 2), new Vector2(-14, -2));
+            if (_b.orderCard != null)
+            {
+                _b.orderCard.fontSize = 14;
+                _b.orderCard.fontStyle = FontStyle.Bold;
+                _b.orderCard.color = GameUiStyle.Accent;
+                _b.orderCard.alignment = TextAnchor.MiddleLeft;
+                _b.orderCard.lineSpacing = 1.12f;
+                _b.orderCard.horizontalOverflow = HorizontalWrapMode.Wrap;
+                StretchUi(_b.orderCard.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 6), new Vector2(-12, -6));
+            }
+
+            var econ = hud.Find("Econ");
+            if (econ != null)
+            {
+                StretchUi(econ.GetComponent<RectTransform>(), new Vector2(0, 0.62f), new Vector2(1, 0.75f), new Vector2(14, 0), new Vector2(-14, 0));
+                var econImg = econ.GetComponent<Image>();
+                if (econImg != null) GameUiStyle.ApplyCard(econImg);
+            }
+
+            if (_b.livePrice != null)
+            {
+                _b.livePrice.fontSize = 17;
+                _b.livePrice.fontStyle = FontStyle.Bold;
+                _b.livePrice.color = GameUiStyle.TextColor;
+                StretchUi(_b.livePrice.rectTransform, new Vector2(0, 0.48f), Vector2.one, new Vector2(12, 0), new Vector2(-12, 0));
+            }
+            if (_b.liveBudget != null)
+            {
+                _b.liveBudget.fontSize = 13;
+                _b.liveBudget.color = GameUiStyle.TextColor;
+                StretchUi(_b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(0.58f, 0.48f), new Vector2(12, 0), new Vector2(-4, 0));
+            }
+            if (_b.liveSpeed != null)
+            {
+                _b.liveSpeed.fontSize = 13;
+                _b.liveSpeed.color = GameUiStyle.TextColor;
+                StretchUi(_b.liveSpeed.rectTransform, new Vector2(0.5f, 0), new Vector2(1, 0.48f), new Vector2(4, 0), new Vector2(-12, 0));
+            }
+
+            var fields = hud.Find("Fields");
+            if (fields != null)
+            {
+                StretchUi(fields.GetComponent<RectTransform>(), new Vector2(0, 0.28f), new Vector2(1, 0.6f), new Vector2(14, 0), new Vector2(-14, 0));
+                var fieldsImg = fields.GetComponent<Image>();
+                if (fieldsImg != null) GameUiStyle.ApplyCard(fieldsImg);
+            }
+
+            if (_b.fieldLabels != null)
+            {
+                // Match factory: taller band for fact (index 3).
+                float[] rowTops = { 1f, 0.86f, 0.72f, 0.58f, 0.18f, 0f };
+                for (int i = 0; i < _b.fieldLabels.Length; i++)
+                {
+                    if (_b.fieldRows != null && i < _b.fieldRows.Length && _b.fieldRows[i] != null)
+                    {
+                        var rowRt = _b.fieldRows[i].rectTransform;
+                        StretchUi(rowRt, new Vector2(0, rowTops[i + 1]), new Vector2(1, rowTops[i]), new Vector2(3, 1), new Vector2(-3, -1));
+                        if (_b.fieldRows[i].GetComponent<RectMask2D>() == null)
+                            _b.fieldRows[i].gameObject.AddComponent<RectMask2D>();
+                    }
+
+                    if (_b.fieldLabels[i] != null)
+                    {
+                        _b.fieldLabels[i].fontSize = 12;
+                        _b.fieldLabels[i].color = GameUiStyle.Dim;
+                        _b.fieldLabels[i].alignment = TextAnchor.UpperLeft;
+                        StretchUi(_b.fieldLabels[i].rectTransform, new Vector2(0, 0), new Vector2(0.38f, 1), new Vector2(10, 4), new Vector2(0, -4));
+                    }
+                    if (_b.fieldValues != null && i < _b.fieldValues.Length && _b.fieldValues[i] != null)
+                    {
+                        _b.fieldValues[i].fontSize = 13;
+                        _b.fieldValues[i].alignment = TextAnchor.UpperLeft;
+                        _b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
+                        _b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
+                        StretchUi(_b.fieldValues[i].rectTransform, new Vector2(0.38f, 0), Vector2.one, new Vector2(4, 4), new Vector2(-10, -4));
+                    }
+                }
+            }
+
+            if (_b.btnStartLot != null)
+                StretchUi(_b.btnStartLot.GetComponent<RectTransform>(), new Vector2(0.07f, 0.1f), new Vector2(0.93f, 0.16f), Vector2.zero, Vector2.zero);
+            if (_b.btnBuy != null)
+                StretchUi(_b.btnBuy.GetComponent<RectTransform>(), new Vector2(0.07f, 0.02f), new Vector2(0.93f, 0.09f), Vector2.zero, Vector2.zero);
+            if (_b.btnSkip != null)
+                StretchUi(_b.btnSkip.GetComponent<RectTransform>(), new Vector2(0.07f, 0.1f), new Vector2(0.48f, 0.16f), Vector2.zero, Vector2.zero);
+            if (_b.btnFinishDay != null)
+                StretchUi(_b.btnFinishDay.GetComponent<RectTransform>(), new Vector2(0.52f, 0.1f), new Vector2(0.93f, 0.16f), Vector2.zero, Vector2.zero);
+        }
+
+        void DressTutorialHint()
+        {
+            if (_tutorial == null) return;
+
+            var rt = _tutorial.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                // Sit above Skip/Buy so the coach never covers the taught action.
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.2f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = Vector2.zero;
+                rt.sizeDelta = new Vector2(520f, 88f);
+            }
+
+            var img = _tutorial.GetComponent<Image>();
+            if (img != null)
+            {
+                GameUiStyle.ApplySliced(img, GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
+                // Match MVP pointer-events:none — toast must not steal clicks from action buttons.
+                img.raycastTarget = false;
+            }
+
+            if (_b.tutorialText != null)
+            {
+                _b.tutorialText.fontSize = 15;
+                _b.tutorialText.fontStyle = FontStyle.Bold;
+                _b.tutorialText.color = GameUiStyle.TextColor;
+                _b.tutorialText.alignment = TextAnchor.MiddleCenter;
+                _b.tutorialText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                _b.tutorialText.raycastTarget = false;
+                StretchUi(_b.tutorialText.rectTransform, Vector2.zero, Vector2.one, new Vector2(28, 12), new Vector2(-28, -12));
+            }
+        }
+
+        void DressCollectorPopup()
+        {
+            if (_collectorPopup == null) return;
+
+            var rootImg = _collectorPopup.GetComponent<Image>();
+            if (rootImg != null)
+            {
+                rootImg.sprite = null;
+                rootImg.color = GameUiStyle.Overlay;
+            }
+
+            var card = _collectorPopup.transform.Find("Card");
+            if (card == null) return;
+
+            var cardRt = card.GetComponent<RectTransform>();
+            if (cardRt != null)
+            {
+                cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+                cardRt.pivot = new Vector2(0.5f, 0.5f);
+                cardRt.anchoredPosition = Vector2.zero;
+                cardRt.sizeDelta = new Vector2(720f, 420f);
+            }
+
+            var cardImg = card.GetComponent<Image>();
+            if (cardImg != null) GameUiStyle.ApplyFramedPanel(cardImg);
+
+            // Header: compact portrait + identity in one band.
+            if (_b.popupPortrait != null)
+            {
+                StretchUi(_b.popupPortrait.rectTransform, new Vector2(0, 0.7f), new Vector2(0.22f, 0.96f), new Vector2(24, -16), new Vector2(-8, -14));
+                _b.popupPortrait.preserveAspect = true;
+                _b.popupPortrait.transform.SetSiblingIndex(1);
+            }
+
+            if (_b.popupName != null)
+            {
+                _b.popupName.fontSize = 26;
+                _b.popupName.fontStyle = FontStyle.Bold;
+                _b.popupName.color = GameUiStyle.Accent;
+                _b.popupName.alignment = TextAnchor.LowerLeft;
+                StretchUi(_b.popupName.rectTransform, new Vector2(0.24f, 0.84f), new Vector2(1, 0.96f), new Vector2(8, 0), new Vector2(-24, -14));
+            }
+
+            if (_b.popupTagline != null)
+            {
+                _b.popupTagline.fontSize = 14;
+                _b.popupTagline.color = GameUiStyle.TextColor;
+                _b.popupTagline.alignment = TextAnchor.UpperLeft;
+                _b.popupTagline.lineSpacing = 1.1f;
+                _b.popupTagline.horizontalOverflow = HorizontalWrapMode.Wrap;
+                StretchUi(_b.popupTagline.rectTransform, new Vector2(0.24f, 0.7f), new Vector2(1, 0.84f), new Vector2(8, 0), new Vector2(-24, 0));
+            }
+
+            // Speech fully below the portrait row — never clipped by the face.
+            EnsurePopupPlate(card, "SpeechPlate", _b.popupSpeech,
+                new Vector2(0, 0.42f), new Vector2(1, 0.68f), new Vector2(22, 4), new Vector2(-22, -4));
+            if (_b.popupSpeech != null)
+            {
+                _b.popupSpeech.fontSize = 15;
+                _b.popupSpeech.fontStyle = FontStyle.Italic;
+                _b.popupSpeech.color = GameUiStyle.TextColor;
+                _b.popupSpeech.alignment = TextAnchor.UpperLeft;
+                _b.popupSpeech.horizontalOverflow = HorizontalWrapMode.Wrap;
+                _b.popupSpeech.lineSpacing = 1.15f;
+                StretchUi(_b.popupSpeech.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 10), new Vector2(-14, -10));
+            }
+
+            EnsurePopupPlate(card, "TagsPlate", _b.popupTags,
+                new Vector2(0, 0.28f), new Vector2(1, 0.42f), new Vector2(22, 2), new Vector2(-22, -2));
+            if (_b.popupTags != null)
+            {
+                _b.popupTags.fontSize = 17;
+                _b.popupTags.fontStyle = FontStyle.Bold;
+                _b.popupTags.color = GameUiStyle.Accent;
+                _b.popupTags.alignment = TextAnchor.MiddleLeft;
+                _b.popupTags.horizontalOverflow = HorizontalWrapMode.Wrap;
+                StretchUi(_b.popupTags.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 4), new Vector2(-14, -4));
+            }
+
+            if (_b.popupWarning != null)
+            {
+                _b.popupWarning.fontSize = 13;
+                _b.popupWarning.color = GameUiStyle.Bad;
+                _b.popupWarning.alignment = TextAnchor.MiddleLeft;
+                StretchUi(_b.popupWarning.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.28f), new Vector2(28, 0), new Vector2(-28, 0));
+            }
+
+            if (_b.btnPopupStart != null)
+                StretchUi(_b.btnPopupStart.GetComponent<RectTransform>(), new Vector2(0.2f, 0.04f), new Vector2(0.8f, 0.14f), Vector2.zero, Vector2.zero);
+        }
+
+        static void EnsurePopupPlate(Transform card, string plateName, Text content,
+            Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)
+        {
+            if (card == null || content == null) return;
+
+            Transform plate = card.Find(plateName);
+            if (plate == null)
+            {
+                var go = new GameObject(plateName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(card, false);
+                plate = go.transform;
+            }
+
+            if (content.transform.parent != plate)
+                content.transform.SetParent(plate, false);
+
+            StretchUi(plate.GetComponent<RectTransform>(), aMin, aMax, offMin, offMax);
+            var img = plate.GetComponent<Image>();
+            if (img != null) GameUiStyle.ApplyCard(img);
+        }
+
+        void EnsureOrderPreviewPlate(Transform clients)
+        {
+            if (_b.briefOrderPreview == null || clients == null) return;
+
+            Transform plate = clients.Find("OrderPlate");
+            if (plate == null)
+            {
+                var plateGo = new GameObject("OrderPlate", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                plateGo.transform.SetParent(clients, false);
+                plate = plateGo.transform;
+                _b.briefOrderPreview.transform.SetParent(plate, false);
+            }
+
+            StretchUi(plate.GetComponent<RectTransform>(), new Vector2(0, 0.03f), new Vector2(1, 0.2f), new Vector2(16, 8), new Vector2(-16, -4));
+            var plateImg = plate.GetComponent<Image>();
+            if (plateImg != null) GameUiStyle.ApplyCard(plateImg);
+
+            _b.briefOrderPreview.fontSize = 15;
+            _b.briefOrderPreview.fontStyle = FontStyle.Bold;
+            _b.briefOrderPreview.color = GameUiStyle.TextColor;
+            _b.briefOrderPreview.alignment = TextAnchor.MiddleLeft;
+            _b.briefOrderPreview.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _b.briefOrderPreview.lineSpacing = 1.15f;
+            StretchUi(_b.briefOrderPreview.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 6), new Vector2(-14, -6));
+        }
+
+        static void DressFixedBar(Transform bar, Vector2 anchor, Vector2 anchoredPos, Vector2 size, Sprite sprite)
+        {
+            if (bar == null) return;
+            var rt = bar.GetComponent<RectTransform>();
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = anchor;
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = size;
+            var img = bar.GetComponent<Image>();
+            if (img != null)
+                GameUiStyle.ApplySliced(img, sprite, GameUiStyle.SpriteReady);
+        }
+
+        static void TightenScrollSpacing(Transform scrollRoot, int spacing)
+        {
+            if (scrollRoot == null) return;
+            var content = scrollRoot.Find("Viewport/Content");
+            if (content == null) return;
+            var vlg = content.GetComponent<VerticalLayoutGroup>();
+            if (vlg == null) return;
+            vlg.spacing = spacing;
+            vlg.padding = new RectOffset(4, 4, 4, 4);
+        }
+
+        static void StretchUi(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)
+        {
+            if (rt == null) return;
+            rt.anchorMin = aMin;
+            rt.anchorMax = aMax;
+            rt.offsetMin = offMin;
+            rt.offsetMax = offMax;
         }
 
         void ResolvePrefabsIfNeeded()
@@ -356,6 +850,13 @@ namespace MasterBidder.UI
                 var view = go.GetComponent<CollectorCardView>();
                 if (view == null) continue;
 
+                var le = go.GetComponent<LayoutElement>();
+                if (le != null)
+                {
+                    le.minHeight = 56;
+                    le.preferredHeight = 56;
+                }
+
                 if (view.background != null)
                 {
                     if (view.background.sprite != null)
@@ -377,6 +878,8 @@ namespace MasterBidder.UI
 
                 if (view.label != null)
                 {
+                    view.label.fontSize = 15;
+                    view.label.lineSpacing = 1.05f;
                     view.label.text = $"{c.nameRu}\n{LocaleService.T("brief.mission")} {progress + 1}/{c.LadderLength}";
                     view.label.horizontalOverflow = HorizontalWrapMode.Wrap;
                 }
@@ -409,15 +912,27 @@ namespace MasterBidder.UI
                 var view = go.GetComponent<UpgradeRowView>();
                 if (view == null) continue;
 
+                var le = go.GetComponent<LayoutElement>();
+                if (le != null)
+                {
+                    le.minHeight = 52;
+                    le.preferredHeight = 52;
+                }
+
                 if (view.label != null)
                 {
+                    view.label.fontSize = 13;
+                    view.label.lineSpacing = 1.05f;
                     view.label.text = $"{u.NameRu} — {u.Cost:N0} ₽\n{u.DescRu}";
                     view.label.color = owned ? GameUiStyle.Dim : GameUiStyle.TextColor;
                     view.label.horizontalOverflow = HorizontalWrapMode.Wrap;
                 }
 
                 if (view.buyLabel != null)
+                {
+                    view.buyLabel.fontSize = 14;
                     view.buyLabel.text = owned ? LocaleService.T("brief.owned") : LocaleService.T("brief.buy");
+                }
                 if (view.buyButton != null)
                 {
                     view.buyButton.interactable = canBuy;
@@ -478,12 +993,18 @@ namespace MasterBidder.UI
 
             bool standby = state.AwaitingLotStart || IsCollectorPopupVisible;
             bool busy = state.LotResolved || state.FastForwarding || _purchaseCardVisible;
+            var day1Tut = session.GetDay1TutorialStep(state.CurrentLotIndex);
+            // Match session gates: coaching lots only unlock the taught action after the coach appears.
+            bool buyAllowed = day1Tut == TutorialStep.None
+                || (day1Tut == TutorialStep.BuyMatch && state.TutorialPaused && state.TutorialStep == TutorialStep.BuyMatch);
+            bool skipAllowed = day1Tut == TutorialStep.None
+                || (day1Tut == TutorialStep.SkipMiss && state.TutorialPaused && state.TutorialStep == TutorialStep.SkipMiss);
             _b.btnStartLot.gameObject.SetActive(state.AwaitingLotStart && !IsCollectorPopupVisible);
             _b.btnSkip.gameObject.SetActive(!state.AwaitingLotStart);
             _b.btnFinishDay.gameObject.SetActive(!state.AwaitingLotStart);
             _b.btnBuy.gameObject.SetActive(!state.AwaitingLotStart);
-            _b.btnBuy.interactable = !standby && !busy && (!state.TutorialPaused || state.TutorialStep == TutorialStep.BuyMatch);
-            _b.btnSkip.interactable = !standby && !busy && (!state.TutorialPaused || state.TutorialStep == TutorialStep.SkipMiss);
+            _b.btnBuy.interactable = !standby && !busy && buyAllowed;
+            _b.btnSkip.interactable = !standby && !busy && skipAllowed;
             _b.btnFinishDay.interactable = !state.TutorialPaused && !busy;
 
             _b.startLotLabel.text = LocaleService.T("auction.startLot");
@@ -515,11 +1036,19 @@ namespace MasterBidder.UI
                                 || (!string.IsNullOrEmpty(state.FreeRevealedField) && state.FreeRevealedField == id);
                 _b.fieldValues[i].text = revealed ? raw : AuctionRules.MaskValue(raw);
                 _b.fieldValues[i].color = revealed ? GameUiStyle.TextColor : GameUiStyle.Dim;
+                _b.fieldValues[i].fontStyle = revealed ? FontStyle.Bold : FontStyle.Normal;
+                _b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
+                _b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
 
                 bool isTarget = order != null && IsOrderTarget(order, id);
-                _b.fieldRows[i].color = isTarget
-                    ? new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.28f)
-                    : new Color(0.2f, 0.16f, 0.12f, 0.06f);
+                if (isTarget)
+                    _b.fieldRows[i].color = new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, revealed ? 0.34f : 0.22f);
+                else if (revealed)
+                    _b.fieldRows[i].color = new Color(0.2f, 0.16f, 0.12f, 0.12f);
+                else
+                    _b.fieldRows[i].color = i % 2 == 0
+                        ? new Color(0.2f, 0.16f, 0.12f, 0.08f)
+                        : new Color(0.2f, 0.16f, 0.12f, 0.03f);
             }
         }
 

@@ -19,6 +19,8 @@ namespace MasterBidder.Editor
         static readonly Dictionary<string, Vector4> Borders = new Dictionary<string, Vector4>
         {
             { "panel", new Vector4(22, 22, 22, 30) },
+            { "panel_body", new Vector4(22, 22, 22, 30) },
+            { "panel_ornament", new Vector4(0, 0, 0, 0) },
             { "panel_card", new Vector4(18, 18, 18, 18) },
             { "btn_primary", new Vector4(18, 18, 18, 18) },
             { "btn_danger", new Vector4(18, 18, 18, 18) },

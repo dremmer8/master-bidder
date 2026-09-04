@@ -10,6 +10,8 @@ namespace MasterBidder.UI
     {
         // Palette aligned with UiAtlas / UiStyleGuide
         public static readonly Color Bg = Hex(0xF5F2EB, 0.96f);
+        /// <summary>Warm dark stage behind paper plates (style-guide Primary / MVP room).</summary>
+        public static readonly Color ScreenBg = Hex(0x2B241D);
         public static readonly Color Panel = Hex(0xE2D8CC);
         public static readonly Color PanelLight = Hex(0xF3EBE0);
         public static readonly Color Accent = Hex(0xC6A05B);
@@ -52,7 +54,47 @@ namespace MasterBidder.UI
 
         public static void ApplyPanel(Image img) => ApplySliced(img, GameUiSprites.Panel, SpriteReady);
 
+        /// <summary>
+        /// Wide modal plate: sliced body without the baked crest, plus a fixed-aspect ornament
+        /// so the top flourish does not stretch with the card width.
+        /// </summary>
+        public static void ApplyFramedPanel(Image img)
+        {
+            ApplySliced(img, GameUiSprites.PanelBody ?? GameUiSprites.Panel, SpriteReady);
+            EnsurePanelOrnament(img != null ? img.transform : null);
+        }
+
         public static void ApplyCard(Image img) => ApplySliced(img, GameUiSprites.PanelCard, SpriteReady);
+
+        public static void EnsurePanelOrnament(Transform card)
+        {
+            if (card == null) return;
+            var sprite = GameUiSprites.PanelOrnament;
+            if (sprite == null) return;
+
+            Transform existing = card.Find("Ornament");
+            GameObject go = existing != null ? existing.gameObject : null;
+            if (go == null)
+            {
+                go = new GameObject("Ornament", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(card, false);
+                go.transform.SetAsFirstSibling();
+            }
+
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.sizeDelta = new Vector2(126f, 24f);
+            rt.anchoredPosition = new Vector2(0f, 6f);
+
+            var ornament = go.GetComponent<Image>();
+            ornament.sprite = sprite;
+            ornament.type = Image.Type.Simple;
+            ornament.preserveAspect = true;
+            ornament.raycastTarget = false;
+            ornament.color = SpriteReady;
+        }
 
         public static void ApplyPrimaryButton(Image img, Text label = null)
         {

@@ -11,11 +11,10 @@ namespace MasterBidder.Core
     /// </summary>
     public static class AuctionRules
     {
-        public static string MaskValue(string text)
+        public static string MaskValue(string _)
         {
-            int len = string.IsNullOrEmpty(text) ? 6 : text.Length;
-            len = Math.Max(6, Math.Min(len, 28));
-            return new string('•', len);
+            // Short mask — long dotted runs clutter the narrow auction HUD.
+            return "···";
         }
 
         public static bool MatchesCriteria(PresentedLot artwork, IList<CriterionTag> criteriaTags)

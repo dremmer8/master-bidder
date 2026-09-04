@@ -13,20 +13,21 @@ namespace MasterBidder.UI
         {
             var card = CreatePanel("CollectorCard", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var le = card.AddComponent<LayoutElement>();
-            le.minHeight = 78;
-            le.preferredHeight = 78;
+            le.minHeight = 56;
+            le.preferredHeight = 56;
             GameUiStyle.ApplyCard(card.GetComponent<Image>());
             var btn = card.AddComponent<Button>();
             btn.targetGraphic = card.GetComponent<Image>();
 
-            var portrait = CreatePanel("P", card.transform, new Vector2(0, 0.1f), new Vector2(0.18f, 0.9f), new Vector2(8, 0), Vector2.zero);
+            var portrait = CreatePanel("P", card.transform, new Vector2(0, 0.12f), new Vector2(0.16f, 0.88f), new Vector2(8, 0), Vector2.zero);
             var pImg = portrait.GetComponent<Image>();
             pImg.color = Color.white;
             pImg.preserveAspect = true;
 
-            var t = CreateText("T", card.transform, "", 14, TextAnchor.MiddleLeft);
-            Stretch(t.rectTransform, new Vector2(0.2f, 0), Vector2.one, new Vector2(8, 4), new Vector2(-12, -4));
+            var t = CreateText("T", card.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(t.rectTransform, new Vector2(0.18f, 0), Vector2.one, new Vector2(8, 4), new Vector2(-10, -4));
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
+            t.lineSpacing = 1.05f;
 
             var view = card.AddComponent<CollectorCardView>();
             view.background = card.GetComponent<Image>();
@@ -41,16 +42,18 @@ namespace MasterBidder.UI
         {
             var row = CreatePanel("UpgradeRow", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var le = row.AddComponent<LayoutElement>();
-            le.minHeight = 64;
-            le.preferredHeight = 64;
+            le.minHeight = 52;
+            le.preferredHeight = 52;
             GameUiStyle.ApplyCard(row.GetComponent<Image>());
 
-            var t = CreateText("T", row.transform, "", 12, TextAnchor.MiddleLeft);
-            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.72f, 1), new Vector2(8, 2), new Vector2(-4, -2));
+            var t = CreateText("T", row.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.72f, 1), new Vector2(10, 4), new Vector2(-4, -4));
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
+            t.lineSpacing = 1.05f;
 
             var buy = CreatePrimaryButton("B", row.transform, out var bl);
-            Place(buy, 0.74f, 0.2f, 0.96f, 0.8f);
+            Place(buy, 0.74f, 0.18f, 0.97f, 0.82f);
+            bl.fontSize = 14;
 
             var view = row.AddComponent<UpgradeRowView>();
             view.background = row.GetComponent<Image>();
@@ -157,27 +160,32 @@ namespace MasterBidder.UI
         {
             var root = CreatePanel("Screen_Intro", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             root.GetComponent<Image>().sprite = null;
-            root.GetComponent<Image>().color = GameUiStyle.Bg;
-            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-440, -300), new Vector2(440, 260));
-            GameUiStyle.ApplyPanel(card.GetComponent<Image>());
-            b.introTitle = CreateText("Title", card.transform, "", 40, TextAnchor.UpperCenter);
-            Stretch(b.introTitle.rectTransform, new Vector2(0, 0.8f), Vector2.one, new Vector2(28, -20), new Vector2(-28, -12));
+            root.GetComponent<Image>().color = GameUiStyle.ScreenBg;
+            // Compact plate: crest via ApplyFramedPanel; bands sized to content (no spare vertical air).
+            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-310, -200), new Vector2(310, 200));
+            GameUiStyle.ApplyFramedPanel(card.GetComponent<Image>());
+            b.introTitle = CreateText("Title", card.transform, "", 34, TextAnchor.MiddleCenter);
+            Stretch(b.introTitle.rectTransform, new Vector2(0, 0.84f), Vector2.one, new Vector2(24, -18), new Vector2(-24, -8));
             b.introTitle.color = GameUiStyle.Accent;
             b.introTitle.fontStyle = FontStyle.Bold;
-            b.introSubtitle = CreateText("Sub", card.transform, "", 20, TextAnchor.UpperCenter);
-            Stretch(b.introSubtitle.rectTransform, new Vector2(0, 0.7f), new Vector2(1, 0.8f), new Vector2(28, 0), new Vector2(-28, 0));
-            b.introSubtitle.color = GameUiStyle.Dim;
-            b.introLede = CreateText("Lede", card.transform, "", 16, TextAnchor.UpperLeft);
-            Stretch(b.introLede.rectTransform, new Vector2(0, 0.42f), new Vector2(1, 0.7f), new Vector2(36, 0), new Vector2(-36, 0));
+            b.introSubtitle = CreateText("Sub", card.transform, "", 20, TextAnchor.MiddleCenter);
+            Stretch(b.introSubtitle.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.84f), new Vector2(24, 0), new Vector2(-24, 0));
+            b.introSubtitle.color = GameUiStyle.TextColor;
+            b.introSubtitle.fontStyle = FontStyle.Bold;
+            b.introSubtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.introLede = CreateText("Lede", card.transform, "", 15, TextAnchor.UpperLeft);
+            Stretch(b.introLede.rectTransform, new Vector2(0, 0.54f), new Vector2(1, 0.70f), new Vector2(28, 0), new Vector2(-28, 0));
             b.introLede.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.introRules = CreateText("Rules", card.transform, "", 15, TextAnchor.UpperLeft);
-            Stretch(b.introRules.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.42f), new Vector2(36, 0), new Vector2(-36, 0));
+            b.introLede.lineSpacing = 1.1f;
+            b.introRules = CreateText("Rules", card.transform, "", 14, TextAnchor.UpperLeft);
+            Stretch(b.introRules.rectTransform, new Vector2(0, 0.18f), new Vector2(1, 0.52f), new Vector2(28, 0), new Vector2(-28, 0));
             b.introRules.color = GameUiStyle.Dim;
             b.introRules.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.introRules.lineSpacing = 1.15f;
             b.btnContinue = CreateSecondaryButton("Continue", card.transform, out b.continueLabel);
-            Place(b.btnContinue, 0.05f, 0.03f, 0.48f, 0.13f);
+            Place(b.btnContinue, 0.06f, 0.04f, 0.48f, 0.15f);
             b.btnStart = CreatePrimaryButton("Start", card.transform, out b.startLabel);
-            Place(b.btnStart, 0.52f, 0.03f, 0.95f, 0.13f);
+            Place(b.btnStart, 0.52f, 0.04f, 0.94f, 0.15f);
             return root;
         }
 
@@ -185,47 +193,52 @@ namespace MasterBidder.UI
         {
             var root = CreatePanel("Screen_Brief", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             root.GetComponent<Image>().sprite = null;
-            root.GetComponent<Image>().color = GameUiStyle.Bg;
+            root.GetComponent<Image>().color = GameUiStyle.ScreenBg;
 
-            var dayBar = CreatePanel("DayBar", root.transform, new Vector2(0, 0.92f), new Vector2(0.32f, 1), new Vector2(24, -56), new Vector2(0, -8));
+            var dayBar = CreateFixedBar("DayBar", root.transform, new Vector2(0f, 1f), new Vector2(20f, -12f), new Vector2(220f, 44f));
             GameUiStyle.ApplySliced(dayBar.GetComponent<Image>(), GameUiSprites.BarDay, GameUiStyle.SpriteReady);
-            b.briefDay = CreateText("Day", dayBar.transform, "", 18, TextAnchor.MiddleLeft);
-            Stretch(b.briefDay.rectTransform, Vector2.zero, Vector2.one, new Vector2(52, 0), new Vector2(-12, 0));
+            b.briefDay = CreateText("Day", dayBar.transform, "", 17, TextAnchor.MiddleLeft);
+            Stretch(b.briefDay.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 0), new Vector2(-12, 0));
             b.briefDay.color = GameUiStyle.OnDark;
             b.briefDay.fontStyle = FontStyle.Bold;
 
-            var capBar = CreatePanel("CapBar", root.transform, new Vector2(0.68f, 0.92f), Vector2.one, new Vector2(0, -56), new Vector2(-24, -8));
+            var capBar = CreateFixedBar("CapBar", root.transform, new Vector2(1f, 1f), new Vector2(-20f, -12f), new Vector2(250f, 44f));
             GameUiStyle.ApplySliced(capBar.GetComponent<Image>(), GameUiSprites.BarCurrency, GameUiStyle.SpriteReady);
-            b.briefCapital = CreateText("Cap", capBar.transform, "", 18, TextAnchor.MiddleLeft);
-            Stretch(b.briefCapital.rectTransform, Vector2.zero, Vector2.one, new Vector2(52, 0), new Vector2(-12, 0));
+            b.briefCapital = CreateText("Cap", capBar.transform, "", 17, TextAnchor.MiddleLeft);
+            Stretch(b.briefCapital.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 0), new Vector2(-12, 0));
             b.briefCapital.color = GameUiStyle.OnDark;
             b.briefCapital.fontStyle = FontStyle.Bold;
 
-            var left = CreatePanel("Clients", root.transform, new Vector2(0, 0.12f), new Vector2(0.58f, 0.9f), new Vector2(16, 0), new Vector2(-8, -56));
-            GameUiStyle.ApplyPanel(left.GetComponent<Image>());
-            b.briefClientHeading = CreateText("H", left.transform, "", 18, TextAnchor.UpperLeft);
-            Stretch(b.briefClientHeading.rectTransform, new Vector2(0, 0.92f), Vector2.one, new Vector2(18, -14), new Vector2(-18, -8));
+            var left = CreatePanel("Clients", root.transform, new Vector2(0, 0.12f), new Vector2(0.56f, 0.9f), new Vector2(16, 0), new Vector2(-6, -64));
+            GameUiStyle.ApplyFramedPanel(left.GetComponent<Image>());
+            b.briefClientHeading = CreateText("H", left.transform, "", 20, TextAnchor.MiddleLeft);
+            Stretch(b.briefClientHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
             b.briefClientHeading.color = GameUiStyle.Accent;
             b.briefClientHeading.fontStyle = FontStyle.Bold;
-            b.collectorList = CreateScrollContent(left.transform, "CollectorScroll", new Vector2(0, 0.28f), new Vector2(1, 0.92f));
-            b.briefOrderPreview = CreateText("OrderPrev", left.transform, "", 14, TextAnchor.UpperLeft);
-            Stretch(b.briefOrderPreview.rectTransform, new Vector2(0, 0), new Vector2(1, 0.28f), new Vector2(18, 12), new Vector2(-18, -8));
-            b.briefOrderPreview.color = GameUiStyle.Dim;
+            b.collectorList = CreateScrollContent(left.transform, "CollectorScroll", new Vector2(0, 0.22f), new Vector2(1, 0.9f), 5);
+
+            var orderPlate = CreatePanel("OrderPlate", left.transform, new Vector2(0, 0.03f), new Vector2(1, 0.2f), new Vector2(16, 8), new Vector2(-16, -4));
+            GameUiStyle.ApplyCard(orderPlate.GetComponent<Image>());
+            b.briefOrderPreview = CreateText("OrderPrev", orderPlate.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(b.briefOrderPreview.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 6), new Vector2(-14, -6));
+            b.briefOrderPreview.color = GameUiStyle.TextColor;
+            b.briefOrderPreview.fontStyle = FontStyle.Bold;
             b.briefOrderPreview.horizontalOverflow = HorizontalWrapMode.Wrap;
             b.briefOrderPreview.verticalOverflow = VerticalWrapMode.Overflow;
+            b.briefOrderPreview.lineSpacing = 1.15f;
 
-            var right = CreatePanel("Workshop", root.transform, new Vector2(0.58f, 0.12f), new Vector2(1, 0.9f), new Vector2(8, 0), new Vector2(-16, -56));
-            GameUiStyle.ApplyPanel(right.GetComponent<Image>());
-            b.briefWorkshopHeading = CreateText("WH", right.transform, "", 18, TextAnchor.UpperLeft);
-            Stretch(b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.92f), Vector2.one, new Vector2(18, -14), new Vector2(-18, -8));
+            var right = CreatePanel("Workshop", root.transform, new Vector2(0.56f, 0.12f), new Vector2(1, 0.9f), new Vector2(6, 0), new Vector2(-16, -64));
+            GameUiStyle.ApplyFramedPanel(right.GetComponent<Image>());
+            b.briefWorkshopHeading = CreateText("WH", right.transform, "", 20, TextAnchor.MiddleLeft);
+            Stretch(b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
             b.briefWorkshopHeading.color = GameUiStyle.Accent;
             b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
-            b.upgradeList = CreateScrollContent(right.transform, "UpgradeScroll", new Vector2(0, 0), new Vector2(1, 0.92f));
+            b.upgradeList = CreateScrollContent(right.transform, "UpgradeScroll", new Vector2(0, 0.02f), new Vector2(1, 0.9f), 4);
 
             b.btnReset = CreateSecondaryButton("Reset", root.transform, out b.resetLabel);
-            Place(b.btnReset, 0.02f, 0.02f, 0.22f, 0.1f);
+            Place(b.btnReset, 0.02f, 0.02f, 0.2f, 0.095f);
             b.btnEnterHall = CreatePrimaryButton("Enter", root.transform, out b.enterLabel);
-            Place(b.btnEnterHall, 0.7f, 0.02f, 0.98f, 0.1f);
+            Place(b.btnEnterHall, 0.72f, 0.02f, 0.98f, 0.095f);
             return root;
         }
 
@@ -233,103 +246,104 @@ namespace MasterBidder.UI
         {
             var root = CreatePanel("Screen_Auction", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             root.GetComponent<Image>().sprite = null;
-            root.GetComponent<Image>().color = new Color(0, 0, 0, 0.08f);
+            root.GetComponent<Image>().color = new Color(0, 0, 0, 0f);
 
+            // Placeholder for future 3D rival characters — keep transform hook, hide placeholder UI.
             var audience = CreatePanel("Audience", root.transform, new Vector2(0.02f, 0.02f), new Vector2(0.5f, 0.14f), Vector2.zero, Vector2.zero);
-            GameUiStyle.ApplyCard(audience.GetComponent<Image>());
+            audience.GetComponent<Image>().sprite = null;
+            audience.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            audience.GetComponent<Image>().raycastTarget = false;
             b.audienceRow = audience.transform;
-            var hlg = audience.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 4;
-            hlg.padding = new RectOffset(10, 10, 8, 8);
-            hlg.childAlignment = TextAnchor.MiddleCenter;
-            hlg.childForceExpandWidth = true;
-            hlg.childForceExpandHeight = true;
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
-            b.rivalHeads = new Image[15];
-            for (int i = 0; i < b.rivalHeads.Length; i++)
-            {
-                var head = CreatePanel("Head" + i, audience.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-                var le = head.AddComponent<LayoutElement>();
-                le.flexibleWidth = 1;
-                le.preferredHeight = 36;
-                var img = head.GetComponent<Image>();
-                img.sprite = null;
-                img.color = GameUiStyle.RivalIdle;
-                b.rivalHeads[i] = img;
-            }
+            b.rivalHeads = System.Array.Empty<Image>();
+            audience.SetActive(false);
 
-            var hud = CreatePanel("HudRight", root.transform, new Vector2(0.52f, 0), Vector2.one, new Vector2(12, 12), new Vector2(-12, -56));
-            GameUiStyle.ApplyPanel(hud.GetComponent<Image>());
+            var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.03f), new Vector2(0.985f, 0.97f), new Vector2(6, 8), new Vector2(-12, -8));
+            GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
 
-            b.aucHud = CreateText("AucHud", hud.transform, "", 15, TextAnchor.UpperLeft);
-            Stretch(b.aucHud.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(20, -16), new Vector2(-20, -10));
-            b.aucHud.color = GameUiStyle.Dim;
+            b.aucHud = CreateText("AucHud", hud.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(b.aucHud.rectTransform, new Vector2(0, 0.91f), Vector2.one, new Vector2(16, -10), new Vector2(-16, -6));
+            b.aucHud.color = GameUiStyle.TextColor;
+            b.aucHud.fontStyle = FontStyle.Bold;
+            b.aucHud.horizontalOverflow = HorizontalWrapMode.Wrap;
 
-            b.orderCard = CreateText("Order", hud.transform, "", 14, TextAnchor.UpperLeft);
-            Stretch(b.orderCard.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.9f), new Vector2(20, 0), new Vector2(-20, 0));
+            var orderPlate = CreatePanel("OrderPlate", hud.transform, new Vector2(0, 0.76f), new Vector2(1, 0.91f), new Vector2(14, 2), new Vector2(-14, -2));
+            GameUiStyle.ApplyCard(orderPlate.GetComponent<Image>());
+            b.orderCard = CreateText("Order", orderPlate.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(b.orderCard.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 6), new Vector2(-12, -6));
             b.orderCard.color = GameUiStyle.Accent;
             b.orderCard.horizontalOverflow = HorizontalWrapMode.Wrap;
             b.orderCard.fontStyle = FontStyle.Bold;
+            b.orderCard.lineSpacing = 1.12f;
 
-            var econ = CreatePanel("Econ", hud.transform, new Vector2(0, 0.58f), new Vector2(1, 0.72f), new Vector2(16, 0), new Vector2(-16, 0));
+            var econ = CreatePanel("Econ", hud.transform, new Vector2(0, 0.62f), new Vector2(1, 0.75f), new Vector2(14, 0), new Vector2(-14, 0));
             GameUiStyle.ApplyCard(econ.GetComponent<Image>());
-            b.livePrice = CreateText("Price", econ.transform, "", 16, TextAnchor.MiddleLeft);
-            Stretch(b.livePrice.rectTransform, new Vector2(0, 0.5f), Vector2.one, new Vector2(14, 0), new Vector2(-14, 0));
-            b.liveBudget = CreateText("Budget", econ.transform, "", 16, TextAnchor.MiddleLeft);
-            Stretch(b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(0.65f, 0.5f), new Vector2(14, 0), new Vector2(-4, 0));
-            b.liveSpeed = CreateText("Speed", econ.transform, "", 16, TextAnchor.MiddleRight);
-            Stretch(b.liveSpeed.rectTransform, new Vector2(0.55f, 0), new Vector2(1, 0.5f), new Vector2(4, 0), new Vector2(-14, 0));
+            b.livePrice = CreateText("Price", econ.transform, "", 17, TextAnchor.MiddleLeft);
+            Stretch(b.livePrice.rectTransform, new Vector2(0, 0.48f), Vector2.one, new Vector2(12, 0), new Vector2(-12, 0));
+            b.livePrice.fontStyle = FontStyle.Bold;
+            b.livePrice.color = GameUiStyle.TextColor;
+            b.liveBudget = CreateText("Budget", econ.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(0.58f, 0.48f), new Vector2(12, 0), new Vector2(-4, 0));
+            b.liveBudget.color = GameUiStyle.TextColor;
+            b.liveSpeed = CreateText("Speed", econ.transform, "", 13, TextAnchor.MiddleRight);
+            Stretch(b.liveSpeed.rectTransform, new Vector2(0.5f, 0), new Vector2(1, 0.48f), new Vector2(4, 0), new Vector2(-12, 0));
+            b.liveSpeed.color = GameUiStyle.TextColor;
 
-            var fields = CreatePanel("Fields", hud.transform, new Vector2(0, 0.28f), new Vector2(1, 0.58f), new Vector2(16, 0), new Vector2(-16, 0));
+            var fields = CreatePanel("Fields", hud.transform, new Vector2(0, 0.28f), new Vector2(1, 0.6f), new Vector2(14, 0), new Vector2(-14, 0));
             GameUiStyle.ApplyCard(fields.GetComponent<Image>());
             b.fieldLabels = new Text[5];
             b.fieldValues = new Text[5];
             b.fieldRows = new Image[5];
+            // Fact (index 3) gets a taller band so long copy stays inside the row.
+            float[] rowTops = { 1f, 0.86f, 0.72f, 0.58f, 0.18f, 0f };
             for (int i = 0; i < 5; i++)
             {
-                float yMax = 1f - i * 0.2f;
-                float yMin = yMax - 0.2f;
-                var row = CreatePanel("F" + i, fields.transform, new Vector2(0, yMin), new Vector2(1, yMax), new Vector2(6, 2), new Vector2(-6, -2));
+                float yMax = rowTops[i];
+                float yMin = rowTops[i + 1];
+                var row = CreatePanel("F" + i, fields.transform, new Vector2(0, yMin), new Vector2(1, yMax), new Vector2(3, 1), new Vector2(-3, -1));
                 row.GetComponent<Image>().sprite = null;
-                row.GetComponent<Image>().color = new Color(0.2f, 0.16f, 0.12f, 0.06f);
+                row.GetComponent<Image>().color = i % 2 == 0
+                    ? new Color(0.2f, 0.16f, 0.12f, 0.1f)
+                    : new Color(0.2f, 0.16f, 0.12f, 0.04f);
+                row.AddComponent<RectMask2D>();
                 b.fieldRows[i] = row.GetComponent<Image>();
-                b.fieldLabels[i] = CreateText("L", row.transform, "", 13, TextAnchor.MiddleLeft);
-                Stretch(b.fieldLabels[i].rectTransform, new Vector2(0, 0), new Vector2(0.35f, 1), new Vector2(10, 0), Vector2.zero);
+                b.fieldLabels[i] = CreateText("L", row.transform, "", 12, TextAnchor.UpperLeft);
+                Stretch(b.fieldLabels[i].rectTransform, new Vector2(0, 0), new Vector2(0.38f, 1), new Vector2(10, 4), new Vector2(0, -4));
                 b.fieldLabels[i].color = GameUiStyle.Dim;
-                b.fieldValues[i] = CreateText("V", row.transform, "", 13, TextAnchor.MiddleLeft);
-                Stretch(b.fieldValues[i].rectTransform, new Vector2(0.35f, 0), Vector2.one, new Vector2(4, 0), new Vector2(-10, 0));
+                b.fieldValues[i] = CreateText("V", row.transform, "", 13, TextAnchor.UpperLeft);
+                Stretch(b.fieldValues[i].rectTransform, new Vector2(0.38f, 0), Vector2.one, new Vector2(4, 4), new Vector2(-10, -4));
                 b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
+                b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
+                b.fieldValues[i].color = GameUiStyle.TextColor;
             }
 
-            b.familiarBadge = CreateText("Familiar", hud.transform, "", 14, TextAnchor.MiddleCenter);
-            Stretch(b.familiarBadge.rectTransform, new Vector2(0.55f, 0.24f), new Vector2(0.98f, 0.28f), Vector2.zero, Vector2.zero);
+            b.familiarBadge = CreateText("Familiar", hud.transform, "", 12, TextAnchor.MiddleCenter);
+            Stretch(b.familiarBadge.rectTransform, new Vector2(0.55f, 0.24f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero);
             b.familiarBadge.color = GameUiStyle.Accent;
             b.familiarBadge.gameObject.SetActive(false);
 
-            var bannerBg = CreatePanel("BannerBg", hud.transform, new Vector2(0.05f, 0.22f), new Vector2(0.95f, 0.28f), Vector2.zero, Vector2.zero);
+            var bannerBg = CreatePanel("BannerBg", hud.transform, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.28f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplySliced(bannerBg.GetComponent<Image>(), GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
             bannerBg.SetActive(false);
-            b.resultBanner = CreateText("Banner", bannerBg.transform, "", 18, TextAnchor.MiddleCenter);
-            Stretch(b.resultBanner.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 4), new Vector2(-40, -4));
+            b.resultBanner = CreateText("Banner", bannerBg.transform, "", 15, TextAnchor.MiddleCenter);
+            Stretch(b.resultBanner.rectTransform, Vector2.zero, Vector2.one, new Vector2(36, 4), new Vector2(-32, -4));
             b.resultBanner.fontStyle = FontStyle.Bold;
             b.resultBanner.color = GameUiStyle.TextColor;
 
-            var fundsBg = CreatePanel("FundsBg", hud.transform, new Vector2(0.05f, 0.17f), new Vector2(0.95f, 0.22f), Vector2.zero, Vector2.zero);
+            var fundsBg = CreatePanel("FundsBg", hud.transform, new Vector2(0.06f, 0.17f), new Vector2(0.94f, 0.22f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplySliced(fundsBg.GetComponent<Image>(), GameUiSprites.ToastError, GameUiStyle.SpriteReady);
             fundsBg.SetActive(false);
-            b.fundsHint = CreateText("Funds", fundsBg.transform, "", 14, TextAnchor.MiddleCenter);
-            Stretch(b.fundsHint.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 2), new Vector2(-40, -2));
+            b.fundsHint = CreateText("Funds", fundsBg.transform, "", 13, TextAnchor.MiddleCenter);
+            Stretch(b.fundsHint.rectTransform, Vector2.zero, Vector2.one, new Vector2(36, 2), new Vector2(-32, -2));
             b.fundsHint.color = GameUiStyle.Bad;
 
             b.btnStartLot = CreateSecondaryButton("StartLot", hud.transform, out b.startLotLabel);
-            Place(b.btnStartLot, 0.06f, 0.1f, 0.94f, 0.17f);
+            Place(b.btnStartLot, 0.07f, 0.1f, 0.93f, 0.16f);
             b.btnBuy = CreatePrimaryButton("Buy", hud.transform, out b.buyLabel);
-            Place(b.btnBuy, 0.06f, 0.02f, 0.94f, 0.09f);
+            Place(b.btnBuy, 0.07f, 0.02f, 0.93f, 0.09f);
             b.btnSkip = CreateSecondaryButton("Skip", hud.transform, out b.skipLabel);
-            Place(b.btnSkip, 0.06f, 0.1f, 0.48f, 0.17f);
+            Place(b.btnSkip, 0.07f, 0.1f, 0.48f, 0.16f);
             b.btnFinishDay = CreateDangerButton("Finish", hud.transform, out b.finishLabel);
-            Place(b.btnFinishDay, 0.52f, 0.1f, 0.94f, 0.17f);
+            Place(b.btnFinishDay, 0.52f, 0.1f, 0.93f, 0.16f);
             return root;
         }
 
@@ -338,33 +352,50 @@ namespace MasterBidder.UI
             var root = CreatePanel("CollectorPopup", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             root.GetComponent<Image>().sprite = null;
             root.GetComponent<Image>().color = GameUiStyle.Overlay;
-            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-380, -240), new Vector2(380, 240));
-            GameUiStyle.ApplyPanel(card.GetComponent<Image>());
-            b.popupPortrait = CreatePanel("Portrait", card.transform, new Vector2(0, 0.55f), new Vector2(0.32f, 1), new Vector2(20, -20), new Vector2(-8, -20)).GetComponent<Image>();
+            // Dialogue card: portrait+identity header, then full-width speech below (never under the face).
+            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-360, -210), new Vector2(360, 210));
+            GameUiStyle.ApplyFramedPanel(card.GetComponent<Image>());
+
+            b.popupPortrait = CreatePanel("Portrait", card.transform, new Vector2(0, 0.7f), new Vector2(0.22f, 0.96f), new Vector2(24, -16), new Vector2(-8, -14)).GetComponent<Image>();
             b.popupPortrait.sprite = null;
             b.popupPortrait.color = GameUiStyle.PanelLight;
             b.popupPortrait.preserveAspect = true;
-            b.popupName = CreateText("Name", card.transform, "", 26, TextAnchor.UpperLeft);
-            Stretch(b.popupName.rectTransform, new Vector2(0.32f, 0.82f), Vector2.one, new Vector2(12, -16), new Vector2(-20, -12));
+
+            b.popupName = CreateText("Name", card.transform, "", 26, TextAnchor.LowerLeft);
+            Stretch(b.popupName.rectTransform, new Vector2(0.24f, 0.84f), new Vector2(1, 0.96f), new Vector2(8, 0), new Vector2(-24, -14));
             b.popupName.color = GameUiStyle.Accent;
             b.popupName.fontStyle = FontStyle.Bold;
-            b.popupTagline = CreateText("Tag", card.transform, "", 13, TextAnchor.UpperLeft);
-            Stretch(b.popupTagline.rectTransform, new Vector2(0.32f, 0.68f), new Vector2(1, 0.82f), new Vector2(12, 0), new Vector2(-20, 0));
-            b.popupTagline.color = GameUiStyle.Dim;
+
+            b.popupTagline = CreateText("Tag", card.transform, "", 14, TextAnchor.UpperLeft);
+            Stretch(b.popupTagline.rectTransform, new Vector2(0.24f, 0.7f), new Vector2(1, 0.84f), new Vector2(8, 0), new Vector2(-24, 0));
+            b.popupTagline.color = GameUiStyle.TextColor;
             b.popupTagline.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.popupSpeech = CreateText("Speech", card.transform, "", 14, TextAnchor.UpperLeft);
-            Stretch(b.popupSpeech.rectTransform, new Vector2(0, 0.48f), new Vector2(1, 0.55f), new Vector2(22, 0), new Vector2(-22, 0));
+            b.popupTagline.lineSpacing = 1.1f;
+
+            var speechPlate = CreatePanel("SpeechPlate", card.transform, new Vector2(0, 0.42f), new Vector2(1, 0.68f), new Vector2(22, 4), new Vector2(-22, -4));
+            GameUiStyle.ApplyCard(speechPlate.GetComponent<Image>());
+            b.popupSpeech = CreateText("Speech", speechPlate.transform, "", 15, TextAnchor.UpperLeft);
+            Stretch(b.popupSpeech.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 10), new Vector2(-14, -10));
+            b.popupSpeech.color = GameUiStyle.TextColor;
+            b.popupSpeech.fontStyle = FontStyle.Italic;
             b.popupSpeech.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.popupTags = CreateText("Tags", card.transform, "", 15, TextAnchor.UpperLeft);
-            Stretch(b.popupTags.rectTransform, new Vector2(0, 0.28f), new Vector2(1, 0.48f), new Vector2(22, 0), new Vector2(-22, 0));
+            b.popupSpeech.lineSpacing = 1.15f;
+
+            var tagsPlate = CreatePanel("TagsPlate", card.transform, new Vector2(0, 0.28f), new Vector2(1, 0.42f), new Vector2(22, 2), new Vector2(-22, -2));
+            GameUiStyle.ApplyCard(tagsPlate.GetComponent<Image>());
+            b.popupTags = CreateText("Tags", tagsPlate.transform, "", 17, TextAnchor.MiddleLeft);
+            Stretch(b.popupTags.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 4), new Vector2(-14, -4));
             b.popupTags.color = GameUiStyle.Accent;
+            b.popupTags.fontStyle = FontStyle.Bold;
             b.popupTags.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.popupWarning = CreateText("Warn", card.transform, "", 13, TextAnchor.UpperLeft);
-            Stretch(b.popupWarning.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.28f), new Vector2(22, 0), new Vector2(-22, 0));
+
+            b.popupWarning = CreateText("Warn", card.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(b.popupWarning.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.28f), new Vector2(28, 0), new Vector2(-28, 0));
             b.popupWarning.color = GameUiStyle.Bad;
             b.popupWarning.horizontalOverflow = HorizontalWrapMode.Wrap;
+
             b.btnPopupStart = CreatePrimaryButton("Start", card.transform, out b.popupStartLabel);
-            Place(b.btnPopupStart, 0.2f, 0.04f, 0.8f, 0.15f);
+            Place(b.btnPopupStart, 0.2f, 0.04f, 0.8f, 0.14f);
             return root;
         }
 
@@ -395,12 +426,23 @@ namespace MasterBidder.UI
 
         static GameObject BuildTutorial(Transform parent, GameUiBindings b)
         {
-            var root = CreatePanel("Tutorial", parent, new Vector2(0.15f, 0.02f), new Vector2(0.5f, 0.18f), Vector2.zero, Vector2.zero);
-            GameUiStyle.ApplySliced(root.GetComponent<Image>(), GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
+            // Compact toast above the action row so it never covers Skip/Buy.
+            var root = new GameObject("Tutorial", typeof(RectTransform), typeof(Image));
+            root.transform.SetParent(parent, false);
+            var rt = root.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.2f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(520f, 88f);
+            var img = root.GetComponent<Image>();
+            GameUiStyle.ApplySliced(img, GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
+            img.raycastTarget = false;
             b.tutorialText = CreateText("T", root.transform, "", 15, TextAnchor.MiddleCenter);
-            Stretch(b.tutorialText.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 10), new Vector2(-40, -10));
+            Stretch(b.tutorialText.rectTransform, Vector2.zero, Vector2.one, new Vector2(28, 12), new Vector2(-28, -12));
             b.tutorialText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.tutorialText.verticalOverflow = VerticalWrapMode.Overflow;
             b.tutorialText.color = GameUiStyle.TextColor;
+            b.tutorialText.fontStyle = FontStyle.Bold;
+            b.tutorialText.raycastTarget = false;
             return root;
         }
 
@@ -452,12 +494,15 @@ namespace MasterBidder.UI
         // в”Ђв”Ђв”Ђ Helpers (mirror GameUiShell factories) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
         static Transform CreateScrollContent(Transform parent, string name, Vector2 aMin, Vector2 aMax)
+            => CreateScrollContent(parent, name, aMin, aMax, 8);
+
+        static Transform CreateScrollContent(Transform parent, string name, Vector2 aMin, Vector2 aMax, int spacing)
         {
             var scrollGo = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGo.transform.SetParent(parent, false);
-            Stretch(scrollGo.GetComponent<RectTransform>(), aMin, aMax, new Vector2(12, 12), new Vector2(-12, -12));
+            Stretch(scrollGo.GetComponent<RectTransform>(), aMin, aMax, new Vector2(14, 10), new Vector2(-14, -10));
             scrollGo.GetComponent<Image>().sprite = null;
-            scrollGo.GetComponent<Image>().color = new Color(0.15f, 0.12f, 0.1f, 0.08f);
+            scrollGo.GetComponent<Image>().color = new Color(0.15f, 0.12f, 0.1f, 0.06f);
             var scroll = scrollGo.GetComponent<ScrollRect>();
             scroll.horizontal = false;
 
@@ -474,8 +519,8 @@ namespace MasterBidder.UI
             crt.pivot = new Vector2(0.5f, 1);
             crt.sizeDelta = Vector2.zero;
             var vlg = content.GetComponent<VerticalLayoutGroup>();
-            vlg.spacing = 8;
-            vlg.padding = new RectOffset(6, 6, 6, 6);
+            vlg.spacing = spacing;
+            vlg.padding = new RectOffset(4, 4, 4, 4);
             vlg.childControlHeight = true;
             vlg.childControlWidth = true;
             vlg.childForceExpandHeight = false;
@@ -485,6 +530,20 @@ namespace MasterBidder.UI
             scroll.viewport = viewport.GetComponent<RectTransform>();
             scroll.content = crt;
             return content.transform;
+        }
+
+        static GameObject CreateFixedBar(string name, Transform parent, Vector2 anchor, Vector2 anchoredPos, Vector2 size)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = anchor;
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = size;
+            go.GetComponent<Image>().color = GameUiStyle.Panel;
+            return go;
         }
 
         static GameObject CreatePanel(string name, Transform parent, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)

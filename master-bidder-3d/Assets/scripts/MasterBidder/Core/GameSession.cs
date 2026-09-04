@@ -279,6 +279,10 @@ namespace MasterBidder.Core
         {
             insufficientFunds = false;
             if (State.AwaitingLotStart || State.LotResolved || State.FastForwarding) return false;
+            // Day-1 coaching lots: never buy the miss lot; wait for the coach before buying the match.
+            var day1Tut = GetDay1TutorialStep(State.CurrentLotIndex);
+            if (day1Tut == TutorialStep.SkipMiss) return false;
+            if (day1Tut == TutorialStep.BuyMatch && !State.TutorialPaused) return false;
             if (State.TutorialPaused && State.TutorialStep != TutorialStep.BuyMatch) return false;
             var lot = State.CurrentLot;
             if (lot == null) return false;
@@ -326,6 +330,10 @@ namespace MasterBidder.Core
         public void BeginSkip()
         {
             if (State.AwaitingLotStart || State.LotResolved || State.FastForwarding) return;
+            // Day-1 coaching lots: never skip the match lot; wait for the coach before skipping the miss.
+            var day1Tut = GetDay1TutorialStep(State.CurrentLotIndex);
+            if (day1Tut == TutorialStep.BuyMatch) return;
+            if (day1Tut == TutorialStep.SkipMiss && !State.TutorialPaused) return;
             if (State.TutorialPaused && State.TutorialStep != TutorialStep.SkipMiss) return;
             if (State.TutorialPaused) DismissTutorialCoach();
             State.FastForwarding = true;
