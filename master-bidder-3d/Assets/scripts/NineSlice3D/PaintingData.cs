@@ -13,11 +13,40 @@ namespace NineSlice3D
     public class PaintingData : ScriptableObject
     {
         [Header("Artwork Info")]
-        [Tooltip("Title of the artwork.")]
+        [Tooltip("Stable MVP artwork id (kebab-case), e.g. mona-lisa. Used for matching and saves.")]
+        public string artworkId = "";
+
+        [Tooltip("Title of the artwork (English display).")]
         public string paintingTitle = "Untitled";
 
-        [Tooltip("Artist name.")]
+        [Tooltip("Artist name (English display).")]
         public string artist = "Unknown";
+
+        [Header("Gameplay (MVP)")]
+        [Tooltip("Russian title — matching and RU locale display.")]
+        public string titleRu = "";
+
+        [Tooltip("Russian artist name — matching key for artist orders.")]
+        public string artistRu = "";
+
+        [Tooltip("Creation year / date string as shown in MVP.")]
+        public string year = "";
+
+        [Tooltip("Russian period tag — matching key.")]
+        public string periodRu = "";
+
+        [Tooltip("Russian genre tag — matching key.")]
+        public string genreRu = "";
+
+        [Tooltip("Interesting fact (Russian).")]
+        [TextArea(2, 6)]
+        public string factRu = "";
+
+        [Tooltip("Rarity tier: common, rare, or epic.")]
+        public string rarity = "common";
+
+        [Tooltip("Base hammer price before jitter (MVP).")]
+        public int basePrice = 10000;
 
         [Header("Texture")]
         [Tooltip("Albedo / Artwork texture to be applied to the canvas.")]

@@ -15,8 +15,18 @@ namespace MasterBidder.Presentation
         [SerializeField] private PresentationLightRig lightRig;
         [SerializeField] private PresentationInspectCamera inspectCamera;
 
+        [Header("Demo")]
+        [Tooltip("When false, Spacebar random-present is disabled (game flow owns input).")]
+        [SerializeField] private bool demoHotkeysEnabled = true;
+
         private bool isBusy;
         private Coroutine activeSequence;
+
+        public bool DemoHotkeysEnabled
+        {
+            get => demoHotkeysEnabled;
+            set => demoHotkeysEnabled = value;
+        }
 
         public bool IsBusy => isBusy;
         public PresentationClothController Cloth => cloth;
@@ -51,7 +61,7 @@ namespace MasterBidder.Presentation
         {
             if (!Application.isPlaying) return;
 
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (demoHotkeysEnabled && Input.GetKeyDown(KeyCode.Space))
             {
                 PresentRandomPainting();
             }
@@ -79,24 +89,86 @@ namespace MasterBidder.Presentation
         }
 
         /// <summary>
-        /// Full reveal sequence for a specific painting index.
+        /// Full reveal sequence for a painting matched by MVP artwork id.
         /// </summary>
+        public void PresentPaintingById(string artworkId)
+        {
+            PresentPaintingById(artworkId, null);
+        }
+
+        public void PresentPaintingById(string artworkId, System.Action onComplete)
+        {
+            if (string.IsNullOrEmpty(artworkId) || canvas == null)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            var list = canvas.Paintings;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] != null && list[i].artworkId == artworkId)
+                {
+                    PresentPainting(i, onComplete);
+                    return;
+                }
+            }
+
+            Debug.LogWarning($"[PresentationOperator] No painting with artworkId '{artworkId}' in CanvasController list.", this);
+            onComplete?.Invoke();
+        }
+
+        /// <summary>
+        /// Present a specific PaintingData (adds to canvas list if needed).
+        /// </summary>
+        public void PresentPaintingData(NineSlice3D.PaintingData data, System.Action onComplete = null)
+        {
+            if (data == null)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            if (isBusy)
+            {
+                Debug.LogWarning("[PresentationOperator] Sequence already running.", this);
+                onComplete?.Invoke();
+                return;
+            }
+
+            if (!Application.isPlaying)
+            {
+                onComplete?.Invoke();
+                return;
+            }
+
+            ExitInspectMode();
+            activeSequence = StartCoroutine(PresentPaintingDataRoutine(data, onComplete));
+        }
+
         public void PresentPainting(int index)
+        {
+            PresentPainting(index, null);
+        }
+
+        public void PresentPainting(int index, System.Action onComplete)
         {
             if (isBusy)
             {
                 Debug.LogWarning("[PresentationOperator] Sequence already running.", this);
+                onComplete?.Invoke();
                 return;
             }
 
             if (!Application.isPlaying)
             {
                 Debug.LogWarning("[PresentationOperator] Enter Play mode to run the presentation sequence.", this);
+                onComplete?.Invoke();
                 return;
             }
 
             ExitInspectMode();
-            activeSequence = StartCoroutine(PresentPaintingRoutine(index));
+            activeSequence = StartCoroutine(PresentPaintingRoutine(index, onComplete));
         }
 
         public void LowerCloth() => cloth?.Lower();
@@ -142,19 +214,25 @@ namespace MasterBidder.Presentation
 
         private IEnumerator PresentRandomPaintingRoutine()
         {
-            yield return RunRevealSequence(() => canvas != null && canvas.ApplyRandomPainting());
+            yield return RunRevealSequence(() => canvas != null && canvas.ApplyRandomPainting(), null);
         }
 
-        private IEnumerator PresentPaintingRoutine(int index)
+        private IEnumerator PresentPaintingRoutine(int index, System.Action onComplete)
         {
-            yield return RunRevealSequence(() => canvas != null && canvas.ApplyPainting(index));
+            yield return RunRevealSequence(() => canvas != null && canvas.ApplyPainting(index), onComplete);
         }
 
-        private IEnumerator RunRevealSequence(System.Func<bool> swapAction)
+        private IEnumerator PresentPaintingDataRoutine(NineSlice3D.PaintingData data, System.Action onComplete)
+        {
+            yield return RunRevealSequence(() => canvas != null && canvas.ApplyPainting(data), onComplete);
+        }
+
+        private IEnumerator RunRevealSequence(System.Func<bool> swapAction, System.Action onComplete)
         {
             if (cloth == null || canvas == null)
             {
                 Debug.LogError("[PresentationOperator] Cloth or Canvas controller missing.", this);
+                onComplete?.Invoke();
                 yield break;
             }
 
@@ -176,6 +254,7 @@ namespace MasterBidder.Presentation
 
             isBusy = false;
             activeSequence = null;
+            onComplete?.Invoke();
         }
     }
 }

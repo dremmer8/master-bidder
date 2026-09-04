@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f338a8cabf32dd48b7b74e7612de3dc, type: 3}
+  m_Name: Collector_BaronSvetozarov
+  m_EditorClassIdentifier: 
+  collectorId: baron-svetozarov
+  nameRu: "\u0418\u0437\u0430\u0431\u0435\u043B\u043B\u0430 \u0434'\u042D\u0441\u0442\u0435"
+  taglineRu: "\u0426\u0435\u043D\u0438\u0442 \u0433\u0430\u0440\u043C\u043E\u043D\u0438\u044E
+    \u0438 \u0447\u0435\u043B\u043E\u0432\u0435\u0447\u0435\u0441\u043A\u043E\u0435
+    \u0434\u043E\u0441\u0442\u043E\u0438\u043D\u0441\u0442\u0432\u043E \u0438\u0442\u0430\u043B\u044C\u044F\u043D\u0441\u043A\u043E\u0433\u043E
+    \u0412\u043E\u0437\u0440\u043E\u0436\u0434\u0435\u043D\u0438\u044F"
+  portrait: {fileID: 21300000, guid: 954fa8b98a6df58468385342eb9591c3, type: 3}
+  personalModifier: 1.15
+  baseBudget: 380000
+  orderGenre: "\u041F\u043E\u0440\u0442\u0440\u0435\u0442"
+  orderPeriod: "\u0412\u044B\u0441\u043E\u043A\u043E\u0435 \u0412\u043E\u0437\u0440\u043E\u0436\u0434\u0435\u043D\u0438\u0435"
+  orderArtist: "\u041B\u0435\u043E\u043D\u0430\u0440\u0434\u043E \u0434\u0430 \u0412\u0438\u043D\u0447\u0438"
+  missions: []

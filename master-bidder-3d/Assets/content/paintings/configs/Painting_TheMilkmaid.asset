@@ -11,8 +11,24 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4cb6cb6e111111111111111111100001, type: 3}
   m_Name: Painting_TheMilkmaid
-  paintingTitle: "The Milkmaid"
-  artist: "Johannes Vermeer"
+  m_EditorClassIdentifier: 
+  artworkId: the-milkmaid
+  paintingTitle: The Milkmaid
+  artist: Johannes Vermeer
+  titleRu: "\u041C\u043E\u043B\u043E\u0447\u043D\u0438\u0446\u0430"
+  artistRu: "\u042F\u043D \u0412\u0435\u0440\u043C\u0435\u0435\u0440"
+  year: "\u043E\u043A. 1658\u20131661"
+  periodRu: "\u0413\u043E\u043B\u043B\u0430\u043D\u0434\u0441\u043A\u043E\u0435 \u0437\u043E\u043B\u043E\u0442\u043E\u0435
+    \u0432\u0440\u0435\u043C\u044F"
+  genreRu: "\u0416\u0430\u043D\u0440\u043E\u0432\u0430\u044F \u0441\u0446\u0435\u043D\u0430"
+  factRu: "\u0414\u043B\u044F \u0442\u0435\u043D\u0438 \u043D\u0430 \u043F\u0435\u0440\u0435\u0434\u043D\u0435\u043C
+    \u043F\u043B\u0430\u043D\u0435 \u0412\u0435\u0440\u043C\u0435\u0435\u0440 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u043B
+    \u0434\u043E\u0440\u043E\u0433\u043E\u0439 \u043F\u0438\u0433\u043C\u0435\u043D\u0442
+    \u0443\u043B\u044C\u0442\u0440\u0430\u043C\u0430\u0440\u0438\u043D \u2014 \u043D\u0435\u043E\u0431\u044B\u0447\u043D\u043E
+    \u0449\u0435\u0434\u0440\u043E\u0435 \u0440\u0435\u0448\u0435\u043D\u0438\u0435
+    \u0434\u043B\u044F \u0431\u044B\u0442\u043E\u0432\u043E\u0439 \u0441\u0446\u0435\u043D\u044B."
+  rarity: rare
+  basePrice: 180000
   albedoTexture: {fileID: 2800000, guid: ae88029264685ed7d514e3243ddbedaa, type: 3}
   unit: 1
   width: 40.5

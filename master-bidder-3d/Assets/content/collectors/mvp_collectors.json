@@ -1,0 +1,52 @@
+[
+  {
+    "id": "baron-svetozarov",
+    "nameRu": "Изабелла д'Эсте",
+    "taglineRu": "Ценит гармонию и человеческое достоинство итальянского Возрождения",
+    "personalModifier": 1.15,
+    "baseBudget": 380000,
+    "orderGenre": "Портрет",
+    "orderPeriod": "Высокое Возрождение",
+    "orderArtist": "Леонардо да Винчи"
+  },
+  {
+    "id": "madame-volkonskaya",
+    "nameRu": "Изабелла Стюарт Гарднер",
+    "taglineRu": "Одержима французским импрессионизмом и игрой света на воде",
+    "personalModifier": 1.3,
+    "baseBudget": 340000,
+    "orderGenre": "Пейзаж",
+    "orderPeriod": "Импрессионизм",
+    "orderArtist": "Клод Моне"
+  },
+  {
+    "id": "professor-gortenziev",
+    "nameRu": "Леопольд Вильгельм Австрийский",
+    "taglineRu": "Годами изучает голландских мастеров света, быта и тишины",
+    "personalModifier": 0.9,
+    "baseBudget": 300000,
+    "orderGenre": "Жанровая сцена",
+    "orderPeriod": "Голландское золотое время",
+    "orderArtist": "Рембрандт ван Рейн"
+  },
+  {
+    "id": "countess-tenisheva",
+    "nameRu": "Княгиня Мария Тенишева",
+    "taglineRu": "Влюблена в драматический свет и театральность барокко",
+    "personalModifier": 1.1,
+    "baseBudget": 320000,
+    "orderGenre": "Групповой портрет",
+    "orderPeriod": "Барокко",
+    "orderArtist": "Питер Пауль Рубенс"
+  },
+  {
+    "id": "captain-severin",
+    "nameRu": "Теодор Дюре",
+    "taglineRu": "Собирает бурные пейзажи романтизма и японскую гравюру укиё-э",
+    "personalModifier": 0.95,
+    "baseBudget": 300000,
+    "orderGenre": "Пейзаж",
+    "orderPeriod": "Романтизм",
+    "orderArtist": "Каспар Давид Фридрих"
+  }
+]
