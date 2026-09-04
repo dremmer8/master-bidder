@@ -47,7 +47,7 @@ namespace MasterBidder.Editor
                     $"• {UpgradeRowPath}\n" +
                     $"• {BoosterRowPath}\n\n" +
                     "Assigned on GameUiShell in the open scene (if present).\n" +
-                    "Edit the prefabs to control look; Play uses them at runtime.",
+                    "Tip: run Master Bidder → Import UI Atlas Sprites first for 9-slice borders.",
                     "OK");
             }
         }

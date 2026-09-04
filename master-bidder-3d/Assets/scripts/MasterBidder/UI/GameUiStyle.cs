@@ -1,18 +1,81 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace MasterBidder.UI
 {
-    /// <summary>Shared palette for Master Bidder uGUI (prefabs + runtime tints).</summary>
+    /// <summary>
+    /// Shared palette + sprite helpers for Master Bidder uGUI (paper/gold atlas).
+    /// </summary>
     public static class GameUiStyle
     {
-        public static readonly Color Bg = new Color(0.086f, 0.094f, 0.114f, 0.96f);
-        public static readonly Color Panel = new Color(0.129f, 0.141f, 0.169f, 0.97f);
-        public static readonly Color PanelLight = new Color(0.169f, 0.184f, 0.220f, 1f);
-        public static readonly Color Accent = new Color(0.831f, 0.631f, 0.227f, 1f);
-        public static readonly Color TextColor = new Color(0.925f, 0.933f, 0.945f, 1f);
-        public static readonly Color Dim = new Color(0.604f, 0.631f, 0.671f, 1f);
-        public static readonly Color Good = new Color(0.298f, 0.686f, 0.490f, 1f);
-        public static readonly Color Bad = new Color(0.831f, 0.341f, 0.227f, 1f);
-        public static readonly Color RivalIdle = new Color(0.25f, 0.27f, 0.32f, 1f);
+        // Palette aligned with UiAtlas / UiStyleGuide
+        public static readonly Color Bg = Hex(0xF5F2EB, 0.96f);
+        public static readonly Color Panel = Hex(0xE2D8CC);
+        public static readonly Color PanelLight = Hex(0xF3EBE0);
+        public static readonly Color Accent = Hex(0xC6A05B);
+        public static readonly Color TextColor = Hex(0x3E3E3E);
+        public static readonly Color Dim = Hex(0x6F6F6F);
+        public static readonly Color Good = Hex(0x2E6B3F);
+        public static readonly Color Bad = Hex(0x8B2D2D);
+        public static readonly Color RivalIdle = Hex(0x5A534A);
+        public static readonly Color OnPrimary = Color.white;
+        public static readonly Color OnDark = Color.white;
+        public static readonly Color Overlay = new Color(0.08f, 0.06f, 0.04f, 0.55f);
+        public static readonly Color SpriteReady = Color.white;
+        public static readonly Color SpriteDisabled = new Color(1f, 1f, 1f, 0.42f);
+        public static readonly Color SelectedTint = new Color(1f, 0.94f, 0.82f, 1f);
+
+        public static Color Hex(int rgb, float a = 1f)
+        {
+            float r = ((rgb >> 16) & 0xFF) / 255f;
+            float g = ((rgb >> 8) & 0xFF) / 255f;
+            float b = (rgb & 0xFF) / 255f;
+            return new Color(r, g, b, a);
+        }
+
+        public static void ApplySliced(Image img, Sprite sprite, Color? tint = null)
+        {
+            if (img == null) return;
+            if (sprite != null)
+            {
+                img.sprite = sprite;
+                img.type = Image.Type.Sliced;
+                img.fillCenter = true;
+                img.pixelsPerUnitMultiplier = 1f;
+                img.color = tint ?? SpriteReady;
+            }
+            else if (tint.HasValue)
+            {
+                img.color = tint.Value;
+            }
+        }
+
+        public static void ApplyPanel(Image img) => ApplySliced(img, GameUiSprites.Panel, SpriteReady);
+
+        public static void ApplyCard(Image img) => ApplySliced(img, GameUiSprites.PanelCard, SpriteReady);
+
+        public static void ApplyPrimaryButton(Image img, Text label = null)
+        {
+            ApplySliced(img, GameUiSprites.BtnPrimary, SpriteReady);
+            if (label != null) label.color = OnPrimary;
+        }
+
+        public static void ApplyDangerButton(Image img, Text label = null)
+        {
+            ApplySliced(img, GameUiSprites.BtnDanger, SpriteReady);
+            if (label != null) label.color = OnPrimary;
+        }
+
+        public static void ApplySecondaryButton(Image img, Text label = null)
+        {
+            ApplySliced(img, GameUiSprites.BtnSecondary, SpriteReady);
+            if (label != null) label.color = TextColor;
+        }
+
+        public static void SetSpriteEnabled(Image img, bool enabled)
+        {
+            if (img == null) return;
+            img.color = enabled ? SpriteReady : SpriteDisabled;
+        }
     }
 }

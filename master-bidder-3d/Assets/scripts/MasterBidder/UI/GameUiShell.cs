@@ -73,6 +73,7 @@ namespace MasterBidder.UI
                 return;
             }
 
+            GameUiSprites.Warmup();
             _canvas = _b.canvas != null ? _b.canvas : instance.GetComponent<Canvas>();
             ApplyBindings(_b);
             WireListeners();
@@ -247,7 +248,39 @@ namespace MasterBidder.UI
             if (_b?.fundsHint != null)
             {
                 _b.fundsHint.text = LocaleService.T("auction.insufficient");
-                _b.fundsHint.gameObject.SetActive(true);
+                _b.fundsHint.color = GameUiStyle.Bad;
+                SetToastActive(_b.fundsHint, true);
+            }
+        }
+
+        static void SetToastActive(Text label, bool active)
+        {
+            if (label == null) return;
+            var root = label.transform.parent != null &&
+                       (label.transform.parent.name == "BannerBg" || label.transform.parent.name == "FundsBg")
+                ? label.transform.parent.gameObject
+                : label.gameObject;
+            root.SetActive(active);
+        }
+
+        static void StyleResultToast(Text label, string result)
+        {
+            if (label == null) return;
+            var bg = label.transform.parent != null ? label.transform.parent.GetComponent<Image>() : null;
+            if (result == "won")
+            {
+                label.color = GameUiStyle.Good;
+                if (bg != null) GameUiStyle.ApplySliced(bg, GameUiSprites.ToastSuccess);
+            }
+            else if (result == "lost")
+            {
+                label.color = GameUiStyle.Bad;
+                if (bg != null) GameUiStyle.ApplySliced(bg, GameUiSprites.ToastError);
+            }
+            else
+            {
+                label.color = GameUiStyle.Dim;
+                if (bg != null) GameUiStyle.ApplySliced(bg, GameUiSprites.ToastWarn);
             }
         }
 
@@ -324,9 +357,14 @@ namespace MasterBidder.UI
                 if (view == null) continue;
 
                 if (view.background != null)
-                    view.background.color = isSelected
-                        ? new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.35f)
-                        : GameUiStyle.PanelLight;
+                {
+                    if (view.background.sprite != null)
+                        view.background.color = isSelected ? GameUiStyle.SelectedTint : GameUiStyle.SpriteReady;
+                    else
+                        view.background.color = isSelected
+                            ? new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.35f)
+                            : GameUiStyle.PanelLight;
+                }
 
                 if (view.portraitRoot != null)
                     view.portraitRoot.SetActive(c.portrait != null);
@@ -383,7 +421,7 @@ namespace MasterBidder.UI
                 if (view.buyButton != null)
                 {
                     view.buyButton.interactable = canBuy;
-                    view.buyButton.GetComponent<Image>().color = canBuy ? GameUiStyle.Good : GameUiStyle.Dim;
+                    GameUiStyle.SetSpriteEnabled(view.buyButton.GetComponent<Image>(), canBuy);
                     view.buyButton.onClick.RemoveAllListeners();
                     string uid = u.Id;
                     view.buyButton.onClick.AddListener(() => _flow?.BuyUpgrade(uid));
@@ -423,28 +461,20 @@ namespace MasterBidder.UI
             _b.familiarBadge.text = LocaleService.T("auction.familiar");
 
             bool showBanner = !string.IsNullOrEmpty(state.LastLotResult);
-            _b.resultBanner.gameObject.SetActive(showBanner);
+            SetToastActive(_b.resultBanner, showBanner);
             if (showBanner)
             {
                 if (state.LastLotResult == "won")
-                {
                     _b.resultBanner.text = LocaleService.T("auction.won");
-                    _b.resultBanner.color = GameUiStyle.Good;
-                }
                 else if (state.LastLotResult == "lost")
-                {
                     _b.resultBanner.text = LocaleService.T("auction.lost");
-                    _b.resultBanner.color = GameUiStyle.Bad;
-                }
                 else
-                {
                     _b.resultBanner.text = LocaleService.T("auction.skip");
-                    _b.resultBanner.color = GameUiStyle.Dim;
-                }
+                StyleResultToast(_b.resultBanner, state.LastLotResult);
             }
 
             if (_b.fundsHint != null && Time.unscaledTime > _fundsFlashUntil)
-                _b.fundsHint.gameObject.SetActive(false);
+                SetToastActive(_b.fundsHint, false);
 
             bool standby = state.AwaitingLotStart || IsCollectorPopupVisible;
             bool busy = state.LotResolved || state.FastForwarding || _purchaseCardVisible;
@@ -488,8 +518,8 @@ namespace MasterBidder.UI
 
                 bool isTarget = order != null && IsOrderTarget(order, id);
                 _b.fieldRows[i].color = isTarget
-                    ? new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.22f)
-                    : new Color(0, 0, 0, 0.15f);
+                    ? new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.28f)
+                    : new Color(0.2f, 0.16f, 0.12f, 0.06f);
             }
         }
 
@@ -604,7 +634,7 @@ namespace MasterBidder.UI
                 if (view.buyButton != null)
                 {
                     view.buyButton.interactable = canBuy;
-                    view.buyButton.GetComponent<Image>().color = canBuy ? GameUiStyle.Good : GameUiStyle.Dim;
+                    GameUiStyle.SetSpriteEnabled(view.buyButton.GetComponent<Image>(), canBuy);
                     view.buyButton.onClick.RemoveAllListeners();
                     string bid = id;
                     view.buyButton.onClick.AddListener(() => _flow?.BuyBooster(bid));
