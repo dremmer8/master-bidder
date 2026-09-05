@@ -1,0 +1,17 @@
+﻿# Proven museum CDN URLs (exact works only — no fuzzy substitutes).
+# Used / mirrored by museum_only_upgrade.py
+the_ballet_class.jpg	MET	https://images.metmuseum.org/CRDImages/ep/original/DP-20101-001.jpg
+sudden_shower_over_shin_ohashi_bridge.jpg	MET	https://images.metmuseum.org/CRDImages/as/original/DP121525.jpg
+the_gulf_stream.jpg	MET	https://images.metmuseum.org/CRDImages/ad/original/DP-20821-001.jpg
+the_night_watch.jpg	RIJKS	https://iiif.micr.io/PJEZO/full/!3840,3840/0/default.jpg
+the_jewish_bride.jpg	RIJKS	https://iiif.micr.io/uRWXq/full/!3840,3840/0/default.jpg
+the_windmill_at_wijk_bij_duurstede.jpg	RIJKS	https://iiif.micr.io/XWEFp/full/!3840,3840/0/default.jpg
+the_feast_of_saint_nicholas.jpg	RIJKS	https://iiif.micr.io/WZzyz/full/!3840,3840/0/default.jpg
+the_gallant_conversation.jpg	RIJKS	https://iiif.micr.io/RxOuM/full/!3840,3840/0/default.jpg
+regentesses_of_the_old_mens_almshouse.jpg	RIJKS	https://iiif.micr.io/JFBTc/full/!3840,3840/0/default.jpg
+still_life_with_a_nautilus_cup.jpg	RIJKS	https://iiif.micr.io/KOxfP/full/!3840,3840/0/default.jpg
+the_hay_wain.jpg	NG	https://media.ng-london.org.uk/iiif/0FV6-0001-0000-0000/full/!3840,3840/0/default.jpg
+venus_and_mars.jpg	NG	https://www.nationalgallery.org.uk/media/ubdfzhct/n-0915-00-000066-xl-hd.jpg?width=3840
+supper_at_emmaus_caravaggio.jpg	NG	https://www.nationalgallery.org.uk/media/wqpe1kxe/n-0172-00-000104-xl-hd.jpg?width=3840
+the_basket_of_apples.jpg	ARTIC	https://www.artic.edu/iiif/2/52ac8996-3460-cf71-cb42-5c4d0aa29b74/full/!3840,3840/0/default.jpg
+water_lilies.jpg	ARTIC	https://www.artic.edu/iiif/2/3c27b499-af56-f0d5-93b5-a7f2f1ad5813/full/!3840,3840/0/default.jpg
