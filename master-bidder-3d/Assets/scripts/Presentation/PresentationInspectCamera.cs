@@ -33,8 +33,8 @@ namespace MasterBidder.Presentation
         [Header("Controls")]
         [SerializeField] private float lookSensitivity = 2.2f;
         [SerializeField] private float zoomSensitivity = 0.35f;
-        [SerializeField] private float zoomSmoothSpeed = 10f;
-        [SerializeField] private float panSmoothSpeed = 18f;
+        [SerializeField] private float zoomSmoothSpeed = 7f;
+        [SerializeField] private float panSmoothSpeed = 9f;
         [SerializeField] private bool lockCursorWhileInspecting = true;
         [SerializeField] private bool showPivotMarker = true;
         [SerializeField] private float pivotMarkerScale = 0.008333f;
@@ -121,6 +121,7 @@ namespace MasterBidder.Presentation
                 ApplyLockedReframe();
             }
 
+            ConstrainLookTowardPainting();
             UpdatePivotMarker();
         }
 
@@ -181,7 +182,7 @@ namespace MasterBidder.Presentation
             // Freeze the aim point at click time — look will not move it during reframe.
             reframePivot = pivot;
             isPanning = true;
-            reframeTimeout = 1.25f;
+            reframeTimeout = 1.8f;
         }
 
         /// <summary>
@@ -260,8 +261,53 @@ namespace MasterBidder.Presentation
 
             Transform cam = inspectCamera.transform;
             cam.Rotate(-my, mx, 0f, Space.Self);
+            StabilizeLookRoll(cam);
+            ConstrainLookTowardPainting();
+        }
 
-            // Kill roll so the horizon stays stable relative to painting up.
+        /// <summary>
+        /// Keeps the inspect camera aimed at the painting — no free look into the room.
+        /// Look may travel across the canvas; past the edges it sticks to the rim.
+        /// </summary>
+        private void ConstrainLookTowardPainting()
+        {
+            if (inspectCamera == null) return;
+            if (!RefreshSurface()) return;
+
+            Transform cam = inspectCamera.transform;
+            Ray ray = new Ray(cam.position, cam.forward);
+
+            // Still looking at the canvas interior — allow it.
+            if (TryRaycastPainting(ray, out _, clampToBounds: false))
+            {
+                StabilizeLookRoll(cam);
+                return;
+            }
+
+            // Past the rim or facing away: pull aim back onto the painting.
+            Vector3 aim;
+            if (TryRaycastPainting(ray, out Vector3 edgeHit, clampToBounds: true))
+            {
+                aim = edgeHit;
+            }
+            else if (hasPivot)
+            {
+                aim = isPanning ? reframePivot : pivot;
+            }
+            else
+            {
+                aim = surfaceCenter;
+            }
+
+            Vector3 toAim = aim - cam.position;
+            if (toAim.sqrMagnitude < 1e-8f) return;
+
+            cam.rotation = Quaternion.LookRotation(toAim.normalized, surfaceUp);
+            StabilizeLookRoll(cam);
+        }
+
+        private void StabilizeLookRoll(Transform cam)
+        {
             Vector3 forward = cam.forward;
             Vector3 up = surfaceUp;
             if (Mathf.Abs(Vector3.Dot(forward, up)) > 0.98f)

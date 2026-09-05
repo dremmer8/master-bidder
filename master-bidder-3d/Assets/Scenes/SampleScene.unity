@@ -343,7 +343,8 @@ MonoBehaviour:
   maxDistance: 2.5
   lookSensitivity: 2.2
   zoomSensitivity: 0.35
-  panSmoothSpeed: 18
+  zoomSmoothSpeed: 7
+  panSmoothSpeed: 9
   lockCursorWhileInspecting: 1
   showPivotMarker: 1
   pivotMarkerScale: 0.008333
