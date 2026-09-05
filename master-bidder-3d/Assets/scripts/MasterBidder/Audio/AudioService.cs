@@ -103,14 +103,18 @@ namespace MasterBidder.Audio
         public static void PlayCampaignEnd() => Play(c => c.campaignEnd, AudioCatalog.PathCampaignEnd);
 
         public static void PlayVoiceover(PaintingData painting) => _manager?.PlayVoiceover(painting);
-        public static void PlayVoiceField(PaintingData painting, PaintingVoiceField field) =>
-            _manager?.PlayVoiceField(painting, field);
+        public static float PlayVoiceField(PaintingData painting, PaintingVoiceField field) =>
+            _manager != null ? _manager.PlayVoiceField(painting, field) : 0f;
         public static void PlayVoiceoverClip(AudioClip clip) => _manager?.PlayVoiceoverClip(clip);
         public static void StopVoiceover() => _manager?.StopVoiceover();
+        public static bool IsVoicePlaying => _manager != null && _manager.IsVoicePlaying;
+        public static float GetVoiceFieldLength(PaintingData painting, PaintingVoiceField field) =>
+            _manager != null ? _manager.GetVoiceFieldLength(painting, field) : 0f;
 
-        public static void PlayRevealVoice(PaintingData painting, string fieldId)
+        /// <summary>Plays the modular reveal line for a field. Returns clip length in seconds.</summary>
+        public static float PlayRevealVoice(PaintingData painting, string fieldId)
         {
-            if (painting == null || string.IsNullOrEmpty(fieldId)) return;
+            if (painting == null || string.IsNullOrEmpty(fieldId)) return 0f;
             PaintingVoiceField? field = null;
             switch (fieldId)
             {
@@ -120,8 +124,7 @@ namespace MasterBidder.Audio
                 case "fact": field = PaintingVoiceField.Fact; break;
                 case "title": field = PaintingVoiceField.Title; break;
             }
-            if (field.HasValue)
-                PlayVoiceField(painting, field.Value);
+            return field.HasValue ? PlayVoiceField(painting, field.Value) : 0f;
         }
 
         static void Play(System.Func<AudioCatalog, FMODUnity.EventReference> selector, string fallbackPath)

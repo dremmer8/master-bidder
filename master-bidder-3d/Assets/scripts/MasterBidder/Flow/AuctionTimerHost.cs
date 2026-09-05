@@ -18,8 +18,11 @@ namespace MasterBidder.Flow
         Coroutine _resolutionRoutine;
         Coroutine _skipRoutine;
 
-        /// <summary>Fired with field id (genre/period/…) after each reveal step.</summary>
-        public System.Action<string> OnFieldRevealed;
+        /// <summary>
+        /// Fired with field id after each normal reveal step.
+        /// Return voiceover duration in seconds (0 = use fallback interval).
+        /// </summary>
+        public System.Func<string, float> OnFieldRevealed;
 
         public void Bind(GameSession session)
         {
@@ -61,6 +64,7 @@ namespace MasterBidder.Flow
         public void StartLotTimers()
         {
             ClearAll();
+            AudioService.StopVoiceover();
             if (_session?.State == null) return;
             if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) return;
             if (_session.State.LotResolved) return;
@@ -78,6 +82,7 @@ namespace MasterBidder.Flow
         {
             if (_session?.State == null || !_session.State.FastForwarding) return;
             ClearAll();
+            // Do not StopVoiceover here — AppFlow plays the title line right after.
             _skipRoutine = StartCoroutine(SkipRoutine());
         }
 
@@ -107,22 +112,30 @@ namespace MasterBidder.Flow
         {
             var state = _session.State;
             var fields = CampaignConfig.RevealableFields;
-            float interval = CampaignConfig.RevealIntervalSeconds;
             var tutorial = _session.GetDay1TutorialStep(state.CurrentLotIndex);
+
+            yield return new WaitForSeconds(CampaignConfig.RevealLeadInSeconds);
 
             for (int i = 0; i < fields.Length; i++)
             {
-                yield return new WaitForSeconds(interval);
                 if (state.LotResolved) yield break;
                 _session.SetRevealStep(i + 1);
                 AudioService.PlayReveal(i, fast: false);
-                OnFieldRevealed?.Invoke(fields[i]);
+                float voiceSeconds = OnFieldRevealed != null ? OnFieldRevealed(fields[i]) : 0f;
+
+                float wait = voiceSeconds > 0.05f
+                    ? voiceSeconds + CampaignConfig.RevealVoiceTailSeconds
+                    : CampaignConfig.RevealIntervalSeconds;
 
                 if (fields[i] == "genre" && tutorial != TutorialStep.None)
                 {
+                    if (wait > 0f)
+                        yield return new WaitForSeconds(wait);
                     _session.PauseForTutorial(tutorial);
                     yield break;
                 }
+
+                yield return new WaitForSeconds(wait);
             }
             _revealRoutine = null;
         }
@@ -134,13 +147,12 @@ namespace MasterBidder.Flow
             int startStep = state.RevealStep;
             float interval = CampaignConfig.SkipFastRevealIntervalSeconds;
 
+            // Visual fast-forward only — no reveal SFX / field voiceovers (title is spoken from AppFlow).
             for (int i = startStep; i < fields.Length; i++)
             {
                 yield return new WaitForSeconds(interval);
                 if (state.LotResolved) yield break;
                 _session.SetRevealStep(i + 1);
-                AudioService.PlayReveal(i, fast: true);
-                OnFieldRevealed?.Invoke(fields[i]);
             }
 
             if (state.ActiveBoosters.Contains("quiet-start") && state.CurrentLotIndex == 0)

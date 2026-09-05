@@ -224,23 +224,36 @@ namespace MasterBidder.Audio
             PlayNextQueuedVoice();
         }
 
-        public void PlayVoiceField(PaintingData painting, PaintingVoiceField field)
+        /// <summary>Returns clip length in seconds (0 if missing / muted).</summary>
+        public float PlayVoiceField(PaintingData painting, PaintingVoiceField field)
         {
-            if (painting == null || _muted) return;
+            if (painting == null || _muted) return 0f;
             EnsureVoiceLibrary();
-            if (voiceLibrary == null) return;
+            if (voiceLibrary == null) return 0f;
             var clip = voiceLibrary.FindForPainting(painting, field);
             if (clip == null)
             {
                 Debug.LogWarning(
                     $"[AudioManager] Missing voice clip for {painting.artworkId} / {field} " +
                     $"(key='{PaintingVoiceoverLibrary.ResolveKey(painting, field)}').");
-                return;
+                return 0f;
             }
 
             StopVoiceover();
             PlayVoiceoverClip(clip);
+            return Mathf.Max(0f, clip.length);
         }
+
+        public float GetVoiceFieldLength(PaintingData painting, PaintingVoiceField field)
+        {
+            if (painting == null) return 0f;
+            EnsureVoiceLibrary();
+            var clip = voiceLibrary?.FindForPainting(painting, field);
+            return clip != null ? Mathf.Max(0f, clip.length) : 0f;
+        }
+
+        public bool IsVoicePlaying =>
+            _voiceChannel.hasHandle() || _voiceQueue.Count > 0;
 
         public void PlayVoiceoverClip(AudioClip clip)
         {

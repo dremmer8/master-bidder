@@ -1,5 +1,6 @@
 using System.Collections;
 using MasterBidder.Audio;
+using MasterBidder.Campaign;
 using MasterBidder.Content;
 using MasterBidder.Core;
 using MasterBidder.Presentation;
@@ -50,11 +51,11 @@ namespace MasterBidder.Flow
             _ui.Bind(this);
         }
 
-        void PlayRevealVoiceForCurrentLot(string fieldId)
+        float PlayRevealVoiceForCurrentLot(string fieldId)
         {
-            if (_session?.State?.CurrentLot == null || catalog == null) return;
+            if (_session?.State?.CurrentLot == null || catalog == null) return 0f;
             var data = catalog.FindPainting(_session.State.CurrentLot.Id);
-            AudioService.PlayRevealVoice(data, fieldId);
+            return AudioService.PlayRevealVoice(data, fieldId);
         }
 
         void Start()
@@ -215,12 +216,11 @@ namespace MasterBidder.Flow
             _awaitingPurchaseDismiss = true;
             _timers.CancelResolution();
             AudioService.StopTension();
+            AudioService.StopVoiceover();
             AudioService.PlayOutcome("won");
             var lot = _session.State.PurchasesToday[_session.State.PurchasesToday.Count - 1];
             var presented = _session.State.CurrentLot;
             _ui.ShowPurchaseCard(presented, lot.Price);
-            if (presented != null && catalog != null)
-                AudioService.PlayVoiceover(catalog.FindPainting(presented.Id));
             _ui.Refresh(_session);
         }
 
@@ -237,10 +237,25 @@ namespace MasterBidder.Flow
         public void OnSkip()
         {
             if (_session == null || _awaitingPurchaseDismiss) return;
+            AudioService.StopVoiceover();
             AudioService.PlaySkip();
+
+            // Capture before BeginSkip / fast-forward mutates reveal progress.
+            int revealStepBeforeSkip = _session.State != null ? _session.State.RevealStep : 0;
+            int titleIndex = System.Array.IndexOf(CampaignConfig.RevealableFields, "title");
+            bool titleAlreadySpoken = titleIndex >= 0 && revealStepBeforeSkip > titleIndex;
+
             _session.BeginSkip();
             if (_session.State != null && _session.State.FastForwarding)
+            {
                 _timers.StartSkipFastReveal();
+                // Skip: speak title only if it was not already revealed (and voiced).
+                if (!titleAlreadySpoken && catalog != null && _session.State.CurrentLot != null)
+                {
+                    var data = catalog.FindPainting(_session.State.CurrentLot.Id);
+                    AudioService.PlayVoiceField(data, PaintingVoiceField.Title);
+                }
+            }
         }
 
         public void OnFinishDay()

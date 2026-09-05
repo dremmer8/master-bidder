@@ -17,7 +17,12 @@ namespace MasterBidder.Campaign
         public const float IncorrectFitStart = 0.15f;
         public const float IncorrectFitEnd = -0.35f;
 
+        /// <summary>Fallback wait between reveals when a voice clip is missing.</summary>
         public const float RevealIntervalSeconds = 2.25f;
+        /// <summary>Pause before the first field reveal on a lot.</summary>
+        public const float RevealLeadInSeconds = 0.85f;
+        /// <summary>Extra silence after a voice line before the next field appears.</summary>
+        public const float RevealVoiceTailSeconds = 0.15f;
         public const float ResolutionPauseSeconds = 2.1f;
         public const float SkipFastRevealIntervalSeconds = 0.38f;
         public const float SkipRivalPauseSeconds = 0.65f;
