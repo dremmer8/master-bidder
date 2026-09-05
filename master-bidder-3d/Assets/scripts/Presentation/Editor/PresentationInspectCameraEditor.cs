@@ -18,7 +18,7 @@ namespace MasterBidder.Presentation.Editor
             if (!Application.isPlaying)
             {
                 EditorGUILayout.HelpBox(
-                    "Play mode: RMB toggles inspect. Mouse look moves pivot. Scroll zooms. LMB reframes to pivot.",
+                    "Play mode: scroll-up from hall enters inspect; scroll-down at max zoom returns. RMB toggles. Mouse look / LMB reframe. Transitions blend via proxy camera.",
                     MessageType.Info);
                 return;
             }

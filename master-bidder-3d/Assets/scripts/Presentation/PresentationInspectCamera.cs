@@ -4,16 +4,26 @@ using UnityEngine;
 namespace MasterBidder.Presentation
 {
     /// <summary>
-    /// Alternative inspect camera for close-up painting viewing.
-    /// RMB toggles mode. Mouse look moves a surface pivot via look-ray.
-    /// Scroll zooms smoothly toward the pivot, clamped by artwork texel size.
-    /// LMB locks the current pivot once and smoothly reframes to face it; look does not retarget that pivot.
+    /// Inspect camera for close-up painting viewing.
+    /// Hall ↔ inspect blends through a proxy camera.
+    /// Scroll-up from the hall enters inspect; scroll-down at max stand-off returns to the hall.
+    /// RMB also toggles. Mouse look moves a surface pivot; LMB reframes to the locked pivot.
     /// </summary>
     public class PresentationInspectCamera : MonoBehaviour
     {
+        private enum CameraMode
+        {
+            Hall,
+            ToInspect,
+            Inspect,
+            ToHall
+        }
+
         [Header("Cameras")]
         [SerializeField] private Camera mainCamera;
         [SerializeField] private Camera inspectCamera;
+        [Tooltip("Optional. Auto-created at runtime if left empty.")]
+        [SerializeField] private Camera proxyCamera;
 
         [Header("Painting")]
         [SerializeField] private NineSliceMesh3D canvasMesh;
@@ -35,6 +45,7 @@ namespace MasterBidder.Presentation
         [SerializeField] private float zoomSensitivity = 0.35f;
         [SerializeField] private float zoomSmoothSpeed = 7f;
         [SerializeField] private float panSmoothSpeed = 9f;
+        [SerializeField] private float transitionDuration = 0.65f;
         [SerializeField] private bool lockCursorWhileInspecting = true;
         [SerializeField] private bool showPivotMarker = true;
         [SerializeField] private float pivotMarkerScale = 0.008333f;
@@ -42,7 +53,7 @@ namespace MasterBidder.Presentation
         [Header("Debug")]
         [SerializeField] private bool drawGizmos = true;
 
-        private bool isInspecting;
+        private CameraMode mode = CameraMode.Hall;
         private bool hasPivot;
         private Vector3 pivot;
         private float distance;
@@ -54,6 +65,15 @@ namespace MasterBidder.Presentation
         private Transform pivotMarker;
         private AudioListener mainListener;
         private AudioListener inspectListener;
+        private AudioListener proxyListener;
+
+        private float transitionT;
+        private Vector3 transitionStartPos;
+        private Vector3 transitionEndPos;
+        private Quaternion transitionStartRot;
+        private Quaternion transitionEndRot;
+        private float transitionStartFov;
+        private float transitionEndFov;
 
         private Vector3 surfaceNormal = Vector3.forward;
         private Vector3 surfaceUp = Vector3.up;
@@ -65,21 +85,32 @@ namespace MasterBidder.Presentation
         private const float ZoomSettleEpsilon = 0.001f;
         private const float ZoomLimitHysteresis = 0.005f;
 
-        public bool IsInspecting => isInspecting;
+        public bool IsInspecting => mode == CameraMode.Inspect || mode == CameraMode.ToInspect;
+        public bool IsTransitioning => mode == CameraMode.ToInspect || mode == CameraMode.ToHall;
         public Vector3 Pivot => pivot;
-        public Camera ActiveCamera => isInspecting ? inspectCamera : mainCamera;
+
+        public Camera ActiveCamera
+        {
+            get
+            {
+                if (IsTransitioning) return proxyCamera != null ? proxyCamera : inspectCamera;
+                return mode == CameraMode.Inspect ? inspectCamera : mainCamera;
+            }
+        }
 
         private void Awake()
         {
             ResolveRefs();
+            EnsureProxyCamera();
             EnsurePivotMarker();
             effectiveMinDistance = Mathf.Max(0.01f, minDistance);
-            SetInspectActive(false, snap: true);
+            ApplyCameraRig(CameraMode.Hall, snapListeners: true);
+            mode = CameraMode.Hall;
         }
 
         private void OnDisable()
         {
-            if (isInspecting)
+            if (mode != CameraMode.Hall)
             {
                 ExitInspect(snap: true);
             }
@@ -89,18 +120,36 @@ namespace MasterBidder.Presentation
         {
             if (!Application.isPlaying) return;
 
-            if (Input.GetMouseButtonDown(1))
+            if (Input.GetMouseButtonDown(1) && !IsTransitioning)
             {
                 ToggleInspect();
             }
 
-            if (!isInspecting || inspectCamera == null) return;
+            if (mode == CameraMode.Hall)
+            {
+                // Scroll-up from the hall enters inspect with a blended hand-off.
+                if (Input.mouseScrollDelta.y > 0f)
+                {
+                    EnterInspect(snap: false);
+                }
+
+                return;
+            }
+
+            if (IsTransitioning)
+            {
+                TickTransition();
+                return;
+            }
+
+            if (mode != CameraMode.Inspect || inspectCamera == null) return;
 
             HandleLook();
             HandleZoomInput();
+            if (mode != CameraMode.Inspect) return;
+
             ApplySmoothZoom();
 
-            // Live look→pivot tracking only outside reframe.
             if (!isPanning)
             {
                 UpdatePivotFromLookRay();
@@ -108,7 +157,6 @@ namespace MasterBidder.Presentation
 
             if (Input.GetMouseButtonDown(0))
             {
-                // One-shot sample at click time (also retargets mid-reframe).
                 UpdatePivotFromLookRay();
                 if (hasPivot)
                 {
@@ -127,22 +175,30 @@ namespace MasterBidder.Presentation
 
         public void ToggleInspect()
         {
-            if (isInspecting)
+            if (IsTransitioning) return;
+
+            if (mode == CameraMode.Inspect)
             {
                 ExitInspect(snap: false);
             }
-            else
+            else if (mode == CameraMode.Hall)
             {
-                EnterInspect();
+                EnterInspect(snap: false);
             }
         }
 
-        public void EnterInspect()
+        public void EnterInspect() => EnterInspect(snap: false);
+
+        public void EnterInspect(bool snap)
         {
+            if (mode == CameraMode.Inspect || mode == CameraMode.ToInspect) return;
+            if (!snap && IsTransitioning) return;
+
             ResolveRefs();
-            if (inspectCamera == null || canvasMesh == null)
+            EnsureProxyCamera();
+            if (inspectCamera == null || canvasMesh == null || mainCamera == null)
             {
-                Debug.LogWarning("[InspectCamera] Missing inspect camera or canvas.", this);
+                Debug.LogWarning("[InspectCamera] Missing cameras or canvas.", this);
                 return;
             }
 
@@ -159,20 +215,83 @@ namespace MasterBidder.Presentation
             RefreshZoomLimits();
             distance = targetDistance = Mathf.Clamp(enterDistance, effectiveMinDistance, maxDistance);
 
-            PlaceFrontal(pivot, distance, immediate: true);
-            SetInspectActive(true, snap: true);
-            isInspecting = true;
+            GetFrontalPose(pivot, distance, out Vector3 endPos, out Quaternion endRot);
+            float endFov = inspectCamera.fieldOfView;
+
+            if (snap || transitionDuration <= 1e-4f || proxyCamera == null)
+            {
+                inspectCamera.transform.SetPositionAndRotation(endPos, endRot);
+                ApplyCameraRig(CameraMode.Inspect, snapListeners: true);
+                mode = CameraMode.Inspect;
+                SetCursorLocked(lockCursorWhileInspecting);
+                UpdatePivotMarker();
+                return;
+            }
+
+            transitionStartPos = mainCamera.transform.position;
+            transitionStartRot = mainCamera.transform.rotation;
+            transitionStartFov = mainCamera.fieldOfView;
+            transitionEndPos = endPos;
+            transitionEndRot = endRot;
+            transitionEndFov = endFov;
+            transitionT = 0f;
+
+            inspectCamera.transform.SetPositionAndRotation(endPos, endRot);
+            CopyCameraLens(mainCamera, proxyCamera);
+            proxyCamera.transform.SetPositionAndRotation(transitionStartPos, transitionStartRot);
+            proxyCamera.fieldOfView = transitionStartFov;
+
+            ApplyCameraRig(CameraMode.ToInspect, snapListeners: true);
+            mode = CameraMode.ToInspect;
+            SetCursorLocked(lockCursorWhileInspecting);
             UpdatePivotMarker();
         }
 
         public void ExitInspect(bool snap)
         {
             CancelPan();
-            isInspecting = false;
             hasPivot = false;
-            SetInspectActive(false, snap);
-            SetCursorLocked(false);
             UpdatePivotMarker();
+
+            if (mode == CameraMode.Hall)
+            {
+                SetCursorLocked(false);
+                return;
+            }
+
+            if (!snap && mode == CameraMode.ToHall) return;
+
+            ResolveRefs();
+            EnsureProxyCamera();
+
+            if (snap || transitionDuration <= 1e-4f || proxyCamera == null || mainCamera == null)
+            {
+                ApplyCameraRig(CameraMode.Hall, snapListeners: true);
+                mode = CameraMode.Hall;
+                SetCursorLocked(false);
+                return;
+            }
+
+            Camera fromCam = mode == CameraMode.ToInspect && proxyCamera != null && proxyCamera.enabled
+                ? proxyCamera
+                : inspectCamera;
+            if (fromCam == null) fromCam = proxyCamera != null ? proxyCamera : mainCamera;
+
+            transitionStartPos = fromCam.transform.position;
+            transitionStartRot = fromCam.transform.rotation;
+            transitionStartFov = fromCam.fieldOfView;
+            transitionEndPos = mainCamera.transform.position;
+            transitionEndRot = mainCamera.transform.rotation;
+            transitionEndFov = mainCamera.fieldOfView;
+            transitionT = 0f;
+
+            CopyCameraLens(fromCam, proxyCamera);
+            proxyCamera.transform.SetPositionAndRotation(transitionStartPos, transitionStartRot);
+            proxyCamera.fieldOfView = transitionStartFov;
+
+            ApplyCameraRig(CameraMode.ToHall, snapListeners: true);
+            mode = CameraMode.ToHall;
+            SetCursorLocked(false);
         }
 
         public void PanToFacePivot()
@@ -325,15 +444,18 @@ namespace MasterBidder.Presentation
 
             RefreshZoomLimits();
 
-            // Already hard-stopped at the close limit — ignore further zoom-in so we don't
-            // keep re-triggering tiny corrections that read as camera jitter.
             bool atMin = distance <= effectiveMinDistance + ZoomSettleEpsilon
                          && targetDistance <= effectiveMinDistance + ZoomSettleEpsilon;
             if (scroll > 0f && atMin) return;
 
             bool atMax = distance >= maxDistance - ZoomSettleEpsilon
                          && targetDistance >= maxDistance - ZoomSettleEpsilon;
-            if (scroll < 0f && atMax) return;
+            // Scroll further out at max stand-off → blend back to the hall.
+            if (scroll < 0f && atMax)
+            {
+                ExitInspect(snap: false);
+                return;
+            }
 
             targetDistance = Mathf.Clamp(
                 targetDistance - scroll * zoomSensitivity,
@@ -508,9 +630,7 @@ namespace MasterBidder.Presentation
 
         private void PlaceFrontal(Vector3 targetPivot, float standOff, bool immediate)
         {
-            RefreshSurface();
-            Vector3 pos = targetPivot + surfaceNormal * standOff;
-            Quaternion rot = Quaternion.LookRotation(-surfaceNormal, surfaceUp);
+            GetFrontalPose(targetPivot, standOff, out Vector3 pos, out Quaternion rot);
 
             if (immediate || inspectCamera == null)
             {
@@ -519,6 +639,135 @@ namespace MasterBidder.Presentation
             }
 
             inspectCamera.transform.SetPositionAndRotation(pos, rot);
+        }
+
+        private void GetFrontalPose(Vector3 targetPivot, float standOff, out Vector3 pos, out Quaternion rot)
+        {
+            RefreshSurface();
+            pos = targetPivot + surfaceNormal * standOff;
+            rot = Quaternion.LookRotation(-surfaceNormal, surfaceUp);
+        }
+
+        private void TickTransition()
+        {
+            if (proxyCamera == null)
+            {
+                FinishTransition();
+                return;
+            }
+
+            float duration = Mathf.Max(0.05f, transitionDuration);
+            transitionT = Mathf.Min(1f, transitionT + Time.deltaTime / duration);
+            float u = transitionT * transitionT * (3f - 2f * transitionT); // smoothstep
+
+            proxyCamera.transform.SetPositionAndRotation(
+                Vector3.Lerp(transitionStartPos, transitionEndPos, u),
+                Quaternion.Slerp(transitionStartRot, transitionEndRot, u));
+            proxyCamera.fieldOfView = Mathf.Lerp(transitionStartFov, transitionEndFov, u);
+
+            if (transitionT >= 1f - 1e-4f)
+            {
+                FinishTransition();
+            }
+        }
+
+        private void FinishTransition()
+        {
+            if (mode == CameraMode.ToInspect)
+            {
+                if (inspectCamera != null)
+                {
+                    inspectCamera.transform.SetPositionAndRotation(transitionEndPos, transitionEndRot);
+                    inspectCamera.fieldOfView = transitionEndFov;
+                }
+
+                ApplyCameraRig(CameraMode.Inspect, snapListeners: true);
+                mode = CameraMode.Inspect;
+                SetCursorLocked(lockCursorWhileInspecting);
+                UpdatePivotMarker();
+                return;
+            }
+
+            if (mode == CameraMode.ToHall)
+            {
+                ApplyCameraRig(CameraMode.Hall, snapListeners: true);
+                mode = CameraMode.Hall;
+                SetCursorLocked(false);
+                UpdatePivotMarker();
+            }
+        }
+
+        private void ApplyCameraRig(CameraMode rig, bool snapListeners)
+        {
+            bool hall = rig == CameraMode.Hall;
+            bool inspect = rig == CameraMode.Inspect;
+            bool proxy = rig == CameraMode.ToInspect || rig == CameraMode.ToHall;
+
+            if (mainCamera != null) mainCamera.enabled = hall;
+            if (inspectCamera != null)
+            {
+                inspectCamera.gameObject.SetActive(true);
+                inspectCamera.enabled = inspect;
+            }
+
+            if (proxyCamera != null)
+            {
+                proxyCamera.gameObject.SetActive(true);
+                proxyCamera.enabled = proxy;
+            }
+
+            if (snapListeners)
+            {
+                if (mainListener != null) mainListener.enabled = hall;
+                if (inspectListener != null) inspectListener.enabled = inspect;
+                if (proxyListener != null) proxyListener.enabled = proxy;
+            }
+        }
+
+        private void EnsureProxyCamera()
+        {
+            if (proxyCamera != null)
+            {
+                if (proxyListener == null)
+                {
+                    proxyListener = proxyCamera.GetComponent<AudioListener>();
+                }
+
+                return;
+            }
+
+            ResolveRefs();
+            if (mainCamera == null) return;
+
+            var go = new GameObject("InspectProxyCamera");
+            go.transform.SetParent(transform, worldPositionStays: false);
+            go.hideFlags = HideFlags.DontSave;
+            proxyCamera = go.AddComponent<Camera>();
+            proxyListener = go.AddComponent<AudioListener>();
+            proxyListener.enabled = false;
+            proxyCamera.enabled = false;
+            CopyCameraLens(mainCamera, proxyCamera);
+            proxyCamera.depth = mainCamera.depth + 1f;
+            proxyCamera.tag = "Untagged";
+        }
+
+        private static void CopyCameraLens(Camera from, Camera to)
+        {
+            if (from == null || to == null) return;
+
+            to.clearFlags = from.clearFlags;
+            to.backgroundColor = from.backgroundColor;
+            to.cullingMask = from.cullingMask;
+            to.orthographic = from.orthographic;
+            to.fieldOfView = from.fieldOfView;
+            to.orthographicSize = from.orthographicSize;
+            to.nearClipPlane = from.nearClipPlane;
+            to.farClipPlane = from.farClipPlane;
+            to.allowHDR = from.allowHDR;
+            to.allowMSAA = from.allowMSAA;
+            to.allowDynamicResolution = from.allowDynamicResolution;
+            to.renderingPath = from.renderingPath;
+            to.useOcclusionCulling = from.useOcclusionCulling;
         }
 
         private bool RefreshSurface()
@@ -605,25 +854,6 @@ namespace MasterBidder.Presentation
             return true;
         }
 
-        private void SetInspectActive(bool enabled, bool snap)
-        {
-            if (inspectCamera != null)
-            {
-                inspectCamera.enabled = enabled;
-                inspectCamera.gameObject.SetActive(true);
-            }
-
-            if (mainCamera != null)
-            {
-                mainCamera.enabled = !enabled;
-            }
-
-            if (mainListener != null) mainListener.enabled = !enabled;
-            if (inspectListener != null) inspectListener.enabled = enabled;
-
-            SetCursorLocked(enabled && lockCursorWhileInspecting);
-        }
-
         private void SetCursorLocked(bool locked)
         {
             Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
@@ -668,7 +898,7 @@ namespace MasterBidder.Presentation
                 else return;
             }
 
-            bool show = showPivotMarker && isInspecting && hasPivot;
+            bool show = showPivotMarker && IsInspecting && hasPivot && mode == CameraMode.Inspect;
             pivotMarker.gameObject.SetActive(show);
             if (show)
             {
@@ -696,11 +926,10 @@ namespace MasterBidder.Presentation
                 var cameras = GetComponentsInChildren<Camera>(true);
                 foreach (var cam in cameras)
                 {
-                    if (cam != mainCamera)
-                    {
-                        inspectCamera = cam;
-                        break;
-                    }
+                    if (cam == mainCamera || cam == proxyCamera) continue;
+                    if (cam.name.Contains("Proxy")) continue;
+                    inspectCamera = cam;
+                    break;
                 }
             }
 
