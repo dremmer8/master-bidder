@@ -832,6 +832,7 @@ namespace MasterBidder.UI
 
             RebuildCollectorCards(session);
             RebuildUpgradeRows(session);
+            RebuildActiveEffects(state);
         }
 
         void RebuildCollectorCards(GameSession session)
@@ -1255,50 +1256,93 @@ namespace MasterBidder.UI
                 ResetRivalHeads();
         }
 
+        Transform EffectsChromeParent()
+        {
+            if (_b == null) return null;
+            var chrome = _b.transform.Find("Chrome");
+            return chrome;
+        }
+
         void EnsureEffectsHud()
         {
-            if (_auction == null || _b == null) return;
+            if (_b == null) return;
+            var chrome = EffectsChromeParent();
+            if (chrome == null) return;
 
-            var bar = _auction.transform.Find("EffectsHud");
+            // Migrate leftover strip from older auction layout.
+            if (_auction != null)
+            {
+                var stale = _auction.transform.Find("EffectsHud");
+                if (stale != null) Destroy(stale.gameObject);
+                var staleTip = _auction.transform.Find("EffectTooltip");
+                if (staleTip != null && (_b.effectTooltip == null || _b.effectTooltip.transform != staleTip))
+                    Destroy(staleTip.gameObject);
+            }
+
+            if (_b.chromeTitle != null)
+                StretchUi(_b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(28, 0), new Vector2(-8, 0));
+
+            var bar = chrome.Find("EffectsHud");
             if (bar == null)
             {
                 var go = new GameObject("EffectsHud", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup));
-                go.transform.SetParent(_auction.transform, false);
-                go.transform.SetAsLastSibling();
-                StretchUi(go.GetComponent<RectTransform>(), new Vector2(0.02f, 0.9f), new Vector2(0.7f, 0.985f), Vector2.zero, Vector2.zero);
+                go.transform.SetParent(chrome, false);
+                go.transform.SetSiblingIndex(Mathf.Min(1, chrome.childCount));
+                StretchUi(go.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.76f, 0.88f), Vector2.zero, Vector2.zero);
                 var bg = go.GetComponent<Image>();
                 bg.sprite = null;
-                bg.color = new Color(0.12f, 0.09f, 0.06f, 0.45f);
+                bg.color = new Color(1f, 1f, 1f, 0f);
                 bg.raycastTarget = false;
+                if (go.GetComponent<RectMask2D>() == null)
+                    go.AddComponent<RectMask2D>();
                 var hlg = go.GetComponent<HorizontalLayoutGroup>();
-                hlg.padding = new RectOffset(10, 10, 6, 6);
-                hlg.spacing = 10;
+                hlg.padding = new RectOffset(4, 4, 0, 0);
+                hlg.spacing = 8;
                 hlg.childAlignment = TextAnchor.MiddleRight;
                 hlg.childControlWidth = false;
                 hlg.childControlHeight = true;
                 hlg.childForceExpandWidth = false;
-                hlg.childForceExpandHeight = true;
+                hlg.childForceExpandHeight = false;
                 bar = go.transform;
             }
             else
             {
-                StretchUi(bar.GetComponent<RectTransform>(), new Vector2(0.02f, 0.9f), new Vector2(0.7f, 0.985f), Vector2.zero, Vector2.zero);
+                StretchUi(bar.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.76f, 0.88f), Vector2.zero, Vector2.zero);
+                var bg = bar.GetComponent<Image>();
+                if (bg != null)
+                {
+                    bg.sprite = null;
+                    bg.color = new Color(1f, 1f, 1f, 0f);
+                    bg.raycastTarget = false;
+                }
+                if (bar.GetComponent<RectMask2D>() == null)
+                    bar.gameObject.AddComponent<RectMask2D>();
+                var hlg = bar.GetComponent<HorizontalLayoutGroup>();
+                if (hlg != null)
+                {
+                    hlg.childForceExpandHeight = false;
+                    hlg.childControlHeight = true;
+                    hlg.childAlignment = TextAnchor.MiddleRight;
+                }
             }
 
-            if (_b.effectsUpgrades == null)
+            if (_b.effectsUpgrades == null || _b.effectsUpgrades.parent != bar)
             {
                 var t = bar.Find("Upgrades");
                 _b.effectsUpgrades = t != null ? t : CreateEffectsRowRuntime(bar, "Upgrades");
             }
-            if (_b.effectsBoosters == null)
+            TuneEffectsRow(_b.effectsUpgrades);
+
+            if (_b.effectsBoosters == null || _b.effectsBoosters.parent != bar)
             {
                 var t = bar.Find("Boosters");
                 _b.effectsBoosters = t != null ? t : CreateEffectsRowRuntime(bar, "Boosters");
             }
+            TuneEffectsRow(_b.effectsBoosters);
 
             if (_b.effectTooltip == null)
             {
-                var tipT = _auction.transform.Find("EffectTooltip");
+                var tipT = _b.transform.Find("EffectTooltip");
                 if (tipT != null)
                 {
                     _b.effectTooltip = tipT.gameObject;
@@ -1308,7 +1352,7 @@ namespace MasterBidder.UI
                 else
                 {
                     var tip = new GameObject("EffectTooltip", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
-                    tip.transform.SetParent(_auction.transform, false);
+                    tip.transform.SetParent(_b.transform, false);
                     var tipRt = tip.GetComponent<RectTransform>();
                     tipRt.anchorMin = tipRt.anchorMax = new Vector2(0.5f, 0.5f);
                     tipRt.pivot = new Vector2(0.5f, 1f);
@@ -1352,20 +1396,44 @@ namespace MasterBidder.UI
                 _b.effectTooltip.transform.SetAsLastSibling();
         }
 
+        static void TuneEffectsRow(Transform row)
+        {
+            if (row == null) return;
+            var h = row.GetComponent<HorizontalLayoutGroup>();
+            if (h != null)
+            {
+                h.spacing = 4;
+                h.childAlignment = TextAnchor.MiddleCenter;
+                h.childControlWidth = true;
+                h.childControlHeight = true;
+                h.childForceExpandWidth = false;
+                h.childForceExpandHeight = false;
+            }
+            var le = row.GetComponent<LayoutElement>();
+            if (le != null)
+            {
+                le.minHeight = le.preferredHeight = 28;
+                le.flexibleHeight = 0;
+            }
+        }
+
         static Transform CreateEffectsRowRuntime(Transform parent, string name)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
             var h = go.GetComponent<HorizontalLayoutGroup>();
-            h.spacing = 6;
+            h.spacing = 4;
             h.childAlignment = TextAnchor.MiddleCenter;
-            h.childControlWidth = false;
-            h.childControlHeight = false;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = false;
+            h.childForceExpandHeight = false;
             var fit = go.GetComponent<ContentSizeFitter>();
             fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var le = go.GetComponent<LayoutElement>();
-            le.minHeight = le.preferredHeight = 36;
+            le.minHeight = le.preferredHeight = 28;
+            le.flexibleHeight = 0;
             return go.transform;
         }
 
@@ -1406,7 +1474,8 @@ namespace MasterBidder.UI
                 _b.effectsBoosters.gameObject.SetActive(boosterCount > 0);
             }
 
-            var bar = _auction != null ? _auction.transform.Find("EffectsHud") : null;
+            var chrome = EffectsChromeParent();
+            var bar = chrome != null ? chrome.Find("EffectsHud") : null;
             if (bar != null)
                 bar.gameObject.SetActive(upgradeCount + boosterCount > 0);
         }
@@ -1452,13 +1521,12 @@ namespace MasterBidder.UI
 
             var tipRt = _b.effectTooltip.GetComponent<RectTransform>();
             var iconRt = view.GetComponent<RectTransform>();
-            if (tipRt != null && iconRt != null && _auction != null)
+            var parentRt = _b.GetComponent<RectTransform>();
+            if (tipRt != null && iconRt != null && parentRt != null)
             {
-                var parentRt = _auction.GetComponent<RectTransform>();
                 Vector3[] corners = new Vector3[4];
                 iconRt.GetWorldCorners(corners);
-                // corners: 0=bl, 1=tl, 2=tr, 3=br — place tooltip under icon
-                Vector3 world = new Vector3((corners[0].x + corners[3].x) * 0.5f, corners[0].y - 8f, corners[0].z);
+                Vector3 world = new Vector3((corners[0].x + corners[3].x) * 0.5f, corners[0].y - 6f, corners[0].z);
                 if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                         parentRt,
                         RectTransformUtility.WorldToScreenPoint(null, world),

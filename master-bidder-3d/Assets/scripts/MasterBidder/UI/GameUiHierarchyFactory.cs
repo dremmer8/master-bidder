@@ -143,8 +143,10 @@ namespace MasterBidder.UI
             var bar = CreatePanel("Chrome", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -52), Vector2.zero);
             GameUiStyle.ApplySliced(bar.GetComponent<Image>(), GameUiSprites.Banner, GameUiStyle.SpriteReady);
             b.chromeTitle = CreateText("Title", bar.transform, "", 16, TextAnchor.MiddleLeft);
-            Stretch(b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.7f, 1), new Vector2(28, 0), new Vector2(-8, 0));
+            Stretch(b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(28, 0), new Vector2(-8, 0));
             b.chromeTitle.fontStyle = FontStyle.Bold;
+
+            BuildEffectsHud(bar.transform, parent, b);
 
             var langGo = new GameObject("Lang", typeof(RectTransform), typeof(Image), typeof(Dropdown));
             langGo.transform.SetParent(bar.transform, false);
@@ -171,7 +173,7 @@ namespace MasterBidder.UI
             b.langDropdown.template = template.GetComponent<RectTransform>();
             b.langDropdown.itemText = itemLabel;
             b.langDropdown.options.Clear();
-            b.langDropdown.options.Add(new Dropdown.OptionData("Р СѓСЃСЃРєРёР№"));
+            b.langDropdown.options.Add(new Dropdown.OptionData("Русский"));
             b.langDropdown.options.Add(new Dropdown.OptionData("English"));
         }
 
@@ -278,8 +280,6 @@ namespace MasterBidder.UI
 
             var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.03f), new Vector2(0.985f, 0.97f), new Vector2(6, 8), new Vector2(-12, -8));
             GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
-
-            BuildEffectsHud(root.transform, b);
 
             b.aucHud = CreateText("AucHud", hud.transform, "", 13, TextAnchor.MiddleLeft);
             Stretch(b.aucHud.rectTransform, new Vector2(0, 0.91f), Vector2.one, new Vector2(16, -10), new Vector2(-16, -6));
@@ -512,26 +512,27 @@ namespace MasterBidder.UI
             return root;
         }
 
-        static void BuildEffectsHud(Transform auctionRoot, GameUiBindings b)
+        static void BuildEffectsHud(Transform chromeBar, Transform canvasRoot, GameUiBindings b)
         {
-            var bar = CreatePanel("EffectsHud", auctionRoot, new Vector2(0.02f, 0.9f), new Vector2(0.7f, 0.985f), Vector2.zero, Vector2.zero);
+            var bar = CreatePanel("EffectsHud", chromeBar, new Vector2(0.28f, 0.12f), new Vector2(0.76f, 0.88f), Vector2.zero, Vector2.zero);
             bar.GetComponent<Image>().sprite = null;
-            bar.GetComponent<Image>().color = new Color(0.12f, 0.09f, 0.06f, 0.45f);
+            bar.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0f);
             bar.GetComponent<Image>().raycastTarget = false;
+            bar.AddComponent<RectMask2D>();
 
             var hlg = bar.AddComponent<HorizontalLayoutGroup>();
-            hlg.padding = new RectOffset(10, 10, 6, 6);
-            hlg.spacing = 10;
+            hlg.padding = new RectOffset(4, 4, 0, 0);
+            hlg.spacing = 8;
             hlg.childAlignment = TextAnchor.MiddleRight;
             hlg.childControlWidth = false;
             hlg.childControlHeight = true;
             hlg.childForceExpandWidth = false;
-            hlg.childForceExpandHeight = true;
+            hlg.childForceExpandHeight = false;
 
             b.effectsUpgrades = CreateEffectsRow(bar.transform, "Upgrades");
             b.effectsBoosters = CreateEffectsRow(bar.transform, "Boosters");
 
-            var tip = CreatePanel("EffectTooltip", auctionRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-115, -90), new Vector2(115, 10));
+            var tip = CreatePanel("EffectTooltip", canvasRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-120, -100), new Vector2(120, 10));
             GameUiStyle.ApplyCard(tip.GetComponent<Image>());
             tip.GetComponent<Image>().raycastTarget = false;
             var tipCg = tip.AddComponent<CanvasGroup>();
@@ -556,27 +557,33 @@ namespace MasterBidder.UI
             var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
             go.transform.SetParent(parent, false);
             var h = go.GetComponent<HorizontalLayoutGroup>();
-            h.spacing = 6;
+            h.spacing = 4;
             h.childAlignment = TextAnchor.MiddleCenter;
-            h.childControlWidth = false;
-            h.childControlHeight = false;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
             h.childForceExpandWidth = false;
             h.childForceExpandHeight = false;
             var fit = go.GetComponent<ContentSizeFitter>();
             fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var le = go.AddComponent<LayoutElement>();
-            le.minHeight = 36;
-            le.preferredHeight = 36;
+            le.minHeight = 28;
+            le.preferredHeight = 28;
+            le.flexibleHeight = 0;
             return go.transform;
         }
 
         public static GameObject BuildEffectIcon()
         {
+            const float size = 28f;
             var go = new GameObject("EffectIcon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            var rt = go.GetComponent<RectTransform>();
+            rt.sizeDelta = new Vector2(size, size);
             var le = go.GetComponent<LayoutElement>();
-            le.minWidth = le.preferredWidth = 36;
-            le.minHeight = le.preferredHeight = 36;
+            le.minWidth = le.preferredWidth = size;
+            le.minHeight = le.preferredHeight = size;
+            le.flexibleWidth = 0;
+            le.flexibleHeight = 0;
             // Invisible hit target so circular sprites keep clean corners.
             var hit = go.GetComponent<Image>();
             hit.color = new Color(1f, 1f, 1f, 0.01f);
