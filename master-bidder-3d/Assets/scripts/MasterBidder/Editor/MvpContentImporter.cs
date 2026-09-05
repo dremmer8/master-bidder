@@ -219,6 +219,20 @@ namespace MasterBidder.Editor
             if (presentation != null)
                 so.FindProperty("presentation").objectReferenceValue = presentation;
             so.FindProperty("disablePresentationDemoHotkeys").boolValue = true;
+
+            var voiceLib = AssetDatabase.LoadAssetAtPath<MasterBidder.Audio.PaintingVoiceoverLibrary>(
+                MasterBidder.Audio.PaintingVoicePaths.LibraryAssetPath);
+            if (voiceLib == null)
+                voiceLib = AssetDatabase.LoadAssetAtPath<MasterBidder.Audio.PaintingVoiceoverLibrary>(
+                    MasterBidder.Audio.PaintingVoicePaths.LegacyLibraryAssetPath);
+            if (voiceLib != null)
+                so.FindProperty("voiceLibrary").objectReferenceValue = voiceLib;
+
+            var audioCat = AssetDatabase.LoadAssetAtPath<MasterBidder.Audio.AudioCatalog>(
+                "Assets/content/audio/Resources/AudioCatalog.asset");
+            if (audioCat != null)
+                so.FindProperty("audioCatalog").objectReferenceValue = audioCat;
+
             so.ApplyModifiedPropertiesWithoutUndo();
 
             AssignUiPrefabs(go);

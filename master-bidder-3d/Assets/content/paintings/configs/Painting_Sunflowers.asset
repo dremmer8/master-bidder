@@ -29,6 +29,7 @@ MonoBehaviour:
     \u0432 \u0410\u0440\u043B\u044C."
   rarity: rare
   basePrice: 230000
+  voiceoverRu: {fileID: 8300000, guid: 6d2a01478c1f5c142a6119d8be9cca95, type: 3}
   albedoTexture: {fileID: 2800000, guid: ad26453a53db269544d24e59917d5bf0, type: 3}
   unit: 1
   width: 73

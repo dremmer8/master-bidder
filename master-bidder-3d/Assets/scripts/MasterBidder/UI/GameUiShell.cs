@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MasterBidder.Audio;
 using MasterBidder.Campaign;
 using MasterBidder.Content;
 using MasterBidder.Core;
@@ -36,6 +37,7 @@ namespace MasterBidder.UI
         bool _purchaseCardVisible;
         int _lastRaisedRival = -1;
         float _rivalRaiseUntil;
+        bool _reportSoundPlayed;
 
         static readonly string[] FieldIds = { "genre", "period", "artist", "fact", "title" };
 
@@ -610,29 +612,29 @@ namespace MasterBidder.UI
         void WireListeners()
         {
             if (_b.btnContinue != null)
-                _b.btnContinue.onClick.AddListener(() => _flow?.OnContinueCareer());
+                _b.btnContinue.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnContinueCareer(); });
             if (_b.btnStart != null)
-                _b.btnStart.onClick.AddListener(() => _flow?.OnStartCareer());
+                _b.btnStart.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnStartCareer(); });
             if (_b.btnReset != null)
-                _b.btnReset.onClick.AddListener(() => _flow?.OnResetProgress());
+                _b.btnReset.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnResetProgress(); });
             if (_b.btnEnterHall != null)
-                _b.btnEnterHall.onClick.AddListener(() => _flow?.OnEnterHall());
+                _b.btnEnterHall.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnEnterHall(); });
             if (_b.btnStartLot != null)
-                _b.btnStartLot.onClick.AddListener(() => _flow?.OnStartLot());
+                _b.btnStartLot.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnStartLot(); });
             if (_b.btnBuy != null)
                 _b.btnBuy.onClick.AddListener(() => _flow?.OnBuy());
             if (_b.btnSkip != null)
                 _b.btnSkip.onClick.AddListener(() => _flow?.OnSkip());
             if (_b.btnFinishDay != null)
-                _b.btnFinishDay.onClick.AddListener(() => _flow?.OnFinishDay());
+                _b.btnFinishDay.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnFinishDay(); });
             if (_b.btnPopupStart != null)
-                _b.btnPopupStart.onClick.AddListener(() => _flow?.OnCollectorPopupStart());
+                _b.btnPopupStart.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnCollectorPopupStart(); });
             if (_b.btnPcContinue != null)
                 _b.btnPcContinue.onClick.AddListener(() => _flow?.OnPurchaseCardDismiss());
             if (_b.btnReportContinue != null)
-                _b.btnReportContinue.onClick.AddListener(() => _flow?.OnReportContinue());
+                _b.btnReportContinue.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnReportContinue(); });
             if (_b.btnRestart != null)
-                _b.btnRestart.onClick.AddListener(() => _flow?.OnRestart());
+                _b.btnRestart.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnRestart(); });
 
             if (_b.langDropdown != null)
             {
@@ -664,6 +666,12 @@ namespace MasterBidder.UI
                 if (_tutorial) _tutorial.SetActive(false);
                 HideEffectTooltip();
             }
+
+            if (screen == GameScreen.End)
+                AudioService.PlayCampaignEnd();
+
+            if (screen != GameScreen.Report)
+                _reportSoundPlayed = false;
         }
 
         public void ShowCollectorPopup(DayOrder order, CollectorData collector = null)
@@ -1109,6 +1117,14 @@ namespace MasterBidder.UI
             {
                 _b.reportBody.text = "";
                 return;
+            }
+
+            // Play once when report content first appears for this day result.
+            if (!_reportSoundPlayed)
+            {
+                _reportSoundPlayed = true;
+                if (r.Pass) AudioService.PlayDayPass();
+                else AudioService.PlayDayFail();
             }
 
             var sb = new System.Text.StringBuilder();

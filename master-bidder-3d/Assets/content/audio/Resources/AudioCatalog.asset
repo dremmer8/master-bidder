@@ -1,0 +1,162 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9d21ef436d6eeb4a8b2678a533e10a3, type: 3}
+  m_Name: AudioCatalog
+  m_EditorClassIdentifier: 
+  click:
+    Guid:
+      Data1: -354422627
+      Data2: 1110146341
+      Data3: 1302226594
+      Data4: 1422041211
+    Path: event:/click
+  select:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  upgrade:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  error:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  skip:
+    Guid:
+      Data1: -226960360
+      Data2: 1320094544
+      Data3: 221568676
+      Data4: -722887060
+    Path: event:/skip
+  cardOpen:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  cardClose:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  zoomOpen:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  zoomClose:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  reveal:
+    Guid:
+      Data1: 2075018720
+      Data2: 1304918320
+      Data3: -556323709
+      Data4: -766301119
+    Path: event:/next_fact
+  insight:
+    Guid:
+      Data1: 2075018720
+      Data2: 1304918320
+      Data3: -556323709
+      Data4: -766301119
+    Path: event:/next_fact
+  outcomeWon:
+    Guid:
+      Data1: 2121659422
+      Data2: 1292720472
+      Data3: -600921938
+      Data4: 1342170014
+    Path: event:/buy
+  outcomeLost:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  rivalRaise:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  tension:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  clothDown:
+    Guid:
+      Data1: 1920872631
+      Data2: 1251723400
+      Data3: -205518709
+      Data4: -395937105
+    Path: event:/cloth_down
+  nextPainting:
+    Guid:
+      Data1: 1821944924
+      Data2: 1296772782
+      Data3: -1092431994
+      Data4: -1762821433
+    Path: event:/next_painting
+  dayPass:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  dayFail:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  campaignEnd:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  voiceover:
+    Guid:
+      Data1: 0
+      Data2: 0
+      Data3: 0
+      Data4: 0
+    Path: 
+  masterBusPath: bus:/

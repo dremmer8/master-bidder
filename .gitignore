@@ -77,6 +77,10 @@ Thumbs.db
 desktop.ini
 *.log
 
+# ElevenLabs local secrets (batch voiceover pipeline)
+mvp/scripts/.env.elevenlabs
+**/.env.elevenlabs
+
 # FMOD for Unity (nested project under master-bidder-3d/)
 # Keep native libs if a broader binary ignore is added later.
 !**/[Aa]ssets/Plugins/FMOD/**/lib/**

@@ -32,7 +32,7 @@ namespace NineSlice3D
         [Tooltip("Creation year / date string as shown in MVP.")]
         public string year = "";
 
-        [Tooltip("Russian period tag — matching key.")]
+        [Tooltip("Russian style / movement tag — matching key (stored as periodRu).")]
         public string periodRu = "";
 
         [Tooltip("Russian genre tag — matching key.")]

@@ -3580,6 +3580,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   catalog: {fileID: 11400000, guid: 186f7b81646a0014cb8640ec3e2fb47b, type: 2}
+  audioCatalog: {fileID: 11400000, guid: f1dfc9e22a1c0524baeea02d4db26323, type: 2}
+  voiceLibrary: {fileID: 11400000, guid: 90d950b81b104ea4e95795e24354748f, type: 2}
   presentation: {fileID: 17072033}
   disablePresentationDemoHotkeys: 1
 --- !u!4 &979414325

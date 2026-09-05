@@ -1,4 +1,5 @@
 using System.Collections;
+using MasterBidder.Audio;
 using MasterBidder.Content;
 using MasterBidder.Core;
 using MasterBidder.Presentation;
@@ -14,6 +15,8 @@ namespace MasterBidder.Flow
     public class AppFlow : MonoBehaviour
     {
         [SerializeField] GameCatalog catalog;
+        [SerializeField] AudioCatalog audioCatalog;
+        [SerializeField] PaintingVoiceoverLibrary voiceLibrary;
         [SerializeField] PresentationOperator presentation;
         [SerializeField] bool disablePresentationDemoHotkeys = true;
 
@@ -29,6 +32,7 @@ namespace MasterBidder.Flow
         void Awake()
         {
             LocaleService.Init();
+            AudioService.EnsureInitialized(this, audioCatalog, voiceLibrary);
 
             if (presentation == null)
                 presentation = FindObjectOfType<PresentationOperator>();
@@ -38,11 +42,19 @@ namespace MasterBidder.Flow
 
             _timers = gameObject.GetComponent<AuctionTimerHost>();
             if (_timers == null) _timers = gameObject.AddComponent<AuctionTimerHost>();
+            _timers.OnFieldRevealed = PlayRevealVoiceForCurrentLot;
 
             _ui = gameObject.GetComponent<GameUiShell>();
             if (_ui == null) _ui = gameObject.AddComponent<GameUiShell>();
             _ui.BuildIfNeeded();
             _ui.Bind(this);
+        }
+
+        void PlayRevealVoiceForCurrentLot(string fieldId)
+        {
+            if (_session?.State?.CurrentLot == null || catalog == null) return;
+            var data = catalog.FindPainting(_session.State.CurrentLot.Id);
+            AudioService.PlayRevealVoice(data, fieldId);
         }
 
         void Start()
@@ -109,6 +121,9 @@ namespace MasterBidder.Flow
 
         void HandleRivalWon()
         {
+            AudioService.StopTension();
+            AudioService.PlayRivalRaise();
+            AudioService.PlayOutcome("lost");
             _ui.RaiseRandomRival();
         }
 
@@ -189,15 +204,23 @@ namespace MasterBidder.Flow
             if (_session == null || _awaitingPurchaseDismiss) return;
             if (!_session.TryBuy(out bool insufficient))
             {
-                if (insufficient) _ui.FlashInsufficientFunds();
+                if (insufficient)
+                {
+                    AudioService.PlayError();
+                    _ui.FlashInsufficientFunds();
+                }
                 return;
             }
 
             _awaitingPurchaseDismiss = true;
             _timers.CancelResolution();
+            AudioService.StopTension();
+            AudioService.PlayOutcome("won");
             var lot = _session.State.PurchasesToday[_session.State.PurchasesToday.Count - 1];
             var presented = _session.State.CurrentLot;
             _ui.ShowPurchaseCard(presented, lot.Price);
+            if (presented != null && catalog != null)
+                AudioService.PlayVoiceover(catalog.FindPainting(presented.Id));
             _ui.Refresh(_session);
         }
 
@@ -205,6 +228,8 @@ namespace MasterBidder.Flow
         {
             if (!_awaitingPurchaseDismiss) return;
             _awaitingPurchaseDismiss = false;
+            AudioService.StopVoiceover();
+            AudioService.PlayCardClose();
             _ui.HidePurchaseCard();
             _session?.AdvanceLot();
         }
@@ -212,6 +237,7 @@ namespace MasterBidder.Flow
         public void OnSkip()
         {
             if (_session == null || _awaitingPurchaseDismiss) return;
+            AudioService.PlaySkip();
             _session.BeginSkip();
             if (_session.State != null && _session.State.FastForwarding)
                 _timers.StartSkipFastReveal();
@@ -237,11 +263,23 @@ namespace MasterBidder.Flow
             _ui.Refresh(_session);
         }
 
-        public void SelectBranch(string id) => _session?.SelectBranch(id);
+        public void BuyUpgrade(string id)
+        {
+            AudioService.PlayUpgrade();
+            _session?.BuyUpgrade(id);
+        }
 
-        public void BuyUpgrade(string id) => _session?.BuyUpgrade(id);
+        public void BuyBooster(string id)
+        {
+            AudioService.PlayUpgrade();
+            _session?.BuyBooster(id);
+        }
 
-        public void BuyBooster(string id) => _session?.BuyBooster(id);
+        public void SelectBranch(string id)
+        {
+            AudioService.PlaySelect();
+            _session?.SelectBranch(id);
+        }
 
         void EnsureSession()
         {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.03.00">
+	<object class="AudioFile" id="{d2462b3e-c266-47e3-ac9b-8fa7ec434ab2}">
+		<property name="assetPath">
+			<value>next_fact.wav</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>44.0999985</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>0.8126984126984127</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{0bd4f728-cd9d-4276-bbe6-d465c48fe6bb}</destination>
+		</relationship>
+	</object>
+</objects>

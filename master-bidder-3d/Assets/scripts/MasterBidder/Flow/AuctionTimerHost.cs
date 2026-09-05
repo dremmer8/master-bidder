@@ -1,4 +1,5 @@
 using System.Collections;
+using MasterBidder.Audio;
 using MasterBidder.Campaign;
 using MasterBidder.Core;
 using UnityEngine;
@@ -16,6 +17,9 @@ namespace MasterBidder.Flow
         Coroutine _rivalRoutine;
         Coroutine _resolutionRoutine;
         Coroutine _skipRoutine;
+
+        /// <summary>Fired with field id (genre/period/…) after each reveal step.</summary>
+        public System.Action<string> OnFieldRevealed;
 
         public void Bind(GameSession session)
         {
@@ -51,6 +55,7 @@ namespace MasterBidder.Flow
             if (_rivalRoutine != null) { StopCoroutine(_rivalRoutine); _rivalRoutine = null; }
             if (_resolutionRoutine != null) { StopCoroutine(_resolutionRoutine); _resolutionRoutine = null; }
             if (_skipRoutine != null) { StopCoroutine(_skipRoutine); _skipRoutine = null; }
+            AudioService.StopTension();
         }
 
         public void StartLotTimers()
@@ -60,6 +65,11 @@ namespace MasterBidder.Flow
             if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) return;
             if (_session.State.LotResolved) return;
 
+            if (!string.IsNullOrEmpty(_session.State.FreeRevealedField))
+                AudioService.PlayInsight();
+
+            AudioService.StartTension();
+            AudioService.SetTensionIntensity(0.15f);
             _revealRoutine = StartCoroutine(RevealRoutine());
             ScheduleRival();
         }
@@ -105,6 +115,8 @@ namespace MasterBidder.Flow
                 yield return new WaitForSeconds(interval);
                 if (state.LotResolved) yield break;
                 _session.SetRevealStep(i + 1);
+                AudioService.PlayReveal(i, fast: false);
+                OnFieldRevealed?.Invoke(fields[i]);
 
                 if (fields[i] == "genre" && tutorial != TutorialStep.None)
                 {
@@ -127,6 +139,8 @@ namespace MasterBidder.Flow
                 yield return new WaitForSeconds(interval);
                 if (state.LotResolved) yield break;
                 _session.SetRevealStep(i + 1);
+                AudioService.PlayReveal(i, fast: true);
+                OnFieldRevealed?.Invoke(fields[i]);
             }
 
             if (state.ActiveBoosters.Contains("quiet-start") && state.CurrentLotIndex == 0)

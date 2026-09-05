@@ -127,7 +127,7 @@ namespace MasterBidder.Core
                 string label;
                 switch (tags[i].Type)
                 {
-                    case CriterionType.Period: label = "Период"; break;
+                    case CriterionType.Period: label = "Стиль"; break;
                     case CriterionType.Genre: label = "Жанр"; break;
                     case CriterionType.Artist: label = "Автор"; break;
                     case CriterionType.Artwork: label = "Работа"; break;

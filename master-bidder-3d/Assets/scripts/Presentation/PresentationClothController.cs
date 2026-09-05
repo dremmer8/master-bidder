@@ -1,4 +1,5 @@
 using System.Collections;
+using MasterBidder.Audio;
 using UnityEngine;
 
 namespace MasterBidder.Presentation
@@ -59,6 +60,7 @@ namespace MasterBidder.Presentation
             if (animator == null || isAnimating) return;
             if (trackedPose == ClothPose.Lowered) return;
 
+            AudioService.PlayClothDown();
             animator.SetTrigger(downTrigger);
             trackedPose = ClothPose.Lowered;
             BeginTracking(loweredStateName);
@@ -70,6 +72,7 @@ namespace MasterBidder.Presentation
             if (animator == null || isAnimating) return;
             if (trackedPose == ClothPose.Raised) return;
 
+            AudioService.PlayNextPainting();
             animator.SetTrigger(riseTrigger);
             trackedPose = ClothPose.Raised;
             BeginTracking(raisedStateName);
