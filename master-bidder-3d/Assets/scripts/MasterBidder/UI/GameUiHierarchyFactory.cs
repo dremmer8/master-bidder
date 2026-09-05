@@ -42,12 +42,15 @@ namespace MasterBidder.UI
         {
             var row = CreatePanel("UpgradeRow", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var le = row.AddComponent<LayoutElement>();
-            le.minHeight = 52;
-            le.preferredHeight = 52;
+            le.minHeight = 64;
+            le.preferredHeight = 64;
             GameUiStyle.ApplyCard(row.GetComponent<Image>());
 
+            var icon = CreateIcon("Icon", row.transform);
+            Stretch(icon.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(8, -24), new Vector2(56, 24));
+
             var t = CreateText("T", row.transform, "", 13, TextAnchor.MiddleLeft);
-            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.72f, 1), new Vector2(10, 4), new Vector2(-4, -4));
+            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.72f, 1), new Vector2(64, 4), new Vector2(-4, -4));
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
             t.lineSpacing = 1.05f;
 
@@ -57,6 +60,7 @@ namespace MasterBidder.UI
 
             var view = row.AddComponent<UpgradeRowView>();
             view.background = row.GetComponent<Image>();
+            view.icon = icon;
             view.label = t;
             view.buyButton = buy;
             view.buyLabel = bl;
@@ -67,12 +71,15 @@ namespace MasterBidder.UI
         {
             var row = CreatePanel("BoosterRow", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var le = row.AddComponent<LayoutElement>();
-            le.minHeight = 70;
-            le.preferredHeight = 70;
+            le.minHeight = 76;
+            le.preferredHeight = 76;
             GameUiStyle.ApplyCard(row.GetComponent<Image>());
 
+            var icon = CreateIcon("Icon", row.transform);
+            Stretch(icon.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(8, -28), new Vector2(64, 28));
+
             var t = CreateText("T", row.transform, "", 11, TextAnchor.MiddleLeft);
-            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.7f, 1), new Vector2(6, 2), new Vector2(-4, -2));
+            Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.7f, 1), new Vector2(72, 2), new Vector2(-4, -2));
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
 
             var buy = CreatePrimaryButton("Buy", row.transform, out var bl);
@@ -80,10 +87,22 @@ namespace MasterBidder.UI
 
             var view = row.AddComponent<BoosterRowView>();
             view.background = row.GetComponent<Image>();
+            view.icon = icon;
             view.label = t;
             view.buyButton = buy;
             view.buyLabel = bl;
             return row;
+        }
+
+        static Image CreateIcon(string name, Transform parent)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.color = Color.white;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            return img;
         }
 
         // в”Ђв”Ђв”Ђ Main GameUI prefab в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -259,6 +278,8 @@ namespace MasterBidder.UI
 
             var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.03f), new Vector2(0.985f, 0.97f), new Vector2(6, 8), new Vector2(-12, -8));
             GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
+
+            BuildEffectsHud(root.transform, b);
 
             b.aucHud = CreateText("AucHud", hud.transform, "", 13, TextAnchor.MiddleLeft);
             Stretch(b.aucHud.rectTransform, new Vector2(0, 0.91f), Vector2.one, new Vector2(16, -10), new Vector2(-16, -6));
@@ -491,7 +512,90 @@ namespace MasterBidder.UI
             return root;
         }
 
-        // в”Ђв”Ђв”Ђ Helpers (mirror GameUiShell factories) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+        static void BuildEffectsHud(Transform auctionRoot, GameUiBindings b)
+        {
+            var bar = CreatePanel("EffectsHud", auctionRoot, new Vector2(0.02f, 0.9f), new Vector2(0.7f, 0.985f), Vector2.zero, Vector2.zero);
+            bar.GetComponent<Image>().sprite = null;
+            bar.GetComponent<Image>().color = new Color(0.12f, 0.09f, 0.06f, 0.45f);
+            bar.GetComponent<Image>().raycastTarget = false;
+
+            var hlg = bar.AddComponent<HorizontalLayoutGroup>();
+            hlg.padding = new RectOffset(10, 10, 6, 6);
+            hlg.spacing = 10;
+            hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = false;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = true;
+
+            b.effectsUpgrades = CreateEffectsRow(bar.transform, "Upgrades");
+            b.effectsBoosters = CreateEffectsRow(bar.transform, "Boosters");
+
+            var tip = CreatePanel("EffectTooltip", auctionRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-115, -90), new Vector2(115, 10));
+            GameUiStyle.ApplyCard(tip.GetComponent<Image>());
+            tip.GetComponent<Image>().raycastTarget = false;
+            var tipCg = tip.AddComponent<CanvasGroup>();
+            tipCg.blocksRaycasts = false;
+            tipCg.interactable = false;
+            b.effectTooltipTitle = CreateText("Title", tip.transform, "", 14, TextAnchor.UpperLeft);
+            Stretch(b.effectTooltipTitle.rectTransform, new Vector2(0, 0.62f), Vector2.one, new Vector2(12, -8), new Vector2(-12, -6));
+            b.effectTooltipTitle.color = GameUiStyle.Accent;
+            b.effectTooltipTitle.fontStyle = FontStyle.Bold;
+            b.effectTooltipTitle.raycastTarget = false;
+            b.effectTooltipBody = CreateText("Body", tip.transform, "", 12, TextAnchor.UpperLeft);
+            Stretch(b.effectTooltipBody.rectTransform, new Vector2(0, 0), new Vector2(1, 0.62f), new Vector2(12, 8), new Vector2(-12, 0));
+            b.effectTooltipBody.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.effectTooltipBody.verticalOverflow = VerticalWrapMode.Overflow;
+            b.effectTooltipBody.raycastTarget = false;
+            tip.SetActive(false);
+            b.effectTooltip = tip;
+        }
+
+        static Transform CreateEffectsRow(Transform parent, string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            go.transform.SetParent(parent, false);
+            var h = go.GetComponent<HorizontalLayoutGroup>();
+            h.spacing = 6;
+            h.childAlignment = TextAnchor.MiddleCenter;
+            h.childControlWidth = false;
+            h.childControlHeight = false;
+            h.childForceExpandWidth = false;
+            h.childForceExpandHeight = false;
+            var fit = go.GetComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight = 36;
+            le.preferredHeight = 36;
+            return go.transform;
+        }
+
+        public static GameObject BuildEffectIcon()
+        {
+            var go = new GameObject("EffectIcon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            var le = go.GetComponent<LayoutElement>();
+            le.minWidth = le.preferredWidth = 36;
+            le.minHeight = le.preferredHeight = 36;
+            // Invisible hit target so circular sprites keep clean corners.
+            var hit = go.GetComponent<Image>();
+            hit.color = new Color(1f, 1f, 1f, 0.01f);
+            hit.raycastTarget = true;
+
+            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            iconGo.transform.SetParent(go.transform, false);
+            Stretch(iconGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var icon = iconGo.GetComponent<Image>();
+            icon.color = Color.white;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+
+            var view = go.AddComponent<EffectIconView>();
+            view.icon = icon;
+            return go;
+        }
+
+        // ─── Helpers (mirror GameUiShell factories) ─────────────────────────────
 
         static Transform CreateScrollContent(Transform parent, string name, Vector2 aMin, Vector2 aMax)
             => CreateScrollContent(parent, name, aMin, aMax, 8);

@@ -52,6 +52,11 @@ namespace MasterBidder.UI
 
         [Header("Auction")]
         public Text aucHud;
+        public Transform effectsUpgrades;
+        public Transform effectsBoosters;
+        public GameObject effectTooltip;
+        public Text effectTooltipTitle;
+        public Text effectTooltipBody;
         public Text orderCard;
         public Text livePrice;
         public Text liveBudget;

@@ -13,6 +13,7 @@ namespace MasterBidder.Editor
     {
         public const string SlicedFolder = "Assets/content/ui/sprites/sliced";
         public const string ResourcesFolder = "Assets/content/ui/Resources/UiSprites";
+        public const string MetaIconsFolder = "Assets/content/ui/Resources/MetaIcons";
         public const string AtlasPath = "Assets/content/ui/sprites/UiAtlas.png";
 
         // Unity spriteBorder = (left, bottom, right, top)
@@ -58,7 +59,7 @@ namespace MasterBidder.Editor
             int n = ImportAll();
             EditorUtility.DisplayDialog(
                 "UI Atlas Sprites",
-                $"Configured {n} sprites with 9-slice borders under:\n• {SlicedFolder}\n• {ResourcesFolder}\n\n" +
+                $"Configured {n} sprites with 9-slice borders under:\n• {SlicedFolder}\n• {ResourcesFolder}\n• {MetaIconsFolder}\n\n" +
                 "Run Master Bidder → Generate UI Prefabs to rebuild UI with these sprites.",
                 "OK");
         }
@@ -87,6 +88,7 @@ namespace MasterBidder.Editor
             int count = 0;
             count += ConfigureFolder(SlicedFolder);
             count += ConfigureFolder(ResourcesFolder);
+            count += ConfigureFolder(MetaIconsFolder);
             ConfigureSingle(AtlasPath, SpriteImportMode.Single, Vector4.zero);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
