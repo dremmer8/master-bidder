@@ -76,3 +76,26 @@ ServerData/
 Thumbs.db
 desktop.ini
 *.log
+
+# FMOD for Unity (nested project under master-bidder-3d/)
+# Keep native libs if a broader binary ignore is added later.
+!**/[Aa]ssets/Plugins/FMOD/**/lib/**
+!**/[Aa]ssets/Gizmos/FMOD/**
+!**/[Aa]ssets/[Ee]ditor [Dd]efault [Rr]esources/FMOD/**
+
+# Unity-side editor cache (regenerated per machine)
+**/[Aa]ssets/Plugins/FMOD/Cache/
+**/[Aa]ssets/Plugins/FMOD/Cache.meta
+
+# FMOD Studio local / ephemeral folders inside the .fspro project
+**/[Aa]ssets/Plugins/FMOD/project/**/.cache/
+**/[Aa]ssets/Plugins/FMOD/project/**/.user/
+**/[Aa]ssets/Plugins/FMOD/project/**/.unsaved/
+**/[Aa]ssets/Plugins/FMOD/project/**/Metadata/ProfilerSession/
+
+# sourceBankPath is .../project/.../Build — un-ignore it (repo root [Bb]uild/ would hide banks)
+!**/[Aa]ssets/Plugins/FMOD/project/**/Build/
+!**/[Aa]ssets/Plugins/FMOD/project/**/Build/**
+
+fmod_editor.log
+fmod.log
