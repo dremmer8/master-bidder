@@ -316,29 +316,32 @@ namespace MasterBidder.Core
 
         public bool TryBuy() => TryBuy(out _);
 
-        public void ApplyRivalWin()
+        public void ApplyRivalWin(bool clearTimers = true)
         {
             if (State.LotResolved || State.TutorialPaused) return;
             State.FastForwarding = false;
-            RequestClearTimers();
+            // SkipRoutine passes false so ClearAll does not StopCoroutine the caller mid-flight.
+            if (clearTimers) RequestClearTimers();
             State.LotResolved = true;
             State.LastLotResult = "lost";
             OnRivalWon?.Invoke();
             Notify();
         }
 
-        public void BeginSkip()
+        /// <returns>True if skip fast-forward actually started.</returns>
+        public bool BeginSkip()
         {
-            if (State.AwaitingLotStart || State.LotResolved || State.FastForwarding) return;
+            if (State.AwaitingLotStart || State.LotResolved || State.FastForwarding) return false;
             // Day-1 coaching lots: never skip the match lot; wait for the coach before skipping the miss.
             var day1Tut = GetDay1TutorialStep(State.CurrentLotIndex);
-            if (day1Tut == TutorialStep.BuyMatch) return;
-            if (day1Tut == TutorialStep.SkipMiss && !State.TutorialPaused) return;
-            if (State.TutorialPaused && State.TutorialStep != TutorialStep.SkipMiss) return;
+            if (day1Tut == TutorialStep.BuyMatch) return false;
+            if (day1Tut == TutorialStep.SkipMiss && !State.TutorialPaused) return false;
+            if (State.TutorialPaused && State.TutorialStep != TutorialStep.SkipMiss) return false;
             if (State.TutorialPaused) DismissTutorialCoach();
             State.FastForwarding = true;
             RequestClearTimers();
             Notify();
+            return true;
         }
 
         public void FinishDayEarly()

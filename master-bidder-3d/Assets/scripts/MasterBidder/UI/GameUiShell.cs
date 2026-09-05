@@ -1020,7 +1020,8 @@ namespace MasterBidder.UI
                 SetToastActive(_b.fundsHint, false);
 
             bool standby = state.AwaitingLotStart || IsCollectorPopupVisible;
-            bool busy = state.LotResolved || state.FastForwarding || _purchaseCardVisible;
+            bool presenting = _flow != null && _flow.IsPresentingLot;
+            bool busy = state.LotResolved || state.FastForwarding || _purchaseCardVisible || presenting;
             var day1Tut = session.GetDay1TutorialStep(state.CurrentLotIndex);
             // Match session gates: coaching lots only unlock the taught action after the coach appears.
             bool buyAllowed = day1Tut == TutorialStep.None

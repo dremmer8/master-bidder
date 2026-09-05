@@ -29,6 +29,8 @@ namespace MasterBidder.Flow
 
         public GameSession Session => _session;
         public GameCatalog Catalog => catalog;
+        /// <summary>True while cloth/lot presentation is in progress (actions should stay locked).</summary>
+        public bool IsPresentingLot => _presentRoutine != null;
 
         void Awake()
         {
@@ -143,22 +145,30 @@ namespace MasterBidder.Flow
 
         IEnumerator PresentThenStartTimers()
         {
-            // Let AuctionTimerHost.OnAdvance run PresentLotLogicReset first.
-            yield return null;
+            try
+            {
+                // Let AuctionTimerHost.OnAdvance run PresentLotLogicReset first.
+                yield return null;
 
-            if (_session?.State == null) yield break;
-            if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) yield break;
+                if (_session?.State == null) yield break;
+                if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) yield break;
 
-            bool done = false;
-            PresentCurrentLotVisual(() => done = true);
-            while (!done) yield return null;
+                bool done = false;
+                PresentCurrentLotVisual(() => done = true);
+                while (!done) yield return null;
 
-            if (_session?.State == null) yield break;
-            if (_session.State.LotResolved) yield break;
-            if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) yield break;
+                if (_session?.State == null) yield break;
+                if (_session.State.LotResolved) yield break;
+                if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) yield break;
 
-            _timers.StartLotTimers();
-            _presentRoutine = null;
+                _timers.StartLotTimers();
+            }
+            finally
+            {
+                _presentRoutine = null;
+                if (_session != null)
+                    _ui?.Refresh(_session);
+            }
         }
 
         public void OnContinueCareer()
@@ -237,24 +247,27 @@ namespace MasterBidder.Flow
         public void OnSkip()
         {
             if (_session == null || _awaitingPurchaseDismiss) return;
-            AudioService.StopVoiceover();
-            AudioService.PlaySkip();
+            var state = _session.State;
+            if (state == null) return;
+            // Match MVP: ignore re-entry while already skipping / resolved (spam-safe).
+            if (state.AwaitingLotStart || state.LotResolved || state.FastForwarding) return;
+            if (IsPresentingLot) return;
 
             // Capture before BeginSkip / fast-forward mutates reveal progress.
-            int revealStepBeforeSkip = _session.State != null ? _session.State.RevealStep : 0;
+            int revealStepBeforeSkip = state.RevealStep;
             int titleIndex = System.Array.IndexOf(CampaignConfig.RevealableFields, "title");
             bool titleAlreadySpoken = titleIndex >= 0 && revealStepBeforeSkip > titleIndex;
 
-            _session.BeginSkip();
-            if (_session.State != null && _session.State.FastForwarding)
+            if (!_session.BeginSkip()) return;
+
+            AudioService.StopVoiceover();
+            AudioService.PlaySkip();
+            _timers.StartSkipFastReveal();
+            // Skip: speak title only if it was not already revealed (and voiced).
+            if (!titleAlreadySpoken && catalog != null && state.CurrentLot != null)
             {
-                _timers.StartSkipFastReveal();
-                // Skip: speak title only if it was not already revealed (and voiced).
-                if (!titleAlreadySpoken && catalog != null && _session.State.CurrentLot != null)
-                {
-                    var data = catalog.FindPainting(_session.State.CurrentLot.Id);
-                    AudioService.PlayVoiceField(data, PaintingVoiceField.Title);
-                }
+                var data = catalog.FindPainting(state.CurrentLot.Id);
+                AudioService.PlayVoiceField(data, PaintingVoiceField.Title);
             }
         }
 
