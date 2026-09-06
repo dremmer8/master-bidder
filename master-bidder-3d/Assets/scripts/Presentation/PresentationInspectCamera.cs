@@ -49,6 +49,8 @@ namespace MasterBidder.Presentation
         [SerializeField] private bool lockCursorWhileInspecting = true;
         [SerializeField] private bool showPivotMarker = true;
         [SerializeField] private float pivotMarkerScale = 0.008333f;
+        [Tooltip("When false, scroll/RMB cannot enter inspect (e.g. brief / intro).")]
+        [SerializeField] private bool inputEnabled = true;
 
         [Header("Debug")]
         [SerializeField] private bool drawGizmos = true;
@@ -89,6 +91,21 @@ namespace MasterBidder.Presentation
         public bool IsTransitioning => mode == CameraMode.ToInspect || mode == CameraMode.ToHall;
         public Vector3 Pivot => pivot;
 
+        /// <summary>
+        /// Scroll / RMB inspect controls. Disabled outside auction so brief/intro cannot zoom the painting.
+        /// </summary>
+        public bool InputEnabled
+        {
+            get => inputEnabled;
+            set
+            {
+                if (inputEnabled == value) return;
+                inputEnabled = value;
+                if (!inputEnabled && mode != CameraMode.Hall)
+                    ExitInspect(snap: true);
+            }
+        }
+
         public Camera ActiveCamera
         {
             get
@@ -119,6 +136,14 @@ namespace MasterBidder.Presentation
         private void Update()
         {
             if (!Application.isPlaying) return;
+            if (!inputEnabled)
+            {
+                if (mode != CameraMode.Hall && !IsTransitioning)
+                    ExitInspect(snap: true);
+                else if (IsTransitioning)
+                    TickTransition();
+                return;
+            }
 
             if (Input.GetMouseButtonDown(1) && !IsTransitioning)
             {
@@ -191,6 +216,7 @@ namespace MasterBidder.Presentation
 
         public void EnterInspect(bool snap)
         {
+            if (!inputEnabled) return;
             if (mode == CameraMode.Inspect || mode == CameraMode.ToInspect) return;
             if (!snap && IsTransitioning) return;
 

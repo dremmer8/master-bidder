@@ -43,8 +43,15 @@ namespace MasterBidder.UI
         public Text briefClientHeading;
         public Text briefWorkshopHeading;
         public Text briefOrderPreview;
+        public GameObject briefActiveClient;
+        public Image briefActivePortrait;
+        public Text briefActiveName;
+        public Text briefActiveTags;
+        public Transform briefEffectsHost;
         public Transform collectorList;
         public Transform upgradeList;
+        public Button btnBriefPanelToggle;
+        public Text briefPanelToggleLabel;
         public Button btnEnterHall;
         public Button btnReset;
         public Text enterLabel;
@@ -58,6 +65,10 @@ namespace MasterBidder.UI
         public Text effectTooltipTitle;
         public Text effectTooltipBody;
         public Text orderCard;
+        public GameObject auctionActiveClient;
+        public Image auctionActivePortrait;
+        public Text auctionActiveName;
+        public Text auctionActiveTags;
         public Text livePrice;
         public Text liveBudget;
         public Text liveSpeed;
@@ -104,6 +115,12 @@ namespace MasterBidder.UI
         public Text reportBody;
         public Text boosterHeading;
         public Transform boosterList;
+        public Transform purchaseTagList;
+        public GameObject reportStamp;
+        public Text reportStampLabel;
+        public Text reportStampDetail;
+        public Button btnReportPanelToggle;
+        public Text reportPanelToggleLabel;
         public Button btnReportContinue;
         public Text reportContinueLabel;
 

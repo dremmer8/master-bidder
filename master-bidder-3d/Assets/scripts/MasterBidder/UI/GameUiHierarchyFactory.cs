@@ -13,19 +13,21 @@ namespace MasterBidder.UI
         {
             var card = CreatePanel("CollectorCard", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             var le = card.AddComponent<LayoutElement>();
-            le.minHeight = 56;
-            le.preferredHeight = 56;
+            // ~3 cards visible in the brief sidebar scroll.
+            le.minHeight = 118;
+            le.preferredHeight = 118;
             GameUiStyle.ApplyCard(card.GetComponent<Image>());
             var btn = card.AddComponent<Button>();
             btn.targetGraphic = card.GetComponent<Image>();
 
-            var portrait = CreatePanel("P", card.transform, new Vector2(0, 0.12f), new Vector2(0.16f, 0.88f), new Vector2(8, 0), Vector2.zero);
+            // Portrait spans full card height on the left.
+            var portrait = CreatePanel("P", card.transform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(6, 6), new Vector2(-2, -6));
             var pImg = portrait.GetComponent<Image>();
             pImg.color = Color.white;
             pImg.preserveAspect = true;
 
             var t = CreateText("T", card.transform, "", 15, TextAnchor.MiddleLeft);
-            Stretch(t.rectTransform, new Vector2(0.18f, 0), Vector2.one, new Vector2(8, 4), new Vector2(-10, -4));
+            Stretch(t.rectTransform, new Vector2(0.3f, 0), Vector2.one, new Vector2(8, 8), new Vector2(-10, -8));
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
             t.lineSpacing = 1.05f;
 
@@ -212,54 +214,74 @@ namespace MasterBidder.UI
 
         static GameObject BuildBrief(Transform parent, GameUiBindings b)
         {
-            var root = CreatePanel("Screen_Brief", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            // Sit below the shared Chrome banner (same top bar as auction).
+            var root = CreatePanel("Screen_Brief", parent, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -52));
             root.GetComponent<Image>().sprite = null;
             root.GetComponent<Image>().color = GameUiStyle.ScreenBg;
 
-            var dayBar = CreateFixedBar("DayBar", root.transform, new Vector2(0f, 1f), new Vector2(20f, -12f), new Vector2(220f, 44f));
-            GameUiStyle.ApplySliced(dayBar.GetComponent<Image>(), GameUiSprites.BarDay, GameUiStyle.SpriteReady);
-            b.briefDay = CreateText("Day", dayBar.transform, "", 17, TextAnchor.MiddleLeft);
-            Stretch(b.briefDay.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 0), new Vector2(-12, 0));
+            var chrome = parent.Find("Chrome") ?? parent;
+            var status = CreateFixedBar("ChromeStatus", chrome, new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(360f, 38f));
+            GameUiStyle.ApplySliced(status.GetComponent<Image>(), GameUiSprites.BarCurrency, GameUiStyle.SpriteReady);
+            b.briefDay = CreateText("Status", status.transform, "", 15, TextAnchor.MiddleCenter);
+            Stretch(b.briefDay.rectTransform, Vector2.zero, Vector2.one, new Vector2(44, 0), new Vector2(-12, 0));
             b.briefDay.color = GameUiStyle.OnDark;
             b.briefDay.fontStyle = FontStyle.Bold;
+            b.briefCapital = b.briefDay;
+            status.SetActive(true);
+            var lang = chrome.Find("Lang");
+            if (lang != null) lang.gameObject.SetActive(false);
 
-            var capBar = CreateFixedBar("CapBar", root.transform, new Vector2(1f, 1f), new Vector2(-20f, -12f), new Vector2(250f, 44f));
-            GameUiStyle.ApplySliced(capBar.GetComponent<Image>(), GameUiSprites.BarCurrency, GameUiStyle.SpriteReady);
-            b.briefCapital = CreateText("Cap", capBar.transform, "", 17, TextAnchor.MiddleLeft);
-            Stretch(b.briefCapital.rectTransform, Vector2.zero, Vector2.one, new Vector2(48, 0), new Vector2(-12, 0));
-            b.briefCapital.color = GameUiStyle.OnDark;
-            b.briefCapital.fontStyle = FontStyle.Bold;
+            // Compact strip: portrait + name + large tags (sketch-sized).
+            var active = CreatePanel("ActiveClient", root.transform, new Vector2(0.015f, 0.86f), new Vector2(0.42f, 0.98f), new Vector2(6, -4), new Vector2(-6, -4));
+            GameUiStyle.ApplyCard(active.GetComponent<Image>());
+            b.briefActiveClient = active;
+            b.briefActivePortrait = CreatePanel("Portrait", active.transform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0)).GetComponent<Image>();
+            b.briefActivePortrait.sprite = null;
+            b.briefActivePortrait.color = GameUiStyle.PanelLight;
+            b.briefActivePortrait.preserveAspect = true;
+            b.briefActiveName = CreateText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(b.briefActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
+            b.briefActiveName.color = GameUiStyle.Accent;
+            b.briefActiveName.fontStyle = FontStyle.Bold;
+            b.briefActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
+            Stretch(b.briefActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
+            b.briefActiveTags.color = GameUiStyle.TextColor;
+            b.briefActiveTags.fontStyle = FontStyle.Bold;
+            b.briefActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.briefActiveTags.verticalOverflow = VerticalWrapMode.Overflow;
+            b.briefActiveTags.lineSpacing = 1.0f;
+            b.briefOrderPreview = b.briefActiveTags;
 
-            var left = CreatePanel("Clients", root.transform, new Vector2(0, 0.12f), new Vector2(0.56f, 0.9f), new Vector2(16, 0), new Vector2(-6, -64));
-            GameUiStyle.ApplyFramedPanel(left.GetComponent<Image>());
-            b.briefClientHeading = CreateText("H", left.transform, "", 20, TextAnchor.MiddleLeft);
-            Stretch(b.briefClientHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
+            // Right sidebar: heading → list → actions (icons live in Chrome, like auction).
+            var sidebar = CreatePanel("Sidebar", root.transform, new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
+            GameUiStyle.ApplyFramedPanel(sidebar.GetComponent<Image>());
+
+            b.briefClientHeading = CreateText("OrdersH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            Stretch(b.briefClientHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.briefClientHeading.color = GameUiStyle.Accent;
             b.briefClientHeading.fontStyle = FontStyle.Bold;
-            b.collectorList = CreateScrollContent(left.transform, "CollectorScroll", new Vector2(0, 0.22f), new Vector2(1, 0.9f), 5);
 
-            var orderPlate = CreatePanel("OrderPlate", left.transform, new Vector2(0, 0.03f), new Vector2(1, 0.2f), new Vector2(16, 8), new Vector2(-16, -4));
-            GameUiStyle.ApplyCard(orderPlate.GetComponent<Image>());
-            b.briefOrderPreview = CreateText("OrderPrev", orderPlate.transform, "", 15, TextAnchor.MiddleLeft);
-            Stretch(b.briefOrderPreview.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 6), new Vector2(-14, -6));
-            b.briefOrderPreview.color = GameUiStyle.TextColor;
-            b.briefOrderPreview.fontStyle = FontStyle.Bold;
-            b.briefOrderPreview.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.briefOrderPreview.verticalOverflow = VerticalWrapMode.Overflow;
-            b.briefOrderPreview.lineSpacing = 1.15f;
-
-            var right = CreatePanel("Workshop", root.transform, new Vector2(0.56f, 0.12f), new Vector2(1, 0.9f), new Vector2(6, 0), new Vector2(-16, -64));
-            GameUiStyle.ApplyFramedPanel(right.GetComponent<Image>());
-            b.briefWorkshopHeading = CreateText("WH", right.transform, "", 20, TextAnchor.MiddleLeft);
-            Stretch(b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(22, -10), new Vector2(-22, -6));
+            b.briefWorkshopHeading = CreateText("UpgradesH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            Stretch(b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.briefWorkshopHeading.color = GameUiStyle.Accent;
             b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
-            b.upgradeList = CreateScrollContent(right.transform, "UpgradeScroll", new Vector2(0, 0.02f), new Vector2(1, 0.9f), 4);
+            b.briefWorkshopHeading.gameObject.SetActive(false);
+
+            b.collectorList = CreateScrollContent(sidebar.transform, "CollectorScroll", new Vector2(0, 0.14f), new Vector2(1, 0.88f), 6);
+            b.upgradeList = CreateScrollContent(sidebar.transform, "UpgradeScroll", new Vector2(0, 0.14f), new Vector2(1, 0.88f), 4);
+            var upgradeScroll = sidebar.transform.Find("UpgradeScroll");
+            if (upgradeScroll != null) upgradeScroll.gameObject.SetActive(false);
+
+            b.btnBriefPanelToggle = CreateSecondaryButton("TogglePanel", sidebar.transform, out b.briefPanelToggleLabel);
+            Place(b.btnBriefPanelToggle, 0.04f, 0.02f, 0.48f, 0.12f);
+            b.btnEnterHall = CreatePrimaryButton("Enter", sidebar.transform, out b.enterLabel);
+            Place(b.btnEnterHall, 0.52f, 0.02f, 0.96f, 0.12f);
 
             b.btnReset = CreateSecondaryButton("Reset", root.transform, out b.resetLabel);
-            Place(b.btnReset, 0.02f, 0.02f, 0.2f, 0.095f);
-            b.btnEnterHall = CreatePrimaryButton("Enter", root.transform, out b.enterLabel);
-            Place(b.btnEnterHall, 0.72f, 0.02f, 0.98f, 0.095f);
+            Place(b.btnReset, 0.02f, 0.02f, 0.14f, 0.07f);
+            var resetCg = b.btnReset.gameObject.GetComponent<CanvasGroup>();
+            if (resetCg == null) resetCg = b.btnReset.gameObject.AddComponent<CanvasGroup>();
+            resetCg.alpha = 0.5f;
             return root;
         }
 
@@ -278,38 +300,51 @@ namespace MasterBidder.UI
             b.rivalHeads = System.Array.Empty<Image>();
             audience.SetActive(false);
 
-            var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.03f), new Vector2(0.985f, 0.97f), new Vector2(6, 8), new Vector2(-12, -8));
+            // Compact client strip under Chrome (portrait + name + large tags).
+            var active = CreatePanel("ActiveClient", root.transform, new Vector2(0.015f, 1f), new Vector2(0.42f, 1f), new Vector2(6, -128), new Vector2(-6, -56));
+            GameUiStyle.ApplyCard(active.GetComponent<Image>());
+            b.auctionActiveClient = active;
+            b.auctionActivePortrait = CreatePanel("Portrait", active.transform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0)).GetComponent<Image>();
+            b.auctionActivePortrait.sprite = null;
+            b.auctionActivePortrait.color = GameUiStyle.PanelLight;
+            b.auctionActivePortrait.preserveAspect = true;
+            b.auctionActiveName = CreateText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(b.auctionActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
+            b.auctionActiveName.color = GameUiStyle.Accent;
+            b.auctionActiveName.fontStyle = FontStyle.Bold;
+            b.auctionActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
+            Stretch(b.auctionActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
+            b.auctionActiveTags.color = GameUiStyle.TextColor;
+            b.auctionActiveTags.fontStyle = FontStyle.Bold;
+            b.auctionActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.02f), new Vector2(0.985f, 1f), new Vector2(6, 8), new Vector2(-12, -56));
             GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
 
             b.aucHud = CreateText("AucHud", hud.transform, "", 13, TextAnchor.MiddleLeft);
-            Stretch(b.aucHud.rectTransform, new Vector2(0, 0.91f), Vector2.one, new Vector2(16, -10), new Vector2(-16, -6));
+            Stretch(b.aucHud.rectTransform, new Vector2(0, 0.92f), Vector2.one, new Vector2(16, -8), new Vector2(-16, -4));
             b.aucHud.color = GameUiStyle.TextColor;
             b.aucHud.fontStyle = FontStyle.Bold;
             b.aucHud.horizontalOverflow = HorizontalWrapMode.Wrap;
 
-            var orderPlate = CreatePanel("OrderPlate", hud.transform, new Vector2(0, 0.76f), new Vector2(1, 0.91f), new Vector2(14, 2), new Vector2(-14, -2));
-            GameUiStyle.ApplyCard(orderPlate.GetComponent<Image>());
-            b.orderCard = CreateText("Order", orderPlate.transform, "", 14, TextAnchor.MiddleLeft);
-            Stretch(b.orderCard.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 6), new Vector2(-12, -6));
-            b.orderCard.color = GameUiStyle.Accent;
-            b.orderCard.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.orderCard.fontStyle = FontStyle.Bold;
-            b.orderCard.lineSpacing = 1.12f;
+            // Legacy binding kept hidden — client lives in ActiveClient strip.
+            b.orderCard = CreateText("Order", hud.transform, "", 14, TextAnchor.MiddleLeft);
+            b.orderCard.gameObject.SetActive(false);
 
-            var econ = CreatePanel("Econ", hud.transform, new Vector2(0, 0.62f), new Vector2(1, 0.75f), new Vector2(14, 0), new Vector2(-14, 0));
+            var econ = CreatePanel("Econ", hud.transform, new Vector2(0, 0.72f), new Vector2(1, 0.92f), new Vector2(14, 2), new Vector2(-14, -4));
             GameUiStyle.ApplyCard(econ.GetComponent<Image>());
-            b.livePrice = CreateText("Price", econ.transform, "", 17, TextAnchor.MiddleLeft);
-            Stretch(b.livePrice.rectTransform, new Vector2(0, 0.48f), Vector2.one, new Vector2(12, 0), new Vector2(-12, 0));
+            b.livePrice = CreateText("Price", econ.transform, "", 26, TextAnchor.MiddleCenter);
+            Stretch(b.livePrice.rectTransform, new Vector2(0, 0.42f), Vector2.one, new Vector2(10, 0), new Vector2(-10, -4));
             b.livePrice.fontStyle = FontStyle.Bold;
             b.livePrice.color = GameUiStyle.TextColor;
-            b.liveBudget = CreateText("Budget", econ.transform, "", 13, TextAnchor.MiddleLeft);
-            Stretch(b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(0.58f, 0.48f), new Vector2(12, 0), new Vector2(-4, 0));
+            b.liveBudget = CreateText("Budget", econ.transform, "", 15, TextAnchor.MiddleCenter);
+            Stretch(b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(1, 0.42f), new Vector2(10, 4), new Vector2(-10, -4));
+            b.liveBudget.fontStyle = FontStyle.Bold;
             b.liveBudget.color = GameUiStyle.TextColor;
             b.liveSpeed = CreateText("Speed", econ.transform, "", 13, TextAnchor.MiddleRight);
-            Stretch(b.liveSpeed.rectTransform, new Vector2(0.5f, 0), new Vector2(1, 0.48f), new Vector2(4, 0), new Vector2(-12, 0));
-            b.liveSpeed.color = GameUiStyle.TextColor;
+            b.liveSpeed.gameObject.SetActive(false);
 
-            var fields = CreatePanel("Fields", hud.transform, new Vector2(0, 0.28f), new Vector2(1, 0.6f), new Vector2(14, 0), new Vector2(-14, 0));
+            var fields = CreatePanel("Fields", hud.transform, new Vector2(0, 0.2f), new Vector2(1, 0.72f), new Vector2(14, 4), new Vector2(-14, -4));
             GameUiStyle.ApplyCard(fields.GetComponent<Image>());
             b.fieldLabels = new Text[5];
             b.fieldValues = new Text[5];
@@ -342,7 +377,7 @@ namespace MasterBidder.UI
             b.familiarBadge.color = GameUiStyle.Accent;
             b.familiarBadge.gameObject.SetActive(false);
 
-            var bannerBg = CreatePanel("BannerBg", hud.transform, new Vector2(0.06f, 0.22f), new Vector2(0.94f, 0.28f), Vector2.zero, Vector2.zero);
+            var bannerBg = CreatePanel("BannerBg", hud.transform, new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.24f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplySliced(bannerBg.GetComponent<Image>(), GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
             bannerBg.SetActive(false);
             b.resultBanner = CreateText("Banner", bannerBg.transform, "", 15, TextAnchor.MiddleCenter);
@@ -350,7 +385,7 @@ namespace MasterBidder.UI
             b.resultBanner.fontStyle = FontStyle.Bold;
             b.resultBanner.color = GameUiStyle.TextColor;
 
-            var fundsBg = CreatePanel("FundsBg", hud.transform, new Vector2(0.06f, 0.17f), new Vector2(0.94f, 0.22f), Vector2.zero, Vector2.zero);
+            var fundsBg = CreatePanel("FundsBg", hud.transform, new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.24f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplySliced(fundsBg.GetComponent<Image>(), GameUiSprites.ToastError, GameUiStyle.SpriteReady);
             fundsBg.SetActive(false);
             b.fundsHint = CreateText("Funds", fundsBg.transform, "", 13, TextAnchor.MiddleCenter);
@@ -358,13 +393,13 @@ namespace MasterBidder.UI
             b.fundsHint.color = GameUiStyle.Bad;
 
             b.btnStartLot = CreateSecondaryButton("StartLot", hud.transform, out b.startLotLabel);
-            Place(b.btnStartLot, 0.07f, 0.1f, 0.93f, 0.16f);
+            Place(b.btnStartLot, 0.05f, 0.02f, 0.95f, 0.18f);
             b.btnBuy = CreatePrimaryButton("Buy", hud.transform, out b.buyLabel);
-            Place(b.btnBuy, 0.07f, 0.02f, 0.93f, 0.09f);
+            Place(b.btnBuy, 0.05f, 0.02f, 0.58f, 0.18f);
             b.btnSkip = CreateSecondaryButton("Skip", hud.transform, out b.skipLabel);
-            Place(b.btnSkip, 0.07f, 0.1f, 0.48f, 0.16f);
+            Place(b.btnSkip, 0.6f, 0.02f, 0.77f, 0.18f);
             b.btnFinishDay = CreateDangerButton("Finish", hud.transform, out b.finishLabel);
-            Place(b.btnFinishDay, 0.52f, 0.1f, 0.93f, 0.16f);
+            Place(b.btnFinishDay, 0.79f, 0.02f, 0.95f, 0.18f);
             return root;
         }
 
@@ -467,32 +502,85 @@ namespace MasterBidder.UI
             return root;
         }
 
+        public static GameObject BuildPurchaseTag()
+        {
+            var card = CreatePanel("PurchaseTag", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var le = card.AddComponent<LayoutElement>();
+            le.minHeight = 110;
+            le.preferredHeight = 110;
+            GameUiStyle.ApplyCard(card.GetComponent<Image>());
+
+            var title = CreateText("Title", card.transform, "", 16, TextAnchor.UpperLeft);
+            Stretch(title.rectTransform, new Vector2(0, 0.55f), new Vector2(0.68f, 1), new Vector2(14, -10), new Vector2(-8, -6));
+            title.fontStyle = FontStyle.Bold;
+            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var meta = CreateText("Meta", card.transform, "", 13, TextAnchor.UpperLeft);
+            Stretch(meta.rectTransform, new Vector2(0, 0.08f), new Vector2(0.68f, 0.55f), new Vector2(14, 6), new Vector2(-8, 0));
+            meta.color = GameUiStyle.Dim;
+            meta.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var stamp = CreateText("Stamp", card.transform, "", 15, TextAnchor.MiddleCenter);
+            Stretch(stamp.rectTransform, new Vector2(0.68f, 0.12f), new Vector2(0.98f, 0.88f), Vector2.zero, Vector2.zero);
+            stamp.fontStyle = FontStyle.Bold;
+            stamp.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var view = card.AddComponent<PurchaseTagView>();
+            view.background = card.GetComponent<Image>();
+            view.title = title;
+            view.meta = meta;
+            view.stamp = stamp;
+            return card;
+        }
+
         static GameObject BuildReport(Transform parent, GameUiBindings b)
         {
-            var root = CreatePanel("Screen_Report", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var root = CreatePanel("Screen_Report", parent, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -52));
             root.GetComponent<Image>().sprite = null;
-            root.GetComponent<Image>().color = GameUiStyle.Bg;
-            var card = CreatePanel("Card", root.transform, new Vector2(0.05f, 0.12f), new Vector2(0.95f, 0.92f), Vector2.zero, new Vector2(0, -52));
-            GameUiStyle.ApplyPanel(card.GetComponent<Image>());
-            b.reportTitle = CreateText("Title", card.transform, "", 28, TextAnchor.UpperLeft);
-            Stretch(b.reportTitle.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(28, -16), new Vector2(-28, -10));
+            root.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            root.GetComponent<Image>().raycastTarget = false;
+
+            // Client stamp — bottom-left of the room scene.
+            var stamp = CreatePanel("ClientStamp", root.transform, new Vector2(0.03f, 0.04f), new Vector2(0.28f, 0.28f), Vector2.zero, Vector2.zero);
+            GameUiStyle.ApplyFramedPanel(stamp.GetComponent<Image>());
+            b.reportStamp = stamp;
+            b.reportStampLabel = CreateText("StampLabel", stamp.transform, "", 22, TextAnchor.MiddleCenter);
+            Stretch(b.reportStampLabel.rectTransform, new Vector2(0, 0.38f), Vector2.one, new Vector2(12, 0), new Vector2(-12, -10));
+            b.reportStampLabel.fontStyle = FontStyle.Bold;
+            b.reportStampLabel.color = GameUiStyle.Accent;
+            b.reportStampLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.reportStampDetail = CreateText("StampDetail", stamp.transform, "", 14, TextAnchor.UpperCenter);
+            Stretch(b.reportStampDetail.rectTransform, new Vector2(0, 0.08f), new Vector2(1, 0.4f), new Vector2(12, 4), new Vector2(-12, 0));
+            b.reportStampDetail.color = GameUiStyle.TextColor;
+            b.reportStampDetail.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            var sidebar = CreatePanel("Sidebar", root.transform, new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
+            GameUiStyle.ApplyFramedPanel(sidebar.GetComponent<Image>());
+
+            b.reportTitle = CreateText("TagsH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            Stretch(b.reportTitle.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.reportTitle.color = GameUiStyle.Accent;
             b.reportTitle.fontStyle = FontStyle.Bold;
-            b.reportBody = CreateText("Body", card.transform, "", 15, TextAnchor.UpperLeft);
-            Stretch(b.reportBody.rectTransform, new Vector2(0, 0.42f), new Vector2(0.55f, 0.9f), new Vector2(28, 0), new Vector2(-12, 0));
-            b.reportBody.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.reportBody.verticalOverflow = VerticalWrapMode.Overflow;
 
-            var boostPanel = CreatePanel("Boosters", card.transform, new Vector2(0.55f, 0.18f), new Vector2(1, 0.9f), new Vector2(12, 0), new Vector2(-24, 0));
-            GameUiStyle.ApplyCard(boostPanel.GetComponent<Image>());
-            b.boosterHeading = CreateText("BoosterHeading", boostPanel.transform, "", 16, TextAnchor.UpperLeft);
-            Stretch(b.boosterHeading.rectTransform, new Vector2(0, 0.9f), Vector2.one, new Vector2(14, -10), new Vector2(-14, -6));
+            b.boosterHeading = CreateText("BoostH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            Stretch(b.boosterHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.boosterHeading.color = GameUiStyle.Accent;
             b.boosterHeading.fontStyle = FontStyle.Bold;
-            b.boosterList = CreateScrollContent(boostPanel.transform, "BoosterScroll", new Vector2(0, 0), new Vector2(1, 0.9f));
+            b.boosterHeading.gameObject.SetActive(false);
 
-            b.btnReportContinue = CreatePrimaryButton("Cont", card.transform, out b.reportContinueLabel);
-            Place(b.btnReportContinue, 0.35f, 0.03f, 0.65f, 0.14f);
+            // Keep reportBody as a hidden legacy binding (summary moved into stamp + tags).
+            b.reportBody = CreateText("Body", sidebar.transform, "", 14, TextAnchor.UpperLeft);
+            b.reportBody.gameObject.SetActive(false);
+
+            b.purchaseTagList = CreateScrollContent(sidebar.transform, "PurchaseScroll", new Vector2(0, 0.14f), new Vector2(1, 0.88f), 8);
+            b.boosterList = CreateScrollContent(sidebar.transform, "BoosterScroll", new Vector2(0, 0.14f), new Vector2(1, 0.88f), 6);
+            var boosterScroll = sidebar.transform.Find("BoosterScroll");
+            if (boosterScroll != null) boosterScroll.gameObject.SetActive(false);
+
+            b.btnReportPanelToggle = CreateSecondaryButton("TogglePanel", sidebar.transform, out b.reportPanelToggleLabel);
+            Place(b.btnReportPanelToggle, 0.04f, 0.02f, 0.48f, 0.12f);
+            b.btnReportContinue = CreatePrimaryButton("Cont", sidebar.transform, out b.reportContinueLabel);
+            Place(b.btnReportContinue, 0.52f, 0.02f, 0.96f, 0.12f);
             return root;
         }
 
