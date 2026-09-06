@@ -25,6 +25,7 @@ namespace MasterBidder.Audio
         [SerializeField] [Range(0f, 1f)] float voiceoverVolume = 1f;
 
         FMOD.Studio.EventInstance _tension;
+        FMOD.Studio.EventInstance _waitInstance;
         Sound _voiceSound;
         Channel _voiceChannel;
         readonly Queue<AudioClip> _voiceQueue = new Queue<AudioClip>();
@@ -59,6 +60,7 @@ namespace MasterBidder.Audio
 
         void OnDestroy()
         {
+            CancelPlayAndWait();
             StopTension();
             StopVoiceover();
             if (Instance == this)
@@ -144,6 +146,112 @@ namespace MasterBidder.Audio
             {
                 Debug.LogWarning($"[AudioManager] PlayOneShot failed ({fallbackPath}): {ex.Message}");
             }
+        }
+
+        /// <summary>Timeline length in seconds for a oneshot event (0 if missing / action-sheet).</summary>
+        public float GetEventLengthSeconds(EventReference evt, string fallbackPath)
+        {
+            try
+            {
+                FMOD.Studio.EventDescription desc = default;
+                bool ok = false;
+                if (!evt.IsNull)
+                {
+                    desc = RuntimeManager.GetEventDescription(evt);
+                    ok = desc.isValid();
+                }
+                else if (!string.IsNullOrEmpty(fallbackPath))
+                {
+                    ok = RuntimeManager.StudioSystem.getEvent(fallbackPath, out desc) == RESULT.OK
+                         && desc.isValid();
+                }
+
+                if (!ok) return 0f;
+                if (desc.getLength(out int lengthMs) != RESULT.OK) return 0f;
+                return Mathf.Max(0f, lengthMs / 1000f);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AudioManager] GetEventLength failed ({fallbackPath}): {ex.Message}");
+                return 0f;
+            }
+        }
+
+        /// <summary>
+        /// Measured playback length for action-sheet events whose timeline length is 0.
+        /// Used to schedule the rival pre-buy cue so it ends on the buy beat.
+        /// </summary>
+        public float CachedRivalRaiseLength { get; private set; }
+
+        /// <summary>
+        /// Plays an event and yields until it reaches STOPPED (or timeout).
+        /// Needed for action-sheet oneshots where <see cref="GetEventLengthSeconds"/> returns 0.
+        /// </summary>
+        public System.Collections.IEnumerator PlayAndWait(
+            EventReference evt,
+            string fallbackPath,
+            float timeoutSeconds = 30f)
+        {
+            if (_muted) yield break;
+
+            CancelPlayAndWait();
+
+            FMOD.Studio.EventInstance instance = default;
+            if (!evt.IsNull)
+            {
+                instance = RuntimeManager.CreateInstance(evt);
+            }
+            else if (!string.IsNullOrEmpty(fallbackPath)
+                     && RuntimeManager.StudioSystem.getEvent(fallbackPath, out _) == RESULT.OK)
+            {
+                instance = RuntimeManager.CreateInstance(fallbackPath);
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(fallbackPath))
+                    WarnMissingOnce(fallbackPath);
+                yield break;
+            }
+
+            if (!instance.isValid()) yield break;
+
+            _waitInstance = instance;
+            instance.start();
+
+            // try/finally is allowed with yield; try/catch is not (CS1626).
+            try
+            {
+                float deadline = Time.unscaledTime + Mathf.Max(0.5f, timeoutSeconds);
+                while (Time.unscaledTime < deadline)
+                {
+                    if (!_waitInstance.isValid() || !_waitInstance.handle.Equals(instance.handle))
+                        yield break;
+
+                    instance.getPlaybackState(out var state);
+                    if (state == FMOD.Studio.PLAYBACK_STATE.STOPPED)
+                        break;
+                    yield return null;
+                }
+            }
+            finally
+            {
+                if (_waitInstance.isValid() && _waitInstance.handle.Equals(instance.handle))
+                    CancelPlayAndWait();
+            }
+        }
+
+        public void CancelPlayAndWait()
+        {
+            if (!_waitInstance.isValid()) return;
+            _waitInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+            _waitInstance.release();
+            _waitInstance.clearHandle();
+        }
+
+        public void RememberRivalRaiseLength(float seconds)
+        {
+            if (seconds > 0.05f)
+                CachedRivalRaiseLength = seconds;
         }
 
         void WarnMissingOnce(string path)

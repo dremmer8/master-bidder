@@ -21,18 +21,18 @@ MonoBehaviour:
     Path: event:/click
   select:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: -1316619149
+      Data2: 1091176793
+      Data3: 1600616600
+      Data4: -705126949
+    Path: event:/select
   upgrade:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: -1671577322
+      Data2: 1165692667
+      Data3: 355729557
+      Data4: -2112467532
+    Path: event:/upgrade
   error:
     Guid:
       Data1: 0
@@ -63,18 +63,18 @@ MonoBehaviour:
     Path: 
   zoomOpen:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: -286748998
+      Data2: 1145076468
+      Data3: 1412089011
+      Data4: -952188333
+    Path: event:/zoom
   zoomClose:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: -286748998
+      Data2: 1145076468
+      Data3: 1412089011
+      Data4: -952188333
+    Path: event:/zoom
   reveal:
     Guid:
       Data1: 2075018720
@@ -98,18 +98,18 @@ MonoBehaviour:
     Path: event:/buy
   outcomeLost:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: 1434240168
+      Data2: 1113452470
+      Data3: 972764801
+      Data4: -2029411166
+    Path: event:/buy_other
   rivalRaise:
     Guid:
-      Data1: 0
-      Data2: 0
-      Data3: 0
-      Data4: 0
-    Path: 
+      Data1: 397765316
+      Data2: 1242158038
+      Data3: -1270089849
+      Data4: 866196823
+    Path: event:/rightbefore_other buy
   tension:
     Guid:
       Data1: 0
@@ -131,6 +131,20 @@ MonoBehaviour:
       Data3: -1092431994
       Data4: -1762821433
     Path: event:/next_painting
+  paintingRight:
+    Guid:
+      Data1: 379346252
+      Data2: 1308801082
+      Data3: -1051240558
+      Data4: 10611711
+    Path: event:/painting_right
+  paintingWrong:
+    Guid:
+      Data1: 617445369
+      Data2: 1197252957
+      Data3: -1559892312
+      Data4: -1339456189
+    Path: event:/painting_wrong
   dayPass:
     Guid:
       Data1: 0

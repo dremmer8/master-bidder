@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using MasterBidder.Audio;
 using MasterBidder.Campaign;
 using MasterBidder.Content;
@@ -45,6 +46,8 @@ namespace MasterBidder.UI
         bool _reportSoundPlayed;
         bool _briefShowUpgrades;
         bool _reportShowBoosters;
+        bool _reportPurchaseRevealStarted;
+        Coroutine _reportPurchaseRevealRoutine;
         readonly List<GameObject> _purchaseTags = new List<GameObject>();
 
         static readonly string[] FieldIds = { "genre", "period", "artist", "fact", "title" };
@@ -414,7 +417,10 @@ namespace MasterBidder.UI
                 AudioService.PlayCampaignEnd();
 
             if (screen != GameScreen.Report)
+            {
                 _reportSoundPlayed = false;
+                CancelReportPurchaseReveal();
+            }
 
             // Shared ActiveClient lives outside screen roots; hide on intro/end only.
             bool showActiveClientChrome = screen == GameScreen.Brief
@@ -891,6 +897,7 @@ namespace MasterBidder.UI
             if (r == null)
             {
                 if (_b.reportStamp != null) _b.reportStamp.SetActive(false);
+                CancelReportPurchaseReveal();
                 ClearList(_purchaseTags, _b.purchaseTagList);
                 return;
             }
@@ -919,7 +926,11 @@ namespace MasterBidder.UI
                 _b.reportStampDetail.text = line;
             }
 
-            RebuildPurchaseTags(r);
+            if (!_reportPurchaseRevealStarted)
+                BeginReportPurchaseReveal(r);
+            else if (_reportPurchaseRevealRoutine == null)
+                RebuildPurchaseTags(r, playSounds: false);
+
             bool showBoosters = r.Pass && state.Day < CampaignConfig.CampaignLength;
             if (!showBoosters) _reportShowBoosters = false;
             RebuildBoosterRows(session, showBoosters);
@@ -935,65 +946,128 @@ namespace MasterBidder.UI
             }
         }
 
-        void RebuildPurchaseTags(SettlementResult r)
+        void CancelReportPurchaseReveal()
+        {
+            if (_reportPurchaseRevealRoutine != null)
+            {
+                StopCoroutine(_reportPurchaseRevealRoutine);
+                _reportPurchaseRevealRoutine = null;
+            }
+            _reportPurchaseRevealStarted = false;
+        }
+
+        void BeginReportPurchaseReveal(SettlementResult r)
+        {
+            CancelReportPurchaseReveal();
+            _reportPurchaseRevealStarted = true;
+            ClearList(_purchaseTags, _b.purchaseTagList);
+            _reportPurchaseRevealRoutine = StartCoroutine(ReportPurchaseRevealRoutine(r));
+        }
+
+        IEnumerator ReportPurchaseRevealRoutine(SettlementResult r)
+        {
+            if (_b.purchaseTagList == null || r == null)
+            {
+                _reportPurchaseRevealRoutine = null;
+                yield break;
+            }
+
+            if (r.PurchaseDetails == null || r.PurchaseDetails.Length == 0)
+            {
+                SpawnPurchaseTag(null, empty: true);
+                _reportPurchaseRevealRoutine = null;
+                yield break;
+            }
+
+            for (int i = 0; i < r.PurchaseDetails.Length; i++)
+            {
+                var d = r.PurchaseDetails[i];
+                SpawnPurchaseTag(d, empty: false);
+                if (d.Matched) AudioService.PlayPaintingRight();
+                else AudioService.PlayPaintingWrong();
+
+                float wait = AudioService.GetPaintingMatchLength(d.Matched);
+                if (wait < 0.2f) wait = CampaignConfig.ReportPurchaseRevealSeconds;
+                yield return new WaitForSeconds(wait);
+            }
+
+            _reportPurchaseRevealRoutine = null;
+        }
+
+        void RebuildPurchaseTags(SettlementResult r, bool playSounds)
         {
             ClearList(_purchaseTags, _b.purchaseTagList);
             if (_b.purchaseTagList == null || r == null) return;
 
             if (r.PurchaseDetails == null || r.PurchaseDetails.Length == 0)
             {
-                var empty = SpawnUiWidget(purchaseTagPrefab, _b.purchaseTagList, GameUiHierarchyFactory.BuildPurchaseTag);
-                var view = empty.GetComponent<PurchaseTagView>();
-                if (view != null)
-                {
-                    GameUiStyle.ApplyWidgetTypography(view);
-                    if (view.title != null) view.title.text = LocaleService.T("report.noPurchases");
-                    if (view.meta != null) view.meta.text = "";
-                    if (view.stamp != null) view.stamp.text = "";
-                }
-                _purchaseTags.Add(empty);
+                SpawnPurchaseTag(null, empty: true);
                 return;
             }
 
             for (int i = 0; i < r.PurchaseDetails.Length; i++)
             {
                 var d = r.PurchaseDetails[i];
-                var go = SpawnUiWidget(purchaseTagPrefab, _b.purchaseTagList, GameUiHierarchyFactory.BuildPurchaseTag);
-                go.name = "Tag_" + i;
-                var view = go.GetComponent<PurchaseTagView>();
-                if (view == null) continue;
-                GameUiStyle.ApplyWidgetTypography(view);
-
-                if (view.title != null)
+                SpawnPurchaseTag(d, empty: false);
+                if (playSounds)
                 {
-                    view.title.text = d.TitleRu ?? "";
-                    view.title.color = GameUiStyle.TextColor;
+                    if (d.Matched) AudioService.PlayPaintingRight();
+                    else AudioService.PlayPaintingWrong();
                 }
-                if (view.meta != null)
-                {
-                    view.meta.text = $"{d.Price:N0} ₽  ·  {LocaleService.T("report.commission")} {d.Amount:N0} ₽";
-                    if (!string.IsNullOrEmpty(d.Reason))
-                        view.meta.text += "\n" + d.Reason;
-                }
-                if (view.stamp != null)
-                {
-                    view.stamp.text = d.Matched
-                        ? LocaleService.T("report.correct")
-                        : LocaleService.T("report.incorrect");
-                    view.stamp.color = d.Matched ? GameUiStyle.Good : GameUiStyle.Bad;
-                }
-                if (view.background != null)
-                {
-                    if (view.background.sprite != null)
-                        view.background.color = d.Matched ? GameUiStyle.SelectedTint : GameUiStyle.SpriteReady;
-                    else
-                        view.background.color = d.Matched
-                            ? new Color(GameUiStyle.Good.r, GameUiStyle.Good.g, GameUiStyle.Good.b, 0.12f)
-                            : new Color(GameUiStyle.Bad.r, GameUiStyle.Bad.g, GameUiStyle.Bad.b, 0.1f);
-                }
-
-                _purchaseTags.Add(go);
             }
+        }
+
+        void SpawnPurchaseTag(PurchaseDetail d, bool empty)
+        {
+            var go = SpawnUiWidget(purchaseTagPrefab, _b.purchaseTagList, GameUiHierarchyFactory.BuildPurchaseTag);
+            var view = go.GetComponent<PurchaseTagView>();
+            if (view == null)
+            {
+                _purchaseTags.Add(go);
+                return;
+            }
+
+            GameUiStyle.ApplyWidgetTypography(view);
+
+            if (empty)
+            {
+                if (view.title != null) view.title.text = LocaleService.T("report.noPurchases");
+                if (view.meta != null) view.meta.text = "";
+                if (view.stamp != null) view.stamp.text = "";
+                _purchaseTags.Add(go);
+                return;
+            }
+
+            go.name = "Tag_" + _purchaseTags.Count;
+            if (view.title != null)
+            {
+                view.title.text = d.TitleRu ?? "";
+                view.title.color = GameUiStyle.TextColor;
+            }
+            if (view.meta != null)
+            {
+                view.meta.text = $"{d.Price:N0} ₽  ·  {LocaleService.T("report.commission")} {d.Amount:N0} ₽";
+                if (!string.IsNullOrEmpty(d.Reason))
+                    view.meta.text += "\n" + d.Reason;
+            }
+            if (view.stamp != null)
+            {
+                view.stamp.text = d.Matched
+                    ? LocaleService.T("report.correct")
+                    : LocaleService.T("report.incorrect");
+                view.stamp.color = d.Matched ? GameUiStyle.Good : GameUiStyle.Bad;
+            }
+            if (view.background != null)
+            {
+                if (view.background.sprite != null)
+                    view.background.color = d.Matched ? GameUiStyle.SelectedTint : GameUiStyle.SpriteReady;
+                else
+                    view.background.color = d.Matched
+                        ? new Color(GameUiStyle.Good.r, GameUiStyle.Good.g, GameUiStyle.Good.b, 0.12f)
+                        : new Color(GameUiStyle.Bad.r, GameUiStyle.Bad.g, GameUiStyle.Bad.b, 0.1f);
+            }
+
+            _purchaseTags.Add(go);
         }
 
         void RebuildBoosterRows(GameSession session, bool show)

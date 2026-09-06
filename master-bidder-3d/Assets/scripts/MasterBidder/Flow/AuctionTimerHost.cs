@@ -58,6 +58,7 @@ namespace MasterBidder.Flow
             if (_rivalRoutine != null) { StopCoroutine(_rivalRoutine); _rivalRoutine = null; }
             if (_resolutionRoutine != null) { StopCoroutine(_resolutionRoutine); _resolutionRoutine = null; }
             if (_skipRoutine != null) { StopCoroutine(_skipRoutine); _skipRoutine = null; }
+            AudioService.CancelRivalRaiseWait();
             AudioService.StopTension();
         }
 
@@ -173,6 +174,7 @@ namespace MasterBidder.Flow
             float rivalDelay = CampaignConfig.SkipRivalPauseSeconds;
             if (state.ActiveBoosters.Contains("sleepy-rivals")) rivalDelay *= 1.45f;
             if (state.Upgrades.Contains("calm-hall")) rivalDelay *= 1.15f;
+            // Skip: no rightbefore cue — rival buys after a short pause.
             yield return new WaitForSeconds(rivalDelay);
             if (!state.LotResolved)
                 _session.ApplyRivalWin(clearTimers: false);
@@ -200,10 +202,35 @@ namespace MasterBidder.Flow
 
         IEnumerator RivalRoutine(float delay)
         {
-            yield return new WaitForSeconds(delay);
-            _session?.ApplyRivalWin();
-            // Advance is owned by AppFlow ticket appear resolve (OnRivalWon).
+            yield return RivalWinAfterCue(delay, clearTimers: true);
             _rivalRoutine = null;
+        }
+
+        /// <summary>
+        /// Starts <c>rightbefore_other buy</c> <see cref="CampaignConfig.RivalRaiseLeadSeconds"/>
+        /// before the rival purchase, then applies the win on the scheduled beat.
+        /// </summary>
+        IEnumerator RivalWinAfterCue(float delay, bool clearTimers)
+        {
+            var state = _session?.State;
+            if (state == null) yield break;
+
+            float lead = CampaignConfig.RivalRaiseLeadSeconds;
+            float preWait = Mathf.Max(0f, delay - lead);
+            if (preWait > 0f)
+                yield return new WaitForSeconds(preWait);
+
+            if (state.LotResolved) yield break;
+
+            AudioService.StopTension();
+            AudioService.PlayRivalRaise();
+
+            float afterCue = delay - preWait; // lead, or full delay if delay < lead
+            if (afterCue > 0f)
+                yield return new WaitForSeconds(afterCue);
+
+            if (state.LotResolved) yield break;
+            _session.ApplyRivalWin(clearTimers);
         }
     }
 }

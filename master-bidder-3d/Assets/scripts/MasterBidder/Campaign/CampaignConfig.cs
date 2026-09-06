@@ -26,6 +26,10 @@ namespace MasterBidder.Campaign
         public const float ResolutionPauseSeconds = 2.1f;
         public const float SkipFastRevealIntervalSeconds = 0.38f;
         public const float SkipRivalPauseSeconds = 0.65f;
+        /// <summary>How early to fire <c>rightbefore_other buy</c> before the rival purchase.</summary>
+        public const float RivalRaiseLeadSeconds = 1.7f;
+        /// <summary>Fallback gap between purchase-tag reveals on the report screen.</summary>
+        public const float ReportPurchaseRevealSeconds = 0.85f;
 
         public const float BranchBudgetMultiplierStart = 0.9f;
         public const float BranchBudgetMultiplierEnd = 1.6f;

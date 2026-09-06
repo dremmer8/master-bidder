@@ -1,4 +1,5 @@
 using NineSlice3D;
+using MasterBidder.Audio;
 using UnityEngine;
 
 namespace MasterBidder.Presentation
@@ -254,6 +255,8 @@ namespace MasterBidder.Presentation
                 return;
             }
 
+            AudioService.PlayZoom();
+
             transitionStartPos = mainCamera.transform.position;
             transitionStartRot = mainCamera.transform.rotation;
             transitionStartFov = mainCamera.fieldOfView;
@@ -297,6 +300,8 @@ namespace MasterBidder.Presentation
                 SetCursorLocked(false);
                 return;
             }
+
+            AudioService.PlayZoom();
 
             Camera fromCam = mode == CameraMode.ToInspect && proxyCamera != null && proxyCamera.enabled
                 ? proxyCamera

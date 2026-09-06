@@ -71,6 +71,7 @@ namespace MasterBidder.Audio
         public static void PlayCardClose() => Play(c => c.cardClose, AudioCatalog.PathCardClose);
         public static void PlayZoomOpen() => Play(c => c.zoomOpen, AudioCatalog.PathZoomOpen);
         public static void PlayZoomClose() => Play(c => c.zoomClose, AudioCatalog.PathZoomClose);
+        public static void PlayZoom() => PlayZoomOpen();
 
         public static void PlayReveal(int stepIndex, bool fast = false)
         {
@@ -90,6 +91,37 @@ namespace MasterBidder.Audio
         }
 
         public static void PlayRivalRaise() => Play(c => c.rivalRaise, AudioCatalog.PathRivalRaise);
+
+        /// <summary>
+        /// Cue length for rival pre-buy scheduling. Prefers FMOD timeline length, else last measured playback.
+        /// </summary>
+        public static float GetRivalRaiseLength()
+        {
+            float len = Length(c => c.rivalRaise, AudioCatalog.PathRivalRaise);
+            if (len > 0.05f) return len;
+            return _manager != null ? _manager.CachedRivalRaiseLength : 0f;
+        }
+
+        /// <summary>Play rival pre-buy cue and wait until it finishes.</summary>
+        public static System.Collections.IEnumerator PlayRivalRaiseAndWait()
+        {
+            if (_manager == null) yield break;
+            var catalog = _manager.Catalog;
+            var evt = catalog != null ? catalog.rivalRaise : default;
+            float t0 = Time.unscaledTime;
+            yield return _manager.PlayAndWait(evt, AudioCatalog.PathRivalRaise);
+            _manager.RememberRivalRaiseLength(Time.unscaledTime - t0);
+        }
+
+        public static void CancelRivalRaiseWait() => _manager?.CancelPlayAndWait();
+
+        public static void PlayPaintingRight() => Play(c => c.paintingRight, AudioCatalog.PathPaintingRight);
+        public static void PlayPaintingWrong() => Play(c => c.paintingWrong, AudioCatalog.PathPaintingWrong);
+
+        public static float GetPaintingMatchLength(bool matched) =>
+            matched
+                ? Length(c => c.paintingRight, AudioCatalog.PathPaintingRight)
+                : Length(c => c.paintingWrong, AudioCatalog.PathPaintingWrong);
 
         public static void PlayClothDown() => Play(c => c.clothDown, AudioCatalog.PathClothDown);
         public static void PlayNextPainting() => Play(c => c.nextPainting, AudioCatalog.PathNextPainting);
@@ -133,6 +165,14 @@ namespace MasterBidder.Audio
             var catalog = _manager.Catalog;
             var evt = catalog != null ? selector(catalog) : default;
             _manager.PlayOneShot(evt, fallbackPath);
+        }
+
+        static float Length(System.Func<AudioCatalog, FMODUnity.EventReference> selector, string fallbackPath)
+        {
+            if (_manager == null) return 0f;
+            var catalog = _manager.Catalog;
+            var evt = catalog != null ? selector(catalog) : default;
+            return _manager.GetEventLengthSeconds(evt, fallbackPath);
         }
     }
 }

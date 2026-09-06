@@ -132,7 +132,7 @@ namespace MasterBidder.Flow
         void HandleRivalWon()
         {
             AudioService.StopTension();
-            AudioService.PlayRivalRaise();
+            // Pre-buy cue is played by AuctionTimerHost before ApplyRivalWin.
             AudioService.PlayOutcome("lost");
             _ui.RaiseRandomRival();
             // Ticket appear replaces the old fixed resolution pause.

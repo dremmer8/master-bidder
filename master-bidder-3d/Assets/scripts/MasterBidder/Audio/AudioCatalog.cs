@@ -31,6 +31,10 @@ namespace MasterBidder.Audio
         public EventReference clothDown;
         public EventReference nextPainting;
 
+        [Header("Report")]
+        public EventReference paintingRight;
+        public EventReference paintingWrong;
+
         [Header("Meta")]
         public EventReference dayPass;
         public EventReference dayFail;
@@ -46,22 +50,24 @@ namespace MasterBidder.Audio
 
         // Paths match FMOD Studio MasterEventFolder (root) event names.
         public const string PathClick = "event:/click";
-        public const string PathSelect = "event:/ui/select";
-        public const string PathUpgrade = "event:/ui/upgrade";
+        public const string PathSelect = "event:/select";
+        public const string PathUpgrade = "event:/upgrade";
         public const string PathError = "event:/ui/error";
         public const string PathSkip = "event:/skip";
         public const string PathCardOpen = "event:/ui/card_open";
         public const string PathCardClose = "event:/ui/card_close";
-        public const string PathZoomOpen = "event:/ui/zoom_open";
-        public const string PathZoomClose = "event:/ui/zoom_close";
+        public const string PathZoomOpen = "event:/zoom";
+        public const string PathZoomClose = "event:/zoom";
         public const string PathReveal = "event:/next_fact";
         public const string PathInsight = "event:/next_fact";
         public const string PathOutcomeWon = "event:/buy";
-        public const string PathOutcomeLost = "event:/auction/outcome_lost";
-        public const string PathRivalRaise = "event:/auction/rival_raise";
+        public const string PathOutcomeLost = "event:/buy_other";
+        public const string PathRivalRaise = "event:/rightbefore_other buy";
         public const string PathTension = "event:/auction/tension";
         public const string PathClothDown = "event:/cloth_down";
         public const string PathNextPainting = "event:/next_painting";
+        public const string PathPaintingRight = "event:/painting_right";
+        public const string PathPaintingWrong = "event:/painting_wrong";
         public const string PathDayPass = "event:/meta/day_pass";
         public const string PathDayFail = "event:/meta/day_fail";
         public const string PathCampaignEnd = "event:/meta/campaign_end";
