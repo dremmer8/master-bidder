@@ -1,10 +1,11 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using MasterBidder.Audio;
 using MasterBidder.Campaign;
 using MasterBidder.Content;
 using MasterBidder.Core;
 using MasterBidder.Flow;
 using MasterBidder.Services;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,6 +14,9 @@ namespace MasterBidder.UI
     /// <summary>
     /// Runtime UI controller. Instantiates editable prefabs from Assets/content/ui/
     /// (generated via Master Bidder → Generate UI Prefabs) and binds game actions.
+    /// Layout, spacing, and colors live on the prefabs — this class fills dynamic
+    /// content, toggles visibility, applies state-driven tints, and assigns
+    /// Playfair/Manrope typography via GameUiStyle.ApplyTypography.
     /// </summary>
     public class GameUiShell : MonoBehaviour
     {
@@ -20,6 +24,7 @@ namespace MasterBidder.UI
         [SerializeField] GameObject collectorCardPrefab;
         [SerializeField] GameObject upgradeRowPrefab;
         [SerializeField] GameObject boosterRowPrefab;
+        [SerializeField] GameObject purchaseTagPrefab;
 
         AppFlow _flow;
         GameUiBindings _b;
@@ -39,9 +44,7 @@ namespace MasterBidder.UI
         float _rivalRaiseUntil;
         bool _reportSoundPlayed;
         bool _briefShowUpgrades;
-        bool _briefLayoutReady;
         bool _reportShowBoosters;
-        bool _reportLayoutReady;
         readonly List<GameObject> _purchaseTags = new List<GameObject>();
 
         static readonly string[] FieldIds = { "genre", "period", "artist", "fact", "title" };
@@ -74,6 +77,19 @@ namespace MasterBidder.UI
             }
 
             _b = instance.GetComponent<GameUiBindings>();
+            // Legacy uGUI Text prefabs lose wired TMP fields after migration — rebuild once.
+            if (_b != null && _b.chromeTitle == null && _b.introTitle == null)
+            {
+                Debug.LogWarning(
+                    "[GameUiShell] GameUI prefab has no TextMeshPro bindings — rebuilding. " +
+                    "Run Master Bidder → Generate UI Prefabs to refresh Assets/content/ui.");
+                Destroy(instance);
+                instance = GameUiHierarchyFactory.BuildGameUi();
+                instance.transform.SetParent(transform, false);
+                instance.name = "GameUI";
+                _b = instance.GetComponent<GameUiBindings>();
+            }
+
             if (_b == null)
             {
                 Debug.LogError("[GameUiShell] GameUI root is missing GameUiBindings.");
@@ -84,103 +100,26 @@ namespace MasterBidder.UI
             GameUiSprites.Warmup();
             _canvas = _b.canvas != null ? _b.canvas : instance.GetComponent<Canvas>();
             ApplyBindings(_b);
-            DressIntroScreen();
-            DressBriefScreen();
-            DressAuctionScreen();
-            DressReportScreen();
-            DressCollectorPopup();
-            DressTutorialHint();
+            GameUiStyle.ApplyTypography(_b);
+            ResolveChromeBindings();
+            if (_b.briefDay != null)
+                GameUiStyle.ApplyUiFont(_b.briefDay, bold: true);
+            ResolveEffectsHudRefs();
+            ApplyBriefPanelMode();
+            ApplyReportPanelMode();
             WireListeners();
         }
 
-        void DressIntroScreen()
-        {
-            if (_intro == null) return;
-            var rootImg = _intro.GetComponent<Image>();
-            if (rootImg != null)
-            {
-                rootImg.sprite = null;
-                rootImg.color = GameUiStyle.ScreenBg;
-            }
-
-            var card = _intro.transform.Find("Card");
-            if (card == null) return;
-            var cardImg = card.GetComponent<Image>();
-            if (cardImg != null)
-                GameUiStyle.ApplyFramedPanel(cardImg);
-
-            var cardRt = card.GetComponent<RectTransform>();
-            if (cardRt != null)
-            {
-                cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
-                cardRt.pivot = new Vector2(0.5f, 0.5f);
-                cardRt.anchoredPosition = new Vector2(0f, -8f);
-                cardRt.sizeDelta = new Vector2(620f, 400f);
-            }
-
-            if (_b.introTitle != null)
-            {
-                _b.introTitle.fontSize = 34;
-                _b.introTitle.alignment = TextAnchor.MiddleCenter;
-                StretchUi(_b.introTitle.rectTransform, new Vector2(0, 0.84f), Vector2.one, new Vector2(24, -18), new Vector2(-24, -8));
-            }
-
-            if (_b.introSubtitle != null)
-            {
-                _b.introSubtitle.fontSize = 20;
-                _b.introSubtitle.fontStyle = FontStyle.Bold;
-                _b.introSubtitle.color = GameUiStyle.TextColor;
-                _b.introSubtitle.alignment = TextAnchor.MiddleCenter;
-                _b.introSubtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
-                StretchUi(_b.introSubtitle.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.84f), new Vector2(24, 0), new Vector2(-24, 0));
-            }
-
-            if (_b.introLede != null)
-            {
-                _b.introLede.fontSize = 15;
-                _b.introLede.lineSpacing = 1.1f;
-                StretchUi(_b.introLede.rectTransform, new Vector2(0, 0.54f), new Vector2(1, 0.70f), new Vector2(28, 0), new Vector2(-28, 0));
-            }
-
-            if (_b.introRules != null)
-            {
-                _b.introRules.fontSize = 14;
-                _b.introRules.lineSpacing = 1.15f;
-                StretchUi(_b.introRules.rectTransform, new Vector2(0, 0.18f), new Vector2(1, 0.52f), new Vector2(28, 0), new Vector2(-28, 0));
-            }
-
-            if (_b.btnContinue != null)
-                StretchUi(_b.btnContinue.GetComponent<RectTransform>(), new Vector2(0.06f, 0.04f), new Vector2(0.48f, 0.15f), Vector2.zero, Vector2.zero);
-            if (_b.btnStart != null)
-                StretchUi(_b.btnStart.GetComponent<RectTransform>(), new Vector2(0.52f, 0.04f), new Vector2(0.94f, 0.15f), Vector2.zero, Vector2.zero);
-        }
-
-        void DressBriefScreen()
-        {
-            if (_brief == null) return;
-
-            // Leave the shared Chrome banner visible (same top bar as auction).
-            StretchUi(_brief.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -52));
-
-            var rootImg = _brief.GetComponent<Image>();
-            if (rootImg != null)
-            {
-                rootImg.sprite = null;
-                rootImg.color = GameUiStyle.ScreenBg;
-            }
-
-            EnsureBriefChromeBars();
-            EnsureBriefLayout();
-            ApplyBriefPanelMode();
-        }
-
-        void EnsureBriefChromeBars()
+        /// <summary>
+        /// Wire chrome status / effects refs without touching prefab layout or fonts.
+        /// Creates missing nodes only as a fallback for broken/legacy prefabs.
+        /// </summary>
+        void ResolveChromeBindings()
         {
             if (_b == null) return;
             var chrome = EffectsChromeParent();
             if (chrome == null) return;
 
-            // Hide legacy split day/cap pills — replaced by one status plate on the right.
             HideChromeChild(chrome, "DayBar");
             HideChromeChild(chrome, "CapBar");
             if (_brief != null)
@@ -189,66 +128,60 @@ namespace MasterBidder.UI
                 HideChromeChild(_brief.transform, "CapBar");
             }
 
-            // Shared status plate (day + capital) — constant across gameplay screens.
             Transform status = chrome.Find("ChromeStatus") ?? chrome.Find("BriefStatus");
             if (status == null)
             {
                 var go = new GameObject("ChromeStatus", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 go.transform.SetParent(chrome, false);
                 status = go.transform;
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 0.5f);
+                rt.anchoredPosition = new Vector2(-16f, 0f);
+                rt.sizeDelta = new Vector2(360f, 38f);
+                GameUiStyle.ApplySliced(go.GetComponent<Image>(), GameUiSprites.BarCurrency, GameUiStyle.SpriteReady);
             }
             else if (status.name == "BriefStatus")
             {
                 status.name = "ChromeStatus";
             }
 
-            DressFixedBar(status, new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(360f, 38f), GameUiSprites.BarCurrency);
             var lang = chrome.Find("Lang");
             if (lang != null)
             {
                 status.SetSiblingIndex(lang.GetSiblingIndex());
                 lang.gameObject.SetActive(false);
             }
-            else status.SetAsLastSibling();
 
-            Text statusText = status.Find("Status")?.GetComponent<Text>();
+            TextMeshProUGUI statusText = status.Find("Status")?.GetComponent<TextMeshProUGUI>();
+            if (statusText == null && _b.briefDay != null)
+            {
+                if (_b.briefDay.transform.parent != status)
+                    _b.briefDay.transform.SetParent(status, false);
+                _b.briefDay.gameObject.name = "Status";
+                statusText = _b.briefDay;
+            }
             if (statusText == null)
             {
-                if (_b.briefDay != null)
-                {
-                    _b.briefDay.transform.SetParent(status, false);
-                    _b.briefDay.gameObject.name = "Status";
-                    statusText = _b.briefDay;
-                }
-                else
-                {
-                    var tGo = new GameObject("Status", typeof(RectTransform), typeof(Text));
-                    tGo.transform.SetParent(status, false);
-                    statusText = tGo.GetComponent<Text>();
-                    statusText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (statusText.font == null) statusText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    _b.briefDay = statusText;
-                }
-            }
-            else if (_b.briefDay == null)
-            {
-                _b.briefDay = statusText;
+                var tGo = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI));
+                tGo.transform.SetParent(status, false);
+                statusText = tGo.GetComponent<TextMeshProUGUI>();
+                GameUiStyle.ApplyUiFont(statusText, bold: true);
+                statusText.fontSize = 15;
+                statusText.color = GameUiStyle.OnDark;
+                statusText.alignment = TextAlignmentOptions.Center;
+                StretchUi(statusText.rectTransform, Vector2.zero, Vector2.one, new Vector2(44, 0), new Vector2(-12, 0));
             }
 
-            statusText.fontSize = 15;
-            statusText.fontStyle = FontStyle.Bold;
-            statusText.color = GameUiStyle.OnDark;
-            statusText.alignment = TextAnchor.MiddleCenter;
-            StretchUi(statusText.rectTransform, Vector2.zero, Vector2.one, new Vector2(44, 0), new Vector2(-12, 0));
-
-            if (_b.briefCapital != null && _b.briefCapital != statusText)
+            _b.briefDay = statusText;
+            if (_b.briefCapital == null)
+                _b.briefCapital = statusText;
+            else if (_b.briefCapital != statusText)
                 _b.briefCapital.gameObject.SetActive(false);
 
             if (_b.langDropdown != null)
                 _b.langDropdown.gameObject.SetActive(false);
 
             status.gameObject.SetActive(true);
-            EnsureEffectsHud();
         }
 
         static void HideChromeChild(Transform parent, string name)
@@ -256,276 +189,6 @@ namespace MasterBidder.UI
             if (parent == null) return;
             var t = parent.Find(name);
             if (t != null) t.gameObject.SetActive(false);
-        }
-
-        void EnsureBriefLayout()
-        {
-            if (_brief == null || _b == null || _briefLayoutReady) return;
-
-            // Hide legacy dual-column Clients panel; keep its scroll for reparenting.
-            var legacyClients = _brief.transform.Find("Clients");
-            Transform collectorScroll = null;
-            if (legacyClients != null)
-            {
-                collectorScroll = legacyClients.Find("CollectorScroll");
-                var orderPlate = legacyClients.Find("OrderPlate");
-                if (orderPlate != null) orderPlate.gameObject.SetActive(false);
-                var legacyImg = legacyClients.GetComponent<Image>();
-                if (legacyImg != null)
-                {
-                    legacyImg.sprite = null;
-                    legacyImg.color = new Color(0, 0, 0, 0);
-                    legacyImg.raycastTarget = false;
-                }
-                StretchUi(legacyClients.GetComponent<RectTransform>(), Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-            }
-
-            // Sidebar: prefer new name, else migrate Workshop.
-            Transform sidebar = _brief.transform.Find("Sidebar");
-            var workshop = _brief.transform.Find("Workshop");
-            if (sidebar == null && workshop != null)
-            {
-                workshop.name = "Sidebar";
-                sidebar = workshop;
-            }
-            if (sidebar == null)
-            {
-                var go = new GameObject("Sidebar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(_brief.transform, false);
-                sidebar = go.transform;
-            }
-
-            StretchUi(sidebar.GetComponent<RectTransform>(), new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
-            var sidebarImg = sidebar.GetComponent<Image>();
-            if (sidebarImg != null) GameUiStyle.ApplyFramedPanel(sidebarImg);
-
-            // List headings at the top of the sidebar.
-            EnsureSidebarHeading(ref _b.briefClientHeading, sidebar, "OrdersH");
-            EnsureSidebarHeading(ref _b.briefWorkshopHeading, sidebar, "UpgradesH");
-            if (_b.briefClientHeading != null)
-            {
-                StretchUi(_b.briefClientHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
-                _b.briefClientHeading.fontSize = 26;
-                _b.briefClientHeading.fontStyle = FontStyle.Bold;
-                _b.briefClientHeading.color = GameUiStyle.Accent;
-                _b.briefClientHeading.alignment = TextAnchor.MiddleLeft;
-            }
-            if (_b.briefWorkshopHeading != null)
-            {
-                StretchUi(_b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
-                _b.briefWorkshopHeading.fontSize = 26;
-                _b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
-                _b.briefWorkshopHeading.color = GameUiStyle.Accent;
-                _b.briefWorkshopHeading.alignment = TextAnchor.MiddleLeft;
-            }
-
-            // Upgrade icons live in Chrome (auction-style); remove sidebar strip if present.
-            var briefEffects = sidebar.Find("BriefEffects");
-            if (briefEffects != null) briefEffects.gameObject.SetActive(false);
-            _b.briefEffectsHost = null;
-
-            // Move scrolls into sidebar under the heading.
-            if (collectorScroll == null && _b.collectorList != null)
-                collectorScroll = _b.collectorList.parent != null ? _b.collectorList.parent.parent : null;
-            collectorScroll = sidebar.Find("CollectorScroll")
-                ?? (legacyClients != null ? legacyClients.Find("CollectorScroll") : null)
-                ?? collectorScroll;
-            var upgradeScroll = sidebar.Find("UpgradeScroll")
-                ?? (workshop != null ? workshop.Find("UpgradeScroll") : null)
-                ?? _brief.transform.Find("Workshop/UpgradeScroll");
-
-            if (collectorScroll != null)
-            {
-                collectorScroll.SetParent(sidebar, false);
-                StretchUi(collectorScroll.GetComponent<RectTransform>(), new Vector2(0, 0.14f), new Vector2(1, 0.88f), new Vector2(10, 6), new Vector2(-10, -4));
-                TightenScrollSpacing(collectorScroll, 6);
-                var content = collectorScroll.Find("Viewport/Content");
-                if (content != null) _b.collectorList = content;
-            }
-
-            if (upgradeScroll != null)
-            {
-                upgradeScroll.SetParent(sidebar, false);
-                StretchUi(upgradeScroll.GetComponent<RectTransform>(), new Vector2(0, 0.14f), new Vector2(1, 0.88f), new Vector2(10, 6), new Vector2(-10, -4));
-                TightenScrollSpacing(upgradeScroll, 4);
-                var content = upgradeScroll.Find("Viewport/Content");
-                if (content != null) _b.upgradeList = content;
-            }
-
-            // Footer actions inside sidebar.
-            if (_b.btnBriefPanelToggle == null)
-            {
-                var existing = sidebar.Find("TogglePanel")?.GetComponent<Button>();
-                if (existing != null)
-                {
-                    _b.btnBriefPanelToggle = existing;
-                    _b.briefPanelToggleLabel = existing.GetComponentInChildren<Text>();
-                }
-                else
-                {
-                    var toggleGo = new GameObject("TogglePanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-                    toggleGo.transform.SetParent(sidebar, false);
-                    var img = toggleGo.GetComponent<Image>();
-                    GameUiStyle.ApplySecondaryButton(img);
-                    var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-                    labelGo.transform.SetParent(toggleGo.transform, false);
-                    StretchUi(labelGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, new Vector2(8, 4), new Vector2(-8, -4));
-                    var label = labelGo.GetComponent<Text>();
-                    label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (label.font == null) label.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    label.fontSize = 15;
-                    label.alignment = TextAnchor.MiddleCenter;
-                    label.color = GameUiStyle.TextColor;
-                    _b.btnBriefPanelToggle = toggleGo.GetComponent<Button>();
-                    _b.btnBriefPanelToggle.targetGraphic = img;
-                    _b.briefPanelToggleLabel = label;
-                }
-            }
-            StretchUi(_b.btnBriefPanelToggle.GetComponent<RectTransform>(), new Vector2(0.04f, 0.02f), new Vector2(0.48f, 0.12f), Vector2.zero, Vector2.zero);
-
-            if (_b.btnEnterHall != null)
-            {
-                _b.btnEnterHall.transform.SetParent(sidebar, false);
-                StretchUi(_b.btnEnterHall.GetComponent<RectTransform>(), new Vector2(0.52f, 0.02f), new Vector2(0.96f, 0.12f), Vector2.zero, Vector2.zero);
-            }
-
-            EnsureActiveClientPanel();
-
-            if (_b.btnReset != null)
-            {
-                _b.btnReset.transform.SetParent(_brief.transform, false);
-                StretchUi(_b.btnReset.GetComponent<RectTransform>(), new Vector2(0.02f, 0.02f), new Vector2(0.14f, 0.07f), Vector2.zero, Vector2.zero);
-                var cg = _b.btnReset.GetComponent<CanvasGroup>();
-                if (cg == null) cg = _b.btnReset.gameObject.AddComponent<CanvasGroup>();
-                cg.alpha = 0.5f;
-                if (_b.resetLabel != null) _b.resetLabel.fontSize = 12;
-            }
-
-            if (legacyClients != null)
-                legacyClients.gameObject.SetActive(false);
-
-            _briefLayoutReady = true;
-        }
-
-        static void EnsureSidebarHeading(ref Text heading, Transform sidebar, string name)
-        {
-            if (sidebar == null) return;
-            if (heading != null)
-            {
-                // If heading was aliased to the active-client name, create a real list title.
-                if (heading.transform.parent != null && heading.transform.parent.name == "ActiveClient")
-                    heading = null;
-                else
-                {
-                    heading.transform.SetParent(sidebar, false);
-                    heading.gameObject.name = name;
-                    heading.gameObject.SetActive(true);
-                    return;
-                }
-            }
-
-            var existing = sidebar.Find(name)?.GetComponent<Text>();
-            if (existing != null)
-            {
-                heading = existing;
-                return;
-            }
-
-            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
-            go.transform.SetParent(sidebar, false);
-            var t = go.GetComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            t.fontSize = 18;
-            t.fontStyle = FontStyle.Bold;
-            t.color = GameUiStyle.Accent;
-            t.alignment = TextAnchor.MiddleLeft;
-            heading = t;
-        }
-
-        void EnsureActiveClientPanel()
-        {
-            if (_brief == null || _b == null) return;
-
-            Transform active = _brief.transform.Find("ActiveClient");
-            if (active == null)
-            {
-                var go = new GameObject("ActiveClient", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(_brief.transform, false);
-                active = go.transform;
-            }
-
-            // Short compact strip under Chrome (sketch proportions).
-            StretchUi(active.GetComponent<RectTransform>(), new Vector2(0.015f, 0.86f), new Vector2(0.42f, 0.98f), new Vector2(6, -4), new Vector2(-6, -4));
-            var activeImg = active.GetComponent<Image>();
-            if (activeImg != null) GameUiStyle.ApplyCard(activeImg);
-            _b.briefActiveClient = active.gameObject;
-
-            if (_b.briefActivePortrait == null)
-            {
-                var p = active.Find("Portrait");
-                if (p == null)
-                {
-                    var pGo = new GameObject("Portrait", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                    pGo.transform.SetParent(active, false);
-                    p = pGo.transform;
-                }
-                _b.briefActivePortrait = p.GetComponent<Image>();
-            }
-            StretchUi(_b.briefActivePortrait.rectTransform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0));
-            _b.briefActivePortrait.preserveAspect = true;
-            _b.briefActivePortrait.color = _b.briefActivePortrait.sprite != null ? Color.white : GameUiStyle.PanelLight;
-
-            if (_b.briefActiveName == null || _b.briefActiveName.transform.parent != active)
-            {
-                var n = active.Find("Name")?.GetComponent<Text>();
-                if (n == null)
-                {
-                    var nGo = new GameObject("Name", typeof(RectTransform), typeof(Text));
-                    nGo.transform.SetParent(active, false);
-                    n = nGo.GetComponent<Text>();
-                    n.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (n.font == null) n.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                }
-                _b.briefActiveName = n;
-            }
-            _b.briefActiveName.fontSize = 14;
-            _b.briefActiveName.fontStyle = FontStyle.Bold;
-            _b.briefActiveName.color = GameUiStyle.Accent;
-            _b.briefActiveName.alignment = TextAnchor.MiddleLeft;
-            StretchUi(_b.briefActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
-
-            if (_b.briefActiveTags == null || _b.briefActiveTags.transform.parent != active)
-            {
-                if (_b.briefOrderPreview != null && _b.briefOrderPreview.transform.parent != active)
-                {
-                    _b.briefOrderPreview.transform.SetParent(active, false);
-                    _b.briefActiveTags = _b.briefOrderPreview;
-                    _b.briefOrderPreview.gameObject.name = "Tags";
-                }
-                else
-                {
-                    var t = active.Find("Tags")?.GetComponent<Text>();
-                    if (t == null)
-                    {
-                        var tGo = new GameObject("Tags", typeof(RectTransform), typeof(Text));
-                        tGo.transform.SetParent(active, false);
-                        t = tGo.GetComponent<Text>();
-                        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                        if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    }
-                    _b.briefActiveTags = t;
-                    _b.briefOrderPreview = t;
-                }
-            }
-            _b.briefActiveTags.fontSize = 20;
-            _b.briefActiveTags.fontStyle = FontStyle.Bold;
-            _b.briefActiveTags.color = GameUiStyle.TextColor;
-            _b.briefActiveTags.alignment = TextAnchor.MiddleLeft;
-            _b.briefActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _b.briefActiveTags.verticalOverflow = VerticalWrapMode.Overflow;
-            _b.briefActiveTags.lineSpacing = 1.0f;
-            StretchUi(_b.briefActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
         }
 
         void ApplyBriefPanelMode()
@@ -544,17 +207,11 @@ namespace MasterBidder.UI
             if (_b.briefClientHeading != null)
             {
                 _b.briefClientHeading.text = LocaleService.T("brief.ordersHeading");
-                _b.briefClientHeading.fontSize = 26;
-                _b.briefClientHeading.fontStyle = FontStyle.Bold;
-                _b.briefClientHeading.color = GameUiStyle.Accent;
                 _b.briefClientHeading.gameObject.SetActive(!_briefShowUpgrades);
             }
             if (_b.briefWorkshopHeading != null)
             {
                 _b.briefWorkshopHeading.text = LocaleService.T("brief.workshop");
-                _b.briefWorkshopHeading.fontSize = 26;
-                _b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
-                _b.briefWorkshopHeading.color = GameUiStyle.Accent;
                 _b.briefWorkshopHeading.gameObject.SetActive(_briefShowUpgrades);
             }
 
@@ -570,480 +227,6 @@ namespace MasterBidder.UI
             ApplyBriefPanelMode();
         }
 
-        void DressAuctionScreen()
-        {
-            if (_auction == null) return;
-
-            var rootImg = _auction.GetComponent<Image>();
-            if (rootImg != null)
-            {
-                rootImg.sprite = null;
-                rootImg.color = new Color(0, 0, 0, 0);
-                rootImg.raycastTarget = false;
-            }
-
-            var audience = _auction.transform.Find("Audience");
-            if (audience != null)
-            {
-                audience.gameObject.SetActive(false);
-                var audImg = audience.GetComponent<Image>();
-                if (audImg != null)
-                {
-                    audImg.sprite = null;
-                    audImg.color = new Color(0, 0, 0, 0);
-                    audImg.raycastTarget = false;
-                }
-            }
-
-            if (_b != null)
-                _b.rivalHeads = System.Array.Empty<Image>();
-
-            EnsureAuctionActiveClientPanel();
-
-            var hud = _auction.transform.Find("HudRight");
-            if (hud == null) return;
-
-            EnsureEffectsHud();
-
-            // Side rail under the shared Chrome banner.
-            StretchUi(hud.GetComponent<RectTransform>(), new Vector2(0.72f, 0.02f), new Vector2(0.985f, 1f), new Vector2(6, 8), new Vector2(-12, -56));
-            var hudImg = hud.GetComponent<Image>();
-            if (hudImg != null) GameUiStyle.ApplyFramedPanel(hudImg);
-
-            // Day / venue / lot — keep at top of sidebar.
-            if (_b.aucHud != null)
-            {
-                _b.aucHud.fontSize = 13;
-                _b.aucHud.fontStyle = FontStyle.Bold;
-                _b.aucHud.color = GameUiStyle.TextColor;
-                _b.aucHud.alignment = TextAnchor.MiddleLeft;
-                _b.aucHud.horizontalOverflow = HorizontalWrapMode.Wrap;
-                StretchUi(_b.aucHud.rectTransform, new Vector2(0, 0.92f), Vector2.one, new Vector2(16, -8), new Vector2(-16, -4));
-            }
-
-            // Order details moved to top-left client strip — hide sidebar order plate.
-            var orderPlate = hud.Find("OrderPlate");
-            if (orderPlate != null) orderPlate.gameObject.SetActive(false);
-            if (_b.orderCard != null) _b.orderCard.gameObject.SetActive(false);
-
-            // Big live price.
-            var econ = hud.Find("Econ");
-            if (econ != null)
-            {
-                StretchUi(econ.GetComponent<RectTransform>(), new Vector2(0, 0.72f), new Vector2(1, 0.92f), new Vector2(14, 2), new Vector2(-14, -4));
-                var econImg = econ.GetComponent<Image>();
-                if (econImg != null) GameUiStyle.ApplyCard(econImg);
-            }
-
-            if (_b.livePrice != null)
-            {
-                _b.livePrice.fontSize = 26;
-                _b.livePrice.fontStyle = FontStyle.Bold;
-                _b.livePrice.color = GameUiStyle.TextColor;
-                _b.livePrice.alignment = TextAnchor.MiddleCenter;
-                StretchUi(_b.livePrice.rectTransform, new Vector2(0, 0.42f), Vector2.one, new Vector2(10, 0), new Vector2(-10, -4));
-            }
-
-            // Only remaining client purchase budget (no commission / speed).
-            if (_b.liveBudget != null)
-            {
-                _b.liveBudget.fontSize = 15;
-                _b.liveBudget.fontStyle = FontStyle.Bold;
-                _b.liveBudget.color = GameUiStyle.TextColor;
-                _b.liveBudget.alignment = TextAnchor.MiddleCenter;
-                StretchUi(_b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(1, 0.42f), new Vector2(10, 4), new Vector2(-10, -4));
-            }
-            if (_b.liveSpeed != null)
-                _b.liveSpeed.gameObject.SetActive(false);
-
-            var fields = hud.Find("Fields");
-            if (fields != null)
-            {
-                StretchUi(fields.GetComponent<RectTransform>(), new Vector2(0, 0.2f), new Vector2(1, 0.72f), new Vector2(14, 4), new Vector2(-14, -4));
-                var fieldsImg = fields.GetComponent<Image>();
-                if (fieldsImg != null) GameUiStyle.ApplyCard(fieldsImg);
-            }
-
-            if (_b.fieldLabels != null)
-            {
-                float[] rowTops = { 1f, 0.86f, 0.72f, 0.58f, 0.18f, 0f };
-                for (int i = 0; i < _b.fieldLabels.Length; i++)
-                {
-                    if (_b.fieldRows != null && i < _b.fieldRows.Length && _b.fieldRows[i] != null)
-                    {
-                        var rowRt = _b.fieldRows[i].rectTransform;
-                        StretchUi(rowRt, new Vector2(0, rowTops[i + 1]), new Vector2(1, rowTops[i]), new Vector2(3, 1), new Vector2(-3, -1));
-                        if (_b.fieldRows[i].GetComponent<RectMask2D>() == null)
-                            _b.fieldRows[i].gameObject.AddComponent<RectMask2D>();
-                    }
-
-                    if (_b.fieldLabels[i] != null)
-                    {
-                        _b.fieldLabels[i].fontSize = 12;
-                        _b.fieldLabels[i].color = GameUiStyle.Dim;
-                        _b.fieldLabels[i].alignment = TextAnchor.UpperLeft;
-                        StretchUi(_b.fieldLabels[i].rectTransform, new Vector2(0, 0), new Vector2(0.38f, 1), new Vector2(10, 4), new Vector2(0, -4));
-                    }
-                    if (_b.fieldValues != null && i < _b.fieldValues.Length && _b.fieldValues[i] != null)
-                    {
-                        _b.fieldValues[i].fontSize = 13;
-                        _b.fieldValues[i].alignment = TextAnchor.UpperLeft;
-                        _b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
-                        _b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
-                        StretchUi(_b.fieldValues[i].rectTransform, new Vector2(0.38f, 0), Vector2.one, new Vector2(4, 4), new Vector2(-10, -4));
-                    }
-                }
-            }
-
-            // 3 controls: large BUY + two smaller (Skip / Finish). StartLot spans when shown.
-            if (_b.btnStartLot != null)
-                StretchUi(_b.btnStartLot.GetComponent<RectTransform>(), new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.18f), Vector2.zero, Vector2.zero);
-            if (_b.btnBuy != null)
-                StretchUi(_b.btnBuy.GetComponent<RectTransform>(), new Vector2(0.05f, 0.02f), new Vector2(0.58f, 0.18f), Vector2.zero, Vector2.zero);
-            if (_b.btnSkip != null)
-                StretchUi(_b.btnSkip.GetComponent<RectTransform>(), new Vector2(0.6f, 0.02f), new Vector2(0.77f, 0.18f), Vector2.zero, Vector2.zero);
-            if (_b.btnFinishDay != null)
-                StretchUi(_b.btnFinishDay.GetComponent<RectTransform>(), new Vector2(0.79f, 0.02f), new Vector2(0.95f, 0.18f), Vector2.zero, Vector2.zero);
-
-            // Result / funds toasts sit above the button row.
-            var bannerBg = hud.Find("BannerBg");
-            if (bannerBg != null)
-                StretchUi(bannerBg.GetComponent<RectTransform>(), new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.24f), Vector2.zero, Vector2.zero);
-            var fundsBg = hud.Find("FundsBg");
-            if (fundsBg != null)
-                StretchUi(fundsBg.GetComponent<RectTransform>(), new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.24f), Vector2.zero, Vector2.zero);
-            if (_b.familiarBadge != null)
-                StretchUi(_b.familiarBadge.rectTransform, new Vector2(0.55f, 0.24f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero);
-        }
-
-        void EnsureAuctionActiveClientPanel()
-        {
-            if (_auction == null || _b == null) return;
-
-            Transform active = _auction.transform.Find("ActiveClient");
-            if (active == null)
-            {
-                var go = new GameObject("ActiveClient", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(_auction.transform, false);
-                active = go.transform;
-            }
-
-            // Compact strip under Chrome (same idea as brief).
-            var rt = active.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0.015f, 1f);
-            rt.anchorMax = new Vector2(0.42f, 1f);
-            rt.pivot = new Vector2(0.5f, 1f);
-            rt.anchoredPosition = new Vector2(0f, -56f);
-            rt.sizeDelta = new Vector2(0f, 72f);
-
-            var activeImg = active.GetComponent<Image>();
-            if (activeImg != null) GameUiStyle.ApplyCard(activeImg);
-            _b.auctionActiveClient = active.gameObject;
-
-            if (_b.auctionActivePortrait == null)
-            {
-                var p = active.Find("Portrait");
-                if (p == null)
-                {
-                    var pGo = new GameObject("Portrait", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                    pGo.transform.SetParent(active, false);
-                    p = pGo.transform;
-                }
-                _b.auctionActivePortrait = p.GetComponent<Image>();
-            }
-            StretchUi(_b.auctionActivePortrait.rectTransform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0));
-            _b.auctionActivePortrait.preserveAspect = true;
-
-            if (_b.auctionActiveName == null)
-            {
-                var n = active.Find("Name")?.GetComponent<Text>();
-                if (n == null)
-                {
-                    var nGo = new GameObject("Name", typeof(RectTransform), typeof(Text));
-                    nGo.transform.SetParent(active, false);
-                    n = nGo.GetComponent<Text>();
-                    n.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (n.font == null) n.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                }
-                _b.auctionActiveName = n;
-            }
-            _b.auctionActiveName.fontSize = 14;
-            _b.auctionActiveName.fontStyle = FontStyle.Bold;
-            _b.auctionActiveName.color = GameUiStyle.Accent;
-            _b.auctionActiveName.alignment = TextAnchor.MiddleLeft;
-            StretchUi(_b.auctionActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
-
-            if (_b.auctionActiveTags == null)
-            {
-                var t = active.Find("Tags")?.GetComponent<Text>();
-                if (t == null)
-                {
-                    var tGo = new GameObject("Tags", typeof(RectTransform), typeof(Text));
-                    tGo.transform.SetParent(active, false);
-                    t = tGo.GetComponent<Text>();
-                    t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                }
-                _b.auctionActiveTags = t;
-            }
-            _b.auctionActiveTags.fontSize = 20;
-            _b.auctionActiveTags.fontStyle = FontStyle.Bold;
-            _b.auctionActiveTags.color = GameUiStyle.TextColor;
-            _b.auctionActiveTags.alignment = TextAnchor.MiddleLeft;
-            _b.auctionActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _b.auctionActiveTags.verticalOverflow = VerticalWrapMode.Overflow;
-            StretchUi(_b.auctionActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
-        }
-
-        void DressReportScreen()
-        {
-            if (_report == null) return;
-
-            StretchUi(_report.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -52));
-            var rootImg = _report.GetComponent<Image>();
-            if (rootImg != null)
-            {
-                rootImg.sprite = null;
-                rootImg.color = new Color(0, 0, 0, 0);
-                rootImg.raycastTarget = false;
-            }
-
-            EnsureReportLayout();
-            ApplyReportPanelMode();
-        }
-
-        void EnsureReportLayout()
-        {
-            if (_report == null || _b == null || _reportLayoutReady) return;
-
-            // Hide legacy full-screen card layout.
-            var legacyCard = _report.transform.Find("Card");
-            if (legacyCard != null)
-            {
-                // Steal scrolls/buttons before disabling.
-                var legacyBoost = legacyCard.Find("Boosters");
-                var legacyBoosterScroll = legacyBoost != null ? legacyBoost.Find("BoosterScroll") : null;
-                if (legacyBoosterScroll == null && _b.boosterList != null)
-                    legacyBoosterScroll = _b.boosterList.parent != null ? _b.boosterList.parent.parent : null;
-            }
-
-            Transform sidebar = _report.transform.Find("Sidebar");
-            if (sidebar == null)
-            {
-                var go = new GameObject("Sidebar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(_report.transform, false);
-                sidebar = go.transform;
-            }
-            StretchUi(sidebar.GetComponent<RectTransform>(), new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
-            var sideImg = sidebar.GetComponent<Image>();
-            if (sideImg != null) GameUiStyle.ApplyFramedPanel(sideImg);
-
-            // Headings
-            if (_b.reportTitle != null)
-            {
-                _b.reportTitle.transform.SetParent(sidebar, false);
-                StretchUi(_b.reportTitle.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
-                _b.reportTitle.fontSize = 26;
-                _b.reportTitle.fontStyle = FontStyle.Bold;
-                _b.reportTitle.color = GameUiStyle.Accent;
-            }
-            if (_b.boosterHeading != null)
-            {
-                _b.boosterHeading.transform.SetParent(sidebar, false);
-                StretchUi(_b.boosterHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
-                _b.boosterHeading.fontSize = 26;
-                _b.boosterHeading.fontStyle = FontStyle.Bold;
-                _b.boosterHeading.color = GameUiStyle.Accent;
-            }
-            if (_b.reportBody != null)
-                _b.reportBody.gameObject.SetActive(false);
-
-            // Purchase tags scroll
-            Transform purchaseScroll = sidebar.Find("PurchaseScroll");
-            if (purchaseScroll == null)
-            {
-                CreateReportScrollRuntime(sidebar, "PurchaseScroll");
-                purchaseScroll = sidebar.Find("PurchaseScroll");
-            }
-            if (purchaseScroll != null)
-            {
-                StretchUi(purchaseScroll.GetComponent<RectTransform>(), new Vector2(0, 0.14f), new Vector2(1, 0.88f), new Vector2(10, 6), new Vector2(-10, -4));
-                TightenScrollSpacing(purchaseScroll, 8);
-                var content = purchaseScroll.Find("Viewport/Content");
-                if (content != null) _b.purchaseTagList = content;
-            }
-
-            // Booster scroll — migrate from legacy card if needed
-            Transform boosterScroll = sidebar.Find("BoosterScroll");
-            if (boosterScroll == null && legacyCard != null)
-            {
-                var fromCard = legacyCard.Find("Boosters/BoosterScroll");
-                if (fromCard != null)
-                {
-                    fromCard.SetParent(sidebar, false);
-                    boosterScroll = fromCard;
-                }
-            }
-            if (boosterScroll == null && _b.boosterList != null)
-            {
-                var maybe = _b.boosterList.parent != null ? _b.boosterList.parent.parent : null;
-                if (maybe != null && maybe.name.Contains("Booster"))
-                {
-                    maybe.SetParent(sidebar, false);
-                    boosterScroll = maybe;
-                }
-            }
-            if (boosterScroll == null)
-            {
-                CreateReportScrollRuntime(sidebar, "BoosterScroll");
-                boosterScroll = sidebar.Find("BoosterScroll");
-            }
-            if (boosterScroll != null)
-            {
-                StretchUi(boosterScroll.GetComponent<RectTransform>(), new Vector2(0, 0.14f), new Vector2(1, 0.88f), new Vector2(10, 6), new Vector2(-10, -4));
-                TightenScrollSpacing(boosterScroll, 6);
-                var content = boosterScroll.Find("Viewport/Content");
-                if (content != null) _b.boosterList = content;
-                boosterScroll.gameObject.SetActive(false);
-            }
-
-            // Footer buttons
-            if (_b.btnReportPanelToggle == null)
-            {
-                var existing = sidebar.Find("TogglePanel")?.GetComponent<Button>();
-                if (existing != null)
-                {
-                    _b.btnReportPanelToggle = existing;
-                    _b.reportPanelToggleLabel = existing.GetComponentInChildren<Text>();
-                }
-                else
-                {
-                    var toggleGo = new GameObject("TogglePanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-                    toggleGo.transform.SetParent(sidebar, false);
-                    var img = toggleGo.GetComponent<Image>();
-                    GameUiStyle.ApplySecondaryButton(img);
-                    var labelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-                    labelGo.transform.SetParent(toggleGo.transform, false);
-                    StretchUi(labelGo.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, new Vector2(8, 4), new Vector2(-8, -4));
-                    var label = labelGo.GetComponent<Text>();
-                    label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (label.font == null) label.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    label.fontSize = 15;
-                    label.alignment = TextAnchor.MiddleCenter;
-                    label.color = GameUiStyle.TextColor;
-                    _b.btnReportPanelToggle = toggleGo.GetComponent<Button>();
-                    _b.btnReportPanelToggle.targetGraphic = img;
-                    _b.reportPanelToggleLabel = label;
-                }
-            }
-            StretchUi(_b.btnReportPanelToggle.GetComponent<RectTransform>(), new Vector2(0.04f, 0.02f), new Vector2(0.48f, 0.12f), Vector2.zero, Vector2.zero);
-
-            if (_b.btnReportContinue != null)
-            {
-                _b.btnReportContinue.transform.SetParent(sidebar, false);
-                StretchUi(_b.btnReportContinue.GetComponent<RectTransform>(), new Vector2(0.52f, 0.02f), new Vector2(0.96f, 0.12f), Vector2.zero, Vector2.zero);
-            }
-
-            EnsureReportStamp();
-
-            if (legacyCard != null)
-                legacyCard.gameObject.SetActive(false);
-
-            _reportLayoutReady = true;
-        }
-
-        Transform CreateReportScrollRuntime(Transform sidebar, string name)
-        {
-            // Mirror factory scroll; returns Content transform via side-effect on hierarchy.
-            var scrollGo = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(ScrollRect));
-            scrollGo.transform.SetParent(sidebar, false);
-            StretchUi(scrollGo.GetComponent<RectTransform>(), new Vector2(0, 0.14f), new Vector2(1, 0.88f), new Vector2(10, 6), new Vector2(-10, -4));
-            scrollGo.GetComponent<Image>().sprite = null;
-            scrollGo.GetComponent<Image>().color = new Color(0.15f, 0.12f, 0.1f, 0.06f);
-            var scroll = scrollGo.GetComponent<ScrollRect>();
-            scroll.horizontal = false;
-
-            var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
-            viewport.transform.SetParent(scrollGo.transform, false);
-            StretchUi(viewport.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            viewport.GetComponent<Image>().sprite = null;
-            viewport.GetComponent<Image>().color = new Color(1, 1, 1, 0.01f);
-            viewport.GetComponent<Mask>().showMaskGraphic = false;
-
-            var content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-            content.transform.SetParent(viewport.transform, false);
-            var crt = content.GetComponent<RectTransform>();
-            crt.anchorMin = new Vector2(0, 1);
-            crt.anchorMax = new Vector2(1, 1);
-            crt.pivot = new Vector2(0.5f, 1);
-            crt.sizeDelta = Vector2.zero;
-            var vlg = content.GetComponent<VerticalLayoutGroup>();
-            vlg.spacing = 8;
-            vlg.padding = new RectOffset(4, 4, 4, 4);
-            vlg.childControlHeight = true;
-            vlg.childControlWidth = true;
-            vlg.childForceExpandHeight = false;
-            vlg.childForceExpandWidth = true;
-            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            scroll.viewport = viewport.GetComponent<RectTransform>();
-            scroll.content = crt;
-            return crt;
-        }
-
-        void EnsureReportStamp()
-        {
-            if (_report == null || _b == null) return;
-            Transform stamp = _report.transform.Find("ClientStamp");
-            if (stamp == null)
-            {
-                var go = new GameObject("ClientStamp", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(_report.transform, false);
-                stamp = go.transform;
-            }
-            StretchUi(stamp.GetComponent<RectTransform>(), new Vector2(0.03f, 0.04f), new Vector2(0.28f, 0.28f), Vector2.zero, Vector2.zero);
-            var img = stamp.GetComponent<Image>();
-            if (img != null) GameUiStyle.ApplyFramedPanel(img);
-            _b.reportStamp = stamp.gameObject;
-
-            if (_b.reportStampLabel == null)
-            {
-                var t = stamp.Find("StampLabel")?.GetComponent<Text>();
-                if (t == null)
-                {
-                    var tGo = new GameObject("StampLabel", typeof(RectTransform), typeof(Text));
-                    tGo.transform.SetParent(stamp, false);
-                    t = tGo.GetComponent<Text>();
-                    t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                }
-                _b.reportStampLabel = t;
-            }
-            _b.reportStampLabel.fontSize = 22;
-            _b.reportStampLabel.fontStyle = FontStyle.Bold;
-            _b.reportStampLabel.alignment = TextAnchor.MiddleCenter;
-            _b.reportStampLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
-            StretchUi(_b.reportStampLabel.rectTransform, new Vector2(0, 0.38f), Vector2.one, new Vector2(12, 0), new Vector2(-12, -10));
-
-            if (_b.reportStampDetail == null)
-            {
-                var t = stamp.Find("StampDetail")?.GetComponent<Text>();
-                if (t == null)
-                {
-                    var tGo = new GameObject("StampDetail", typeof(RectTransform), typeof(Text));
-                    tGo.transform.SetParent(stamp, false);
-                    t = tGo.GetComponent<Text>();
-                    t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (t.font == null) t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                }
-                _b.reportStampDetail = t;
-            }
-            _b.reportStampDetail.fontSize = 14;
-            _b.reportStampDetail.alignment = TextAnchor.UpperCenter;
-            _b.reportStampDetail.horizontalOverflow = HorizontalWrapMode.Wrap;
-            StretchUi(_b.reportStampDetail.rectTransform, new Vector2(0, 0.08f), new Vector2(1, 0.4f), new Vector2(12, 4), new Vector2(-12, 0));
-        }
-
         void ApplyReportPanelMode()
         {
             if (_b == null || _report == null) return;
@@ -1057,13 +240,11 @@ namespace MasterBidder.UI
             if (_b.reportTitle != null)
             {
                 _b.reportTitle.text = LocaleService.T("report.tagsHeading");
-                _b.reportTitle.fontSize = 26;
                 _b.reportTitle.gameObject.SetActive(!_reportShowBoosters);
             }
             if (_b.boosterHeading != null)
             {
                 _b.boosterHeading.text = LocaleService.T("report.boosters");
-                _b.boosterHeading.fontSize = 26;
                 _b.boosterHeading.gameObject.SetActive(_reportShowBoosters);
             }
             if (_b.reportPanelToggleLabel != null)
@@ -1078,177 +259,6 @@ namespace MasterBidder.UI
             ApplyReportPanelMode();
         }
 
-        void DressTutorialHint()
-        {
-            if (_tutorial == null) return;
-
-            var rt = _tutorial.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                // Sit above Skip/Buy so the coach never covers the taught action.
-                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.2f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.sizeDelta = new Vector2(520f, 88f);
-            }
-
-            var img = _tutorial.GetComponent<Image>();
-            if (img != null)
-            {
-                GameUiStyle.ApplySliced(img, GameUiSprites.ToastInfo, GameUiStyle.SpriteReady);
-                // Match MVP pointer-events:none — toast must not steal clicks from action buttons.
-                img.raycastTarget = false;
-            }
-
-            if (_b.tutorialText != null)
-            {
-                _b.tutorialText.fontSize = 15;
-                _b.tutorialText.fontStyle = FontStyle.Bold;
-                _b.tutorialText.color = GameUiStyle.TextColor;
-                _b.tutorialText.alignment = TextAnchor.MiddleCenter;
-                _b.tutorialText.horizontalOverflow = HorizontalWrapMode.Wrap;
-                _b.tutorialText.raycastTarget = false;
-                StretchUi(_b.tutorialText.rectTransform, Vector2.zero, Vector2.one, new Vector2(28, 12), new Vector2(-28, -12));
-            }
-        }
-
-        void DressCollectorPopup()
-        {
-            if (_collectorPopup == null) return;
-
-            var rootImg = _collectorPopup.GetComponent<Image>();
-            if (rootImg != null)
-            {
-                rootImg.sprite = null;
-                rootImg.color = GameUiStyle.Overlay;
-            }
-
-            var card = _collectorPopup.transform.Find("Card");
-            if (card == null) return;
-
-            var cardRt = card.GetComponent<RectTransform>();
-            if (cardRt != null)
-            {
-                cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
-                cardRt.pivot = new Vector2(0.5f, 0.5f);
-                cardRt.anchoredPosition = Vector2.zero;
-                cardRt.sizeDelta = new Vector2(720f, 420f);
-            }
-
-            var cardImg = card.GetComponent<Image>();
-            if (cardImg != null) GameUiStyle.ApplyFramedPanel(cardImg);
-
-            // Header: compact portrait + identity in one band.
-            if (_b.popupPortrait != null)
-            {
-                StretchUi(_b.popupPortrait.rectTransform, new Vector2(0, 0.7f), new Vector2(0.22f, 0.96f), new Vector2(24, -16), new Vector2(-8, -14));
-                _b.popupPortrait.preserveAspect = true;
-                _b.popupPortrait.transform.SetSiblingIndex(1);
-            }
-
-            if (_b.popupName != null)
-            {
-                _b.popupName.fontSize = 26;
-                _b.popupName.fontStyle = FontStyle.Bold;
-                _b.popupName.color = GameUiStyle.Accent;
-                _b.popupName.alignment = TextAnchor.LowerLeft;
-                StretchUi(_b.popupName.rectTransform, new Vector2(0.24f, 0.84f), new Vector2(1, 0.96f), new Vector2(8, 0), new Vector2(-24, -14));
-            }
-
-            if (_b.popupTagline != null)
-            {
-                _b.popupTagline.fontSize = 14;
-                _b.popupTagline.color = GameUiStyle.TextColor;
-                _b.popupTagline.alignment = TextAnchor.UpperLeft;
-                _b.popupTagline.lineSpacing = 1.1f;
-                _b.popupTagline.horizontalOverflow = HorizontalWrapMode.Wrap;
-                StretchUi(_b.popupTagline.rectTransform, new Vector2(0.24f, 0.7f), new Vector2(1, 0.84f), new Vector2(8, 0), new Vector2(-24, 0));
-            }
-
-            // Speech fully below the portrait row — never clipped by the face.
-            EnsurePopupPlate(card, "SpeechPlate", _b.popupSpeech,
-                new Vector2(0, 0.42f), new Vector2(1, 0.68f), new Vector2(22, 4), new Vector2(-22, -4));
-            if (_b.popupSpeech != null)
-            {
-                _b.popupSpeech.fontSize = 15;
-                _b.popupSpeech.fontStyle = FontStyle.Italic;
-                _b.popupSpeech.color = GameUiStyle.TextColor;
-                _b.popupSpeech.alignment = TextAnchor.UpperLeft;
-                _b.popupSpeech.horizontalOverflow = HorizontalWrapMode.Wrap;
-                _b.popupSpeech.lineSpacing = 1.15f;
-                StretchUi(_b.popupSpeech.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 10), new Vector2(-14, -10));
-            }
-
-            EnsurePopupPlate(card, "TagsPlate", _b.popupTags,
-                new Vector2(0, 0.28f), new Vector2(1, 0.42f), new Vector2(22, 2), new Vector2(-22, -2));
-            if (_b.popupTags != null)
-            {
-                _b.popupTags.fontSize = 17;
-                _b.popupTags.fontStyle = FontStyle.Bold;
-                _b.popupTags.color = GameUiStyle.Accent;
-                _b.popupTags.alignment = TextAnchor.MiddleLeft;
-                _b.popupTags.horizontalOverflow = HorizontalWrapMode.Wrap;
-                StretchUi(_b.popupTags.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 4), new Vector2(-14, -4));
-            }
-
-            if (_b.popupWarning != null)
-            {
-                _b.popupWarning.fontSize = 13;
-                _b.popupWarning.color = GameUiStyle.Bad;
-                _b.popupWarning.alignment = TextAnchor.MiddleLeft;
-                StretchUi(_b.popupWarning.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.28f), new Vector2(28, 0), new Vector2(-28, 0));
-            }
-
-            if (_b.btnPopupStart != null)
-                StretchUi(_b.btnPopupStart.GetComponent<RectTransform>(), new Vector2(0.2f, 0.04f), new Vector2(0.8f, 0.14f), Vector2.zero, Vector2.zero);
-        }
-
-        static void EnsurePopupPlate(Transform card, string plateName, Text content,
-            Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)
-        {
-            if (card == null || content == null) return;
-
-            Transform plate = card.Find(plateName);
-            if (plate == null)
-            {
-                var go = new GameObject(plateName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                go.transform.SetParent(card, false);
-                plate = go.transform;
-            }
-
-            if (content.transform.parent != plate)
-                content.transform.SetParent(plate, false);
-
-            StretchUi(plate.GetComponent<RectTransform>(), aMin, aMax, offMin, offMax);
-            var img = plate.GetComponent<Image>();
-            if (img != null) GameUiStyle.ApplyCard(img);
-        }
-
-        static void DressFixedBar(Transform bar, Vector2 anchor, Vector2 anchoredPos, Vector2 size, Sprite sprite)
-        {
-            if (bar == null) return;
-            var rt = bar.GetComponent<RectTransform>();
-            rt.anchorMin = anchor;
-            rt.anchorMax = anchor;
-            rt.pivot = anchor;
-            rt.anchoredPosition = anchoredPos;
-            rt.sizeDelta = size;
-            var img = bar.GetComponent<Image>();
-            if (img != null)
-                GameUiStyle.ApplySliced(img, sprite, GameUiStyle.SpriteReady);
-        }
-
-        static void TightenScrollSpacing(Transform scrollRoot, int spacing)
-        {
-            if (scrollRoot == null) return;
-            var content = scrollRoot.Find("Viewport/Content");
-            if (content == null) return;
-            var vlg = content.GetComponent<VerticalLayoutGroup>();
-            if (vlg == null) return;
-            vlg.spacing = spacing;
-            vlg.padding = new RectOffset(4, 4, 4, 4);
-        }
-
         static void StretchUi(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 offMin, Vector2 offMax)
         {
             if (rt == null) return;
@@ -1256,6 +266,29 @@ namespace MasterBidder.UI
             rt.anchorMax = aMax;
             rt.offsetMin = offMin;
             rt.offsetMax = offMax;
+        }
+
+        static GameObject SpawnUiWidget(GameObject prefab, Transform parent, System.Func<GameObject> build)
+        {
+            GameObject go = null;
+            if (prefab != null)
+            {
+                go = Object.Instantiate(prefab, parent);
+                // Legacy Text prefabs lose TMP field wiring after migration.
+                if (go.GetComponentInChildren<TextMeshProUGUI>(true) == null)
+                {
+                    Object.Destroy(go);
+                    go = null;
+                }
+            }
+
+            if (go == null)
+            {
+                go = build();
+                go.transform.SetParent(parent, false);
+            }
+
+            return go;
         }
 
         void ResolvePrefabsIfNeeded()
@@ -1270,6 +303,8 @@ namespace MasterBidder.UI
                 upgradeRowPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ui + "/widgets/UpgradeRow.prefab");
             if (boosterRowPrefab == null)
                 boosterRowPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ui + "/widgets/BoosterRow.prefab");
+            if (purchaseTagPrefab == null)
+                purchaseTagPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(ui + "/widgets/PurchaseTag.prefab");
 #endif
         }
 
@@ -1353,7 +388,7 @@ namespace MasterBidder.UI
 
             // Shared Chrome: title + effects + day/capital. Same on every gameplay screen.
             var chrome = EffectsChromeParent();
-            EnsureBriefChromeBars();
+            ResolveChromeBindings();
 
             var chromeEffects = chrome != null ? chrome.Find("EffectsHud") : null;
             bool gameplay = screen == GameScreen.Brief || screen == GameScreen.Auction
@@ -1467,7 +502,7 @@ namespace MasterBidder.UI
             }
         }
 
-        static void SetToastActive(Text label, bool active)
+        static void SetToastActive(TextMeshProUGUI label, bool active)
         {
             if (label == null) return;
             var root = label.transform.parent != null &&
@@ -1477,7 +512,7 @@ namespace MasterBidder.UI
             root.SetActive(active);
         }
 
-        static void StyleResultToast(Text label, string result)
+        static void StyleResultToast(TextMeshProUGUI label, string result)
         {
             if (label == null) return;
             var bg = label.transform.parent != null ? label.transform.parent.GetComponent<Image>() : null;
@@ -1540,7 +575,6 @@ namespace MasterBidder.UI
         void RefreshBrief(GameSession session)
         {
             if (_b?.briefDay == null) return;
-            EnsureBriefLayout();
 
             if (_b.enterLabel != null) _b.enterLabel.text = LocaleService.T("brief.enterHall");
             if (_b.resetLabel != null) _b.resetLabel.text = LocaleService.T("brief.resetProgress");
@@ -1643,21 +677,11 @@ namespace MasterBidder.UI
                 if (c == null) continue;
                 int progress = session.State.BranchProgress.TryGetValue(c.collectorId, out int p) ? p : 0;
                 bool isSelected = c.collectorId == selected;
-                var go = collectorCardPrefab != null
-                    ? Instantiate(collectorCardPrefab, _b.collectorList)
-                    : GameUiHierarchyFactory.BuildCollectorCard();
-                if (collectorCardPrefab == null)
-                    go.transform.SetParent(_b.collectorList, false);
+                var go = SpawnUiWidget(collectorCardPrefab, _b.collectorList, GameUiHierarchyFactory.BuildCollectorCard);
                 go.name = "C_" + c.collectorId;
                 var view = go.GetComponent<CollectorCardView>();
                 if (view == null) continue;
-
-                var le = go.GetComponent<LayoutElement>();
-                if (le != null)
-                {
-                    le.minHeight = 118;
-                    le.preferredHeight = 118;
-                }
+                GameUiStyle.ApplyWidgetTypography(view);
 
                 if (view.background != null)
                 {
@@ -1670,27 +694,15 @@ namespace MasterBidder.UI
                 }
 
                 if (view.portraitRoot != null)
-                {
-                    var prt = view.portraitRoot.GetComponent<RectTransform>();
-                    if (prt != null)
-                        StretchUi(prt, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(6, 6), new Vector2(-2, -6));
                     view.portraitRoot.SetActive(c.portrait != null);
-                }
                 if (c.portrait != null && view.portrait != null)
                 {
                     view.portrait.sprite = c.portrait;
                     view.portrait.color = Color.white;
-                    view.portrait.preserveAspect = true;
                 }
 
                 if (view.label != null)
-                {
-                    view.label.fontSize = 15;
-                    view.label.lineSpacing = 1.05f;
                     view.label.text = $"{c.nameRu}\n{LocaleService.T("brief.mission")} {progress + 1}/{c.LadderLength}";
-                    view.label.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    StretchUi(view.label.rectTransform, new Vector2(0.3f, 0), Vector2.one, new Vector2(8, 8), new Vector2(-10, -8));
-                }
 
                 if (view.button != null)
                 {
@@ -1712,21 +724,11 @@ namespace MasterBidder.UI
             {
                 bool owned = session.State.Upgrades.Contains(u.Id);
                 bool canBuy = !owned && session.State.Capital >= u.Cost;
-                var go = upgradeRowPrefab != null
-                    ? Instantiate(upgradeRowPrefab, _b.upgradeList)
-                    : GameUiHierarchyFactory.BuildUpgradeRow();
-                if (upgradeRowPrefab == null)
-                    go.transform.SetParent(_b.upgradeList, false);
+                var go = SpawnUiWidget(upgradeRowPrefab, _b.upgradeList, GameUiHierarchyFactory.BuildUpgradeRow);
                 go.name = "U_" + u.Id;
                 var view = go.GetComponent<UpgradeRowView>();
                 if (view == null) continue;
-
-                var le = go.GetComponent<LayoutElement>();
-                if (le != null)
-                {
-                    le.minHeight = 64;
-                    le.preferredHeight = 64;
-                }
+                GameUiStyle.ApplyWidgetTypography(view);
 
                 EnsureRowIcon(view, go.transform, 48f);
                 if (view.icon != null)
@@ -1738,23 +740,12 @@ namespace MasterBidder.UI
 
                 if (view.label != null)
                 {
-                    view.label.fontSize = 13;
-                    view.label.lineSpacing = 1.05f;
                     view.label.text = $"{u.NameRu} — {u.Cost:N0} ₽\n{u.DescRu}";
                     view.label.color = owned ? GameUiStyle.Dim : GameUiStyle.TextColor;
-                    view.label.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    if (view.icon != null)
-                    {
-                        var lrt = view.label.rectTransform;
-                        lrt.offsetMin = new Vector2(64f, lrt.offsetMin.y);
-                    }
                 }
 
                 if (view.buyLabel != null)
-                {
-                    view.buyLabel.fontSize = 14;
                     view.buyLabel.text = owned ? LocaleService.T("brief.owned") : LocaleService.T("brief.buy");
-                }
                 if (view.buyButton != null)
                 {
                     view.buyButton.interactable = canBuy;
@@ -1771,7 +762,6 @@ namespace MasterBidder.UI
         void RefreshAuction(GameSession session)
         {
             if (_b?.aucHud == null) return;
-            EnsureAuctionActiveClientPanel();
             var state = session?.State;
             if (state == null) return;
 
@@ -1867,9 +857,10 @@ namespace MasterBidder.UI
                                 || (!string.IsNullOrEmpty(state.FreeRevealedField) && state.FreeRevealedField == id);
                 _b.fieldValues[i].text = revealed ? raw : AuctionRules.MaskValue(raw);
                 _b.fieldValues[i].color = revealed ? GameUiStyle.TextColor : GameUiStyle.Dim;
-                _b.fieldValues[i].fontStyle = revealed ? FontStyle.Bold : FontStyle.Normal;
-                _b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
-                _b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
+                if (revealed)
+                    GameUiStyle.ApplyUiFont(_b.fieldValues[i], bold: true);
+                else
+                    GameUiStyle.ApplyUiFont(_b.fieldValues[i]);
 
                 bool isTarget = order != null && IsOrderTarget(order, id);
                 if (isTarget)
@@ -1913,7 +904,6 @@ namespace MasterBidder.UI
         void RefreshReport(GameSession session)
         {
             if (_b == null) return;
-            EnsureReportLayout();
 
             var state = session?.State;
             var r = state?.PendingResult;
@@ -1946,7 +936,6 @@ namespace MasterBidder.UI
                 if (r.SavedByCreditLine) line += "\n" + LocaleService.T("report.creditLine");
                 line += $"\n{LocaleService.T("report.commission")} {r.TotalCommission:N0} ₽";
                 _b.reportStampDetail.text = line;
-                _b.reportStampDetail.color = GameUiStyle.TextColor;
             }
 
             RebuildPurchaseTags(r);
@@ -1955,13 +944,6 @@ namespace MasterBidder.UI
             RebuildBoosterRows(session, showBoosters);
             if (_b.btnReportPanelToggle != null)
                 _b.btnReportPanelToggle.gameObject.SetActive(showBoosters);
-            if (_b.btnReportContinue != null)
-            {
-                StretchUi(_b.btnReportContinue.GetComponent<RectTransform>(),
-                    showBoosters ? new Vector2(0.52f, 0.02f) : new Vector2(0.04f, 0.02f),
-                    new Vector2(0.96f, 0.12f),
-                    Vector2.zero, Vector2.zero);
-            }
             ApplyReportPanelMode();
 
             if (_b.reportContinueLabel != null)
@@ -1979,11 +961,11 @@ namespace MasterBidder.UI
 
             if (r.PurchaseDetails == null || r.PurchaseDetails.Length == 0)
             {
-                var empty = GameUiHierarchyFactory.BuildPurchaseTag();
-                empty.transform.SetParent(_b.purchaseTagList, false);
+                var empty = SpawnUiWidget(purchaseTagPrefab, _b.purchaseTagList, GameUiHierarchyFactory.BuildPurchaseTag);
                 var view = empty.GetComponent<PurchaseTagView>();
                 if (view != null)
                 {
+                    GameUiStyle.ApplyWidgetTypography(view);
                     if (view.title != null) view.title.text = LocaleService.T("report.noPurchases");
                     if (view.meta != null) view.meta.text = "";
                     if (view.stamp != null) view.stamp.text = "";
@@ -1995,28 +977,25 @@ namespace MasterBidder.UI
             for (int i = 0; i < r.PurchaseDetails.Length; i++)
             {
                 var d = r.PurchaseDetails[i];
-                var go = GameUiHierarchyFactory.BuildPurchaseTag();
-                go.transform.SetParent(_b.purchaseTagList, false);
+                var go = SpawnUiWidget(purchaseTagPrefab, _b.purchaseTagList, GameUiHierarchyFactory.BuildPurchaseTag);
                 go.name = "Tag_" + i;
                 var view = go.GetComponent<PurchaseTagView>();
                 if (view == null) continue;
+                GameUiStyle.ApplyWidgetTypography(view);
 
                 if (view.title != null)
                 {
-                    view.title.fontSize = 16;
                     view.title.text = d.TitleRu ?? "";
                     view.title.color = GameUiStyle.TextColor;
                 }
                 if (view.meta != null)
                 {
-                    view.meta.fontSize = 13;
                     view.meta.text = $"{d.Price:N0} ₽  ·  {LocaleService.T("report.commission")} {d.Amount:N0} ₽";
                     if (!string.IsNullOrEmpty(d.Reason))
                         view.meta.text += "\n" + d.Reason;
                 }
                 if (view.stamp != null)
                 {
-                    view.stamp.fontSize = 14;
                     view.stamp.text = d.Matched
                         ? LocaleService.T("report.correct")
                         : LocaleService.T("report.incorrect");
@@ -2024,12 +1003,12 @@ namespace MasterBidder.UI
                 }
                 if (view.background != null)
                 {
-                    view.background.color = d.Matched
-                        ? new Color(GameUiStyle.Good.r, GameUiStyle.Good.g, GameUiStyle.Good.b, 0.12f)
-                        : new Color(GameUiStyle.Bad.r, GameUiStyle.Bad.g, GameUiStyle.Bad.b, 0.1f);
-                    // Keep card sprite readable
                     if (view.background.sprite != null)
                         view.background.color = d.Matched ? GameUiStyle.SelectedTint : GameUiStyle.SpriteReady;
+                    else
+                        view.background.color = d.Matched
+                            ? new Color(GameUiStyle.Good.r, GameUiStyle.Good.g, GameUiStyle.Good.b, 0.12f)
+                            : new Color(GameUiStyle.Bad.r, GameUiStyle.Bad.g, GameUiStyle.Bad.b, 0.1f);
                 }
 
                 _purchaseTags.Add(go);
@@ -2056,21 +1035,11 @@ namespace MasterBidder.UI
                               && session.State.PendingBoosters.Count < CampaignConfig.GetMaxDailyBoosters(
                                   session.State.Upgrades.Contains("personal-secretary"));
 
-                var go = boosterRowPrefab != null
-                    ? Instantiate(boosterRowPrefab, _b.boosterList)
-                    : GameUiHierarchyFactory.BuildBoosterRow();
-                if (boosterRowPrefab == null)
-                    go.transform.SetParent(_b.boosterList, false);
+                var go = SpawnUiWidget(boosterRowPrefab, _b.boosterList, GameUiHierarchyFactory.BuildBoosterRow);
                 go.name = "B_" + id;
                 var view = go.GetComponent<BoosterRowView>();
                 if (view == null) continue;
-
-                var le = go.GetComponent<LayoutElement>();
-                if (le != null)
-                {
-                    le.minHeight = 76;
-                    le.preferredHeight = 76;
-                }
+                GameUiStyle.ApplyWidgetTypography(view);
 
                 EnsureRowIcon(view, go.transform, 56f);
                 if (view.icon != null)
@@ -2081,15 +1050,7 @@ namespace MasterBidder.UI
                 }
 
                 if (view.label != null)
-                {
                     view.label.text = $"{def.NameRu} — {cost:N0} ₽\n{def.DescRu}";
-                    view.label.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    if (view.icon != null)
-                    {
-                        var lrt = view.label.rectTransform;
-                        lrt.offsetMin = new Vector2(72f, lrt.offsetMin.y);
-                    }
-                }
 
                 if (view.buyLabel != null)
                     view.buyLabel.text = owned ? LocaleService.T("report.ownedBooster") : LocaleService.T("report.buyBooster");
@@ -2156,7 +1117,8 @@ namespace MasterBidder.UI
             return chrome;
         }
 
-        void EnsureEffectsHud()
+        /// <summary>Bind effects HUD refs from the prefab; create only if missing.</summary>
+        void ResolveEffectsHudRefs()
         {
             if (_b == null) return;
             var chrome = EffectsChromeParent();
@@ -2172,13 +1134,10 @@ namespace MasterBidder.UI
                     Destroy(staleTip.gameObject);
             }
 
-            if (_b.chromeTitle != null)
-                StretchUi(_b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(28, 0), new Vector2(-8, 0));
-
             var bar = chrome.Find("EffectsHud");
             if (bar == null)
             {
-                var go = new GameObject("EffectsHud", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup));
+                var go = new GameObject("EffectsHud", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(RectMask2D));
                 go.transform.SetParent(chrome, false);
                 go.transform.SetSiblingIndex(Mathf.Min(1, chrome.childCount));
                 StretchUi(go.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.76f, 0.88f), Vector2.zero, Vector2.zero);
@@ -2186,8 +1145,6 @@ namespace MasterBidder.UI
                 bg.sprite = null;
                 bg.color = new Color(1f, 1f, 1f, 0f);
                 bg.raycastTarget = false;
-                if (go.GetComponent<RectMask2D>() == null)
-                    go.AddComponent<RectMask2D>();
                 var hlg = go.GetComponent<HorizontalLayoutGroup>();
                 hlg.padding = new RectOffset(4, 4, 0, 0);
                 hlg.spacing = 8;
@@ -2198,40 +1155,18 @@ namespace MasterBidder.UI
                 hlg.childForceExpandHeight = false;
                 bar = go.transform;
             }
-            else
-            {
-                StretchUi(bar.GetComponent<RectTransform>(), new Vector2(0.28f, 0.12f), new Vector2(0.76f, 0.88f), Vector2.zero, Vector2.zero);
-                var bg = bar.GetComponent<Image>();
-                if (bg != null)
-                {
-                    bg.sprite = null;
-                    bg.color = new Color(1f, 1f, 1f, 0f);
-                    bg.raycastTarget = false;
-                }
-                if (bar.GetComponent<RectMask2D>() == null)
-                    bar.gameObject.AddComponent<RectMask2D>();
-                var hlg = bar.GetComponent<HorizontalLayoutGroup>();
-                if (hlg != null)
-                {
-                    hlg.childForceExpandHeight = false;
-                    hlg.childControlHeight = true;
-                    hlg.childAlignment = TextAnchor.MiddleRight;
-                }
-            }
 
-            if (_b.effectsUpgrades == null || _b.effectsUpgrades.parent != bar)
+            if (_b.effectsUpgrades == null)
             {
                 var t = bar.Find("Upgrades");
                 _b.effectsUpgrades = t != null ? t : CreateEffectsRowRuntime(bar, "Upgrades");
             }
-            TuneEffectsRow(_b.effectsUpgrades);
 
-            if (_b.effectsBoosters == null || _b.effectsBoosters.parent != bar)
+            if (_b.effectsBoosters == null)
             {
                 var t = bar.Find("Boosters");
                 _b.effectsBoosters = t != null ? t : CreateEffectsRowRuntime(bar, "Boosters");
             }
-            TuneEffectsRow(_b.effectsBoosters);
 
             if (_b.effectTooltip == null)
             {
@@ -2239,74 +1174,11 @@ namespace MasterBidder.UI
                 if (tipT != null)
                 {
                     _b.effectTooltip = tipT.gameObject;
-                    _b.effectTooltipTitle = tipT.Find("Title")?.GetComponent<Text>();
-                    _b.effectTooltipBody = tipT.Find("Body")?.GetComponent<Text>();
+                    if (_b.effectTooltipTitle == null)
+                        _b.effectTooltipTitle = tipT.Find("Title")?.GetComponent<TextMeshProUGUI>();
+                    if (_b.effectTooltipBody == null)
+                        _b.effectTooltipBody = tipT.Find("Body")?.GetComponent<TextMeshProUGUI>();
                 }
-                else
-                {
-                    var tip = new GameObject("EffectTooltip", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
-                    tip.transform.SetParent(_b.transform, false);
-                    var tipRt = tip.GetComponent<RectTransform>();
-                    tipRt.anchorMin = tipRt.anchorMax = new Vector2(0.5f, 0.5f);
-                    tipRt.pivot = new Vector2(0.5f, 1f);
-                    tipRt.sizeDelta = new Vector2(240f, 110f);
-                    GameUiStyle.ApplyCard(tip.GetComponent<Image>());
-                    tip.GetComponent<Image>().raycastTarget = false;
-                    var cg = tip.GetComponent<CanvasGroup>();
-                    cg.blocksRaycasts = false;
-                    cg.interactable = false;
-
-                    var title = new GameObject("Title", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
-                    title.transform.SetParent(tip.transform, false);
-                    StretchUi(title.rectTransform, new Vector2(0, 0.62f), Vector2.one, new Vector2(12, -8), new Vector2(-12, -6));
-                    title.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (title.font == null) title.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    title.fontSize = 14;
-                    title.fontStyle = FontStyle.Bold;
-                    title.color = GameUiStyle.Accent;
-                    title.alignment = TextAnchor.UpperLeft;
-                    title.raycastTarget = false;
-
-                    var body = new GameObject("Body", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
-                    body.transform.SetParent(tip.transform, false);
-                    StretchUi(body.rectTransform, new Vector2(0, 0), new Vector2(1, 0.62f), new Vector2(12, 8), new Vector2(-12, 0));
-                    body.font = title.font;
-                    body.fontSize = 12;
-                    body.color = GameUiStyle.TextColor;
-                    body.alignment = TextAnchor.UpperLeft;
-                    body.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    body.verticalOverflow = VerticalWrapMode.Overflow;
-                    body.raycastTarget = false;
-
-                    tip.SetActive(false);
-                    _b.effectTooltip = tip;
-                    _b.effectTooltipTitle = title;
-                    _b.effectTooltipBody = body;
-                }
-            }
-
-            if (_b.effectTooltip != null)
-                _b.effectTooltip.transform.SetAsLastSibling();
-        }
-
-        static void TuneEffectsRow(Transform row)
-        {
-            if (row == null) return;
-            var h = row.GetComponent<HorizontalLayoutGroup>();
-            if (h != null)
-            {
-                h.spacing = 4;
-                h.childAlignment = TextAnchor.MiddleCenter;
-                h.childControlWidth = true;
-                h.childControlHeight = true;
-                h.childForceExpandWidth = false;
-                h.childForceExpandHeight = false;
-            }
-            var le = row.GetComponent<LayoutElement>();
-            if (le != null)
-            {
-                le.minHeight = le.preferredHeight = 28;
-                le.flexibleHeight = 0;
             }
         }
 
@@ -2332,7 +1204,7 @@ namespace MasterBidder.UI
 
         void RebuildActiveEffects(GameState state)
         {
-            EnsureEffectsHud();
+            ResolveEffectsHudRefs();
             _effectIcons.Clear();
             HideEffectTooltip();
             if (state == null || _b == null) return;

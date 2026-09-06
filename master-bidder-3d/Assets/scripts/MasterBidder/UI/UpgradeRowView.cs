@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,8 +8,8 @@ namespace MasterBidder.UI
     {
         public Image background;
         public Image icon;
-        public Text label;
+        public TextMeshProUGUI label;
         public Button buyButton;
-        public Text buyLabel;
+        public TextMeshProUGUI buyLabel;
     }
 }

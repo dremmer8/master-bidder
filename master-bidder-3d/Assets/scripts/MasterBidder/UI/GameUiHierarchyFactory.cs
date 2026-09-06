@@ -1,11 +1,15 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace MasterBidder.UI
 {
     /// <summary>
-    /// Builds the default Master Bidder uGUI hierarchy.
-    /// Used by the Editor prefab generator and as a runtime fallback when prefabs are missing.
+    /// Builds the default Master Bidder uGUI hierarchy for prefab generation
+    /// (and as a runtime fallback when prefabs are missing).
+    /// Defaults for fonts, sizes, spacing, and anchors are baked here once;
+    /// after Generate UI Prefabs, edit those values on the assets — GameUiShell
+    /// will not re-apply layout or typography at runtime.
     /// </summary>
     public static class GameUiHierarchyFactory
     {
@@ -28,8 +32,8 @@ namespace MasterBidder.UI
 
             var t = CreateText("T", card.transform, "", 15, TextAnchor.MiddleLeft);
             Stretch(t.rectTransform, new Vector2(0.3f, 0), Vector2.one, new Vector2(8, 8), new Vector2(-10, -8));
-            t.horizontalOverflow = HorizontalWrapMode.Wrap;
-            t.lineSpacing = 1.05f;
+            t.enableWordWrapping = true;
+            t.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.05f);
 
             var view = card.AddComponent<CollectorCardView>();
             view.background = card.GetComponent<Image>();
@@ -53,8 +57,8 @@ namespace MasterBidder.UI
 
             var t = CreateText("T", row.transform, "", 13, TextAnchor.MiddleLeft);
             Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.72f, 1), new Vector2(64, 4), new Vector2(-4, -4));
-            t.horizontalOverflow = HorizontalWrapMode.Wrap;
-            t.lineSpacing = 1.05f;
+            t.enableWordWrapping = true;
+            t.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.05f);
 
             var buy = CreatePrimaryButton("B", row.transform, out var bl);
             Place(buy, 0.74f, 0.18f, 0.97f, 0.82f);
@@ -82,7 +86,7 @@ namespace MasterBidder.UI
 
             var t = CreateText("T", row.transform, "", 11, TextAnchor.MiddleLeft);
             Stretch(t.rectTransform, new Vector2(0, 0), new Vector2(0.7f, 1), new Vector2(72, 2), new Vector2(-4, -2));
-            t.horizontalOverflow = HorizontalWrapMode.Wrap;
+            t.enableWordWrapping = true;
 
             var buy = CreatePrimaryButton("Buy", row.transform, out var bl);
             Place(buy, 0.72f, 0.2f, 0.96f, 0.8f);
@@ -144,17 +148,16 @@ namespace MasterBidder.UI
         {
             var bar = CreatePanel("Chrome", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -52), Vector2.zero);
             GameUiStyle.ApplySliced(bar.GetComponent<Image>(), GameUiSprites.Banner, GameUiStyle.SpriteReady);
-            b.chromeTitle = CreateText("Title", bar.transform, "", 16, TextAnchor.MiddleLeft);
+            b.chromeTitle = CreateDisplayText("Title", bar.transform, "", 16, TextAnchor.MiddleLeft);
             Stretch(b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(28, 0), new Vector2(-8, 0));
-            b.chromeTitle.fontStyle = FontStyle.Bold;
 
             BuildEffectsHud(bar.transform, parent, b);
 
-            var langGo = new GameObject("Lang", typeof(RectTransform), typeof(Image), typeof(Dropdown));
+            var langGo = new GameObject("Lang", typeof(RectTransform), typeof(Image), typeof(TMP_Dropdown));
             langGo.transform.SetParent(bar.transform, false);
             Stretch(langGo.GetComponent<RectTransform>(), new Vector2(0.78f, 0.12f), new Vector2(0.98f, 0.88f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplySecondaryButton(langGo.GetComponent<Image>());
-            b.langDropdown = langGo.GetComponent<Dropdown>();
+            b.langDropdown = langGo.GetComponent<TMP_Dropdown>();
             b.langDropdown.targetGraphic = langGo.GetComponent<Image>();
             var caption = CreateText("Caption", langGo.transform, "RU", 14, TextAnchor.MiddleCenter);
             Stretch(caption.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -175,8 +178,8 @@ namespace MasterBidder.UI
             b.langDropdown.template = template.GetComponent<RectTransform>();
             b.langDropdown.itemText = itemLabel;
             b.langDropdown.options.Clear();
-            b.langDropdown.options.Add(new Dropdown.OptionData("Русский"));
-            b.langDropdown.options.Add(new Dropdown.OptionData("English"));
+            b.langDropdown.options.Add(new TMP_Dropdown.OptionData("Русский"));
+            b.langDropdown.options.Add(new TMP_Dropdown.OptionData("English"));
         }
 
         static GameObject BuildIntro(Transform parent, GameUiBindings b)
@@ -187,24 +190,22 @@ namespace MasterBidder.UI
             // Compact plate: crest via ApplyFramedPanel; bands sized to content (no spare vertical air).
             var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-310, -200), new Vector2(310, 200));
             GameUiStyle.ApplyFramedPanel(card.GetComponent<Image>());
-            b.introTitle = CreateText("Title", card.transform, "", 34, TextAnchor.MiddleCenter);
+            b.introTitle = CreateDisplayText("Title", card.transform, "", 34, TextAnchor.MiddleCenter);
             Stretch(b.introTitle.rectTransform, new Vector2(0, 0.84f), Vector2.one, new Vector2(24, -18), new Vector2(-24, -8));
             b.introTitle.color = GameUiStyle.Accent;
-            b.introTitle.fontStyle = FontStyle.Bold;
-            b.introSubtitle = CreateText("Sub", card.transform, "", 20, TextAnchor.MiddleCenter);
+            b.introSubtitle = CreateDisplayText("Sub", card.transform, "", 20, TextAnchor.MiddleCenter);
             Stretch(b.introSubtitle.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.84f), new Vector2(24, 0), new Vector2(-24, 0));
             b.introSubtitle.color = GameUiStyle.TextColor;
-            b.introSubtitle.fontStyle = FontStyle.Bold;
-            b.introSubtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.introSubtitle.enableWordWrapping = true;
             b.introLede = CreateText("Lede", card.transform, "", 15, TextAnchor.UpperLeft);
             Stretch(b.introLede.rectTransform, new Vector2(0, 0.54f), new Vector2(1, 0.70f), new Vector2(28, 0), new Vector2(-28, 0));
-            b.introLede.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.introLede.lineSpacing = 1.1f;
+            b.introLede.enableWordWrapping = true;
+            b.introLede.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.1f);
             b.introRules = CreateText("Rules", card.transform, "", 14, TextAnchor.UpperLeft);
             Stretch(b.introRules.rectTransform, new Vector2(0, 0.18f), new Vector2(1, 0.52f), new Vector2(28, 0), new Vector2(-28, 0));
             b.introRules.color = GameUiStyle.Dim;
-            b.introRules.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.introRules.lineSpacing = 1.15f;
+            b.introRules.enableWordWrapping = true;
+            b.introRules.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.15f);
             b.btnContinue = CreateSecondaryButton("Continue", card.transform, out b.continueLabel);
             Place(b.btnContinue, 0.06f, 0.04f, 0.48f, 0.15f);
             b.btnStart = CreatePrimaryButton("Start", card.transform, out b.startLabel);
@@ -225,7 +226,7 @@ namespace MasterBidder.UI
             b.briefDay = CreateText("Status", status.transform, "", 15, TextAnchor.MiddleCenter);
             Stretch(b.briefDay.rectTransform, Vector2.zero, Vector2.one, new Vector2(44, 0), new Vector2(-12, 0));
             b.briefDay.color = GameUiStyle.OnDark;
-            b.briefDay.fontStyle = FontStyle.Bold;
+            MakeUiBold(b.briefDay);
             b.briefCapital = b.briefDay;
             status.SetActive(true);
             var lang = chrome.Find("Lang");
@@ -239,32 +240,29 @@ namespace MasterBidder.UI
             b.briefActivePortrait.sprite = null;
             b.briefActivePortrait.color = GameUiStyle.PanelLight;
             b.briefActivePortrait.preserveAspect = true;
-            b.briefActiveName = CreateText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
+            b.briefActiveName = CreateDisplayText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
             Stretch(b.briefActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
             b.briefActiveName.color = GameUiStyle.Accent;
-            b.briefActiveName.fontStyle = FontStyle.Bold;
             b.briefActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
             Stretch(b.briefActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
             b.briefActiveTags.color = GameUiStyle.TextColor;
-            b.briefActiveTags.fontStyle = FontStyle.Bold;
-            b.briefActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.briefActiveTags.verticalOverflow = VerticalWrapMode.Overflow;
-            b.briefActiveTags.lineSpacing = 1.0f;
+            MakeUiBold(b.briefActiveTags);
+            b.briefActiveTags.enableWordWrapping = true;
+            b.briefActiveTags.overflowMode = TextOverflowModes.Overflow;
+            b.briefActiveTags.lineSpacing = 0f;
             b.briefOrderPreview = b.briefActiveTags;
 
             // Right sidebar: heading → list → actions (icons live in Chrome, like auction).
             var sidebar = CreatePanel("Sidebar", root.transform, new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
             GameUiStyle.ApplyFramedPanel(sidebar.GetComponent<Image>());
 
-            b.briefClientHeading = CreateText("OrdersH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            b.briefClientHeading = CreateDisplayText("OrdersH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
             Stretch(b.briefClientHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.briefClientHeading.color = GameUiStyle.Accent;
-            b.briefClientHeading.fontStyle = FontStyle.Bold;
 
-            b.briefWorkshopHeading = CreateText("UpgradesH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            b.briefWorkshopHeading = CreateDisplayText("UpgradesH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
             Stretch(b.briefWorkshopHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.briefWorkshopHeading.color = GameUiStyle.Accent;
-            b.briefWorkshopHeading.fontStyle = FontStyle.Bold;
             b.briefWorkshopHeading.gameObject.SetActive(false);
 
             b.collectorList = CreateScrollContent(sidebar.transform, "CollectorScroll", new Vector2(0, 0.14f), new Vector2(1, 0.88f), 6);
@@ -279,6 +277,7 @@ namespace MasterBidder.UI
 
             b.btnReset = CreateSecondaryButton("Reset", root.transform, out b.resetLabel);
             Place(b.btnReset, 0.02f, 0.02f, 0.14f, 0.07f);
+            b.resetLabel.fontSize = 12;
             var resetCg = b.btnReset.gameObject.GetComponent<CanvasGroup>();
             if (resetCg == null) resetCg = b.btnReset.gameObject.AddComponent<CanvasGroup>();
             resetCg.alpha = 0.5f;
@@ -308,15 +307,14 @@ namespace MasterBidder.UI
             b.auctionActivePortrait.sprite = null;
             b.auctionActivePortrait.color = GameUiStyle.PanelLight;
             b.auctionActivePortrait.preserveAspect = true;
-            b.auctionActiveName = CreateText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
+            b.auctionActiveName = CreateDisplayText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
             Stretch(b.auctionActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
             b.auctionActiveName.color = GameUiStyle.Accent;
-            b.auctionActiveName.fontStyle = FontStyle.Bold;
             b.auctionActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
             Stretch(b.auctionActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
             b.auctionActiveTags.color = GameUiStyle.TextColor;
-            b.auctionActiveTags.fontStyle = FontStyle.Bold;
-            b.auctionActiveTags.horizontalOverflow = HorizontalWrapMode.Wrap;
+            MakeUiBold(b.auctionActiveTags);
+            b.auctionActiveTags.enableWordWrapping = true;
 
             var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.02f), new Vector2(0.985f, 1f), new Vector2(6, 8), new Vector2(-12, -56));
             GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
@@ -324,8 +322,8 @@ namespace MasterBidder.UI
             b.aucHud = CreateText("AucHud", hud.transform, "", 13, TextAnchor.MiddleLeft);
             Stretch(b.aucHud.rectTransform, new Vector2(0, 0.92f), Vector2.one, new Vector2(16, -8), new Vector2(-16, -4));
             b.aucHud.color = GameUiStyle.TextColor;
-            b.aucHud.fontStyle = FontStyle.Bold;
-            b.aucHud.horizontalOverflow = HorizontalWrapMode.Wrap;
+            MakeUiBold(b.aucHud);
+            b.aucHud.enableWordWrapping = true;
 
             // Legacy binding kept hidden — client lives in ActiveClient strip.
             b.orderCard = CreateText("Order", hud.transform, "", 14, TextAnchor.MiddleLeft);
@@ -335,19 +333,19 @@ namespace MasterBidder.UI
             GameUiStyle.ApplyCard(econ.GetComponent<Image>());
             b.livePrice = CreateText("Price", econ.transform, "", 26, TextAnchor.MiddleCenter);
             Stretch(b.livePrice.rectTransform, new Vector2(0, 0.42f), Vector2.one, new Vector2(10, 0), new Vector2(-10, -4));
-            b.livePrice.fontStyle = FontStyle.Bold;
+            MakeUiBold(b.livePrice);
             b.livePrice.color = GameUiStyle.TextColor;
             b.liveBudget = CreateText("Budget", econ.transform, "", 15, TextAnchor.MiddleCenter);
             Stretch(b.liveBudget.rectTransform, new Vector2(0, 0), new Vector2(1, 0.42f), new Vector2(10, 4), new Vector2(-10, -4));
-            b.liveBudget.fontStyle = FontStyle.Bold;
+            MakeUiBold(b.liveBudget);
             b.liveBudget.color = GameUiStyle.TextColor;
             b.liveSpeed = CreateText("Speed", econ.transform, "", 13, TextAnchor.MiddleRight);
             b.liveSpeed.gameObject.SetActive(false);
 
             var fields = CreatePanel("Fields", hud.transform, new Vector2(0, 0.2f), new Vector2(1, 0.72f), new Vector2(14, 4), new Vector2(-14, -4));
             GameUiStyle.ApplyCard(fields.GetComponent<Image>());
-            b.fieldLabels = new Text[5];
-            b.fieldValues = new Text[5];
+            b.fieldLabels = new TextMeshProUGUI[5];
+            b.fieldValues = new TextMeshProUGUI[5];
             b.fieldRows = new Image[5];
             // Fact (index 3) gets a taller band so long copy stays inside the row.
             float[] rowTops = { 1f, 0.86f, 0.72f, 0.58f, 0.18f, 0f };
@@ -367,8 +365,8 @@ namespace MasterBidder.UI
                 b.fieldLabels[i].color = GameUiStyle.Dim;
                 b.fieldValues[i] = CreateText("V", row.transform, "", 13, TextAnchor.UpperLeft);
                 Stretch(b.fieldValues[i].rectTransform, new Vector2(0.38f, 0), Vector2.one, new Vector2(4, 4), new Vector2(-10, -4));
-                b.fieldValues[i].horizontalOverflow = HorizontalWrapMode.Wrap;
-                b.fieldValues[i].verticalOverflow = VerticalWrapMode.Truncate;
+                b.fieldValues[i].enableWordWrapping = true;
+                b.fieldValues[i].overflowMode = TextOverflowModes.Truncate;
                 b.fieldValues[i].color = GameUiStyle.TextColor;
             }
 
@@ -382,7 +380,7 @@ namespace MasterBidder.UI
             bannerBg.SetActive(false);
             b.resultBanner = CreateText("Banner", bannerBg.transform, "", 15, TextAnchor.MiddleCenter);
             Stretch(b.resultBanner.rectTransform, Vector2.zero, Vector2.one, new Vector2(36, 4), new Vector2(-32, -4));
-            b.resultBanner.fontStyle = FontStyle.Bold;
+            MakeUiBold(b.resultBanner);
             b.resultBanner.color = GameUiStyle.TextColor;
 
             var fundsBg = CreatePanel("FundsBg", hud.transform, new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.24f), Vector2.zero, Vector2.zero);
@@ -417,38 +415,36 @@ namespace MasterBidder.UI
             b.popupPortrait.color = GameUiStyle.PanelLight;
             b.popupPortrait.preserveAspect = true;
 
-            b.popupName = CreateText("Name", card.transform, "", 26, TextAnchor.LowerLeft);
+            b.popupName = CreateDisplayText("Name", card.transform, "", 26, TextAnchor.LowerLeft);
             Stretch(b.popupName.rectTransform, new Vector2(0.24f, 0.84f), new Vector2(1, 0.96f), new Vector2(8, 0), new Vector2(-24, -14));
             b.popupName.color = GameUiStyle.Accent;
-            b.popupName.fontStyle = FontStyle.Bold;
 
             b.popupTagline = CreateText("Tag", card.transform, "", 14, TextAnchor.UpperLeft);
             Stretch(b.popupTagline.rectTransform, new Vector2(0.24f, 0.7f), new Vector2(1, 0.84f), new Vector2(8, 0), new Vector2(-24, 0));
             b.popupTagline.color = GameUiStyle.TextColor;
-            b.popupTagline.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.popupTagline.lineSpacing = 1.1f;
+            b.popupTagline.enableWordWrapping = true;
+            b.popupTagline.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.1f);
 
             var speechPlate = CreatePanel("SpeechPlate", card.transform, new Vector2(0, 0.42f), new Vector2(1, 0.68f), new Vector2(22, 4), new Vector2(-22, -4));
             GameUiStyle.ApplyCard(speechPlate.GetComponent<Image>());
             b.popupSpeech = CreateText("Speech", speechPlate.transform, "", 15, TextAnchor.UpperLeft);
             Stretch(b.popupSpeech.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 10), new Vector2(-14, -10));
             b.popupSpeech.color = GameUiStyle.TextColor;
-            b.popupSpeech.fontStyle = FontStyle.Italic;
-            b.popupSpeech.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.popupSpeech.lineSpacing = 1.15f;
+            GameUiStyle.ApplyDisplayItalic(b.popupSpeech);
+            b.popupSpeech.enableWordWrapping = true;
+            b.popupSpeech.lineSpacing = GameUiStyle.ToTmpLineSpacing(1.15f);
 
             var tagsPlate = CreatePanel("TagsPlate", card.transform, new Vector2(0, 0.28f), new Vector2(1, 0.42f), new Vector2(22, 2), new Vector2(-22, -2));
             GameUiStyle.ApplyCard(tagsPlate.GetComponent<Image>());
-            b.popupTags = CreateText("Tags", tagsPlate.transform, "", 17, TextAnchor.MiddleLeft);
+            b.popupTags = CreateDisplayText("Tags", tagsPlate.transform, "", 17, TextAnchor.MiddleLeft);
             Stretch(b.popupTags.rectTransform, Vector2.zero, Vector2.one, new Vector2(14, 4), new Vector2(-14, -4));
             b.popupTags.color = GameUiStyle.Accent;
-            b.popupTags.fontStyle = FontStyle.Bold;
-            b.popupTags.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.popupTags.enableWordWrapping = true;
 
             b.popupWarning = CreateText("Warn", card.transform, "", 13, TextAnchor.MiddleLeft);
             Stretch(b.popupWarning.rectTransform, new Vector2(0, 0.16f), new Vector2(1, 0.28f), new Vector2(28, 0), new Vector2(-28, 0));
             b.popupWarning.color = GameUiStyle.Bad;
-            b.popupWarning.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.popupWarning.enableWordWrapping = true;
 
             b.btnPopupStart = CreatePrimaryButton("Start", card.transform, out b.popupStartLabel);
             Place(b.btnPopupStart, 0.2f, 0.04f, 0.8f, 0.14f);
@@ -462,19 +458,18 @@ namespace MasterBidder.UI
             root.GetComponent<Image>().color = GameUiStyle.Overlay;
             var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-340, -240), new Vector2(340, 240));
             GameUiStyle.ApplyPanel(card.GetComponent<Image>());
-            b.pcTitle = CreateText("Title", card.transform, "", 26, TextAnchor.UpperCenter);
+            b.pcTitle = CreateDisplayText("Title", card.transform, "", 26, TextAnchor.UpperCenter);
             Stretch(b.pcTitle.rectTransform, new Vector2(0, 0.82f), Vector2.one, new Vector2(22, -16), new Vector2(-22, -12));
             b.pcTitle.color = GameUiStyle.Accent;
-            b.pcTitle.fontStyle = FontStyle.Bold;
-            b.pcArtist = CreateText("Artist", card.transform, "", 18, TextAnchor.UpperCenter);
+            b.pcArtist = CreateDisplayText("Artist", card.transform, "", 18, TextAnchor.UpperCenter, bold: false);
             Stretch(b.pcArtist.rectTransform, new Vector2(0, 0.72f), new Vector2(1, 0.82f), new Vector2(22, 0), new Vector2(-22, 0));
             b.pcMeta = CreateText("Meta", card.transform, "", 15, TextAnchor.UpperLeft);
             Stretch(b.pcMeta.rectTransform, new Vector2(0, 0.4f), new Vector2(1, 0.72f), new Vector2(32, 0), new Vector2(-32, 0));
-            b.pcMeta.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.pcMeta.enableWordWrapping = true;
             b.pcFact = CreateText("Fact", card.transform, "", 14, TextAnchor.UpperLeft);
             Stretch(b.pcFact.rectTransform, new Vector2(0, 0.18f), new Vector2(1, 0.4f), new Vector2(32, 0), new Vector2(-32, 0));
             b.pcFact.color = GameUiStyle.Dim;
-            b.pcFact.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.pcFact.enableWordWrapping = true;
             b.btnPcContinue = CreatePrimaryButton("Cont", card.transform, out b.pcContinueLabel);
             Place(b.btnPcContinue, 0.25f, 0.04f, 0.75f, 0.15f);
             return root;
@@ -494,10 +489,10 @@ namespace MasterBidder.UI
             img.raycastTarget = false;
             b.tutorialText = CreateText("T", root.transform, "", 15, TextAnchor.MiddleCenter);
             Stretch(b.tutorialText.rectTransform, Vector2.zero, Vector2.one, new Vector2(28, 12), new Vector2(-28, -12));
-            b.tutorialText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.tutorialText.verticalOverflow = VerticalWrapMode.Overflow;
+            b.tutorialText.enableWordWrapping = true;
+            b.tutorialText.overflowMode = TextOverflowModes.Overflow;
             b.tutorialText.color = GameUiStyle.TextColor;
-            b.tutorialText.fontStyle = FontStyle.Bold;
+            MakeUiBold(b.tutorialText);
             b.tutorialText.raycastTarget = false;
             return root;
         }
@@ -510,20 +505,18 @@ namespace MasterBidder.UI
             le.preferredHeight = 110;
             GameUiStyle.ApplyCard(card.GetComponent<Image>());
 
-            var title = CreateText("Title", card.transform, "", 16, TextAnchor.UpperLeft);
+            var title = CreateDisplayText("Title", card.transform, "", 16, TextAnchor.UpperLeft);
             Stretch(title.rectTransform, new Vector2(0, 0.55f), new Vector2(0.68f, 1), new Vector2(14, -10), new Vector2(-8, -6));
-            title.fontStyle = FontStyle.Bold;
-            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            title.enableWordWrapping = true;
 
             var meta = CreateText("Meta", card.transform, "", 13, TextAnchor.UpperLeft);
             Stretch(meta.rectTransform, new Vector2(0, 0.08f), new Vector2(0.68f, 0.55f), new Vector2(14, 6), new Vector2(-8, 0));
             meta.color = GameUiStyle.Dim;
-            meta.horizontalOverflow = HorizontalWrapMode.Wrap;
+            meta.enableWordWrapping = true;
 
-            var stamp = CreateText("Stamp", card.transform, "", 15, TextAnchor.MiddleCenter);
+            var stamp = CreateDisplayText("Stamp", card.transform, "", 15, TextAnchor.MiddleCenter);
             Stretch(stamp.rectTransform, new Vector2(0.68f, 0.12f), new Vector2(0.98f, 0.88f), Vector2.zero, Vector2.zero);
-            stamp.fontStyle = FontStyle.Bold;
-            stamp.horizontalOverflow = HorizontalWrapMode.Wrap;
+            stamp.enableWordWrapping = true;
 
             var view = card.AddComponent<PurchaseTagView>();
             view.background = card.GetComponent<Image>();
@@ -544,28 +537,25 @@ namespace MasterBidder.UI
             var stamp = CreatePanel("ClientStamp", root.transform, new Vector2(0.03f, 0.04f), new Vector2(0.28f, 0.28f), Vector2.zero, Vector2.zero);
             GameUiStyle.ApplyFramedPanel(stamp.GetComponent<Image>());
             b.reportStamp = stamp;
-            b.reportStampLabel = CreateText("StampLabel", stamp.transform, "", 22, TextAnchor.MiddleCenter);
+            b.reportStampLabel = CreateDisplayText("StampLabel", stamp.transform, "", 22, TextAnchor.MiddleCenter);
             Stretch(b.reportStampLabel.rectTransform, new Vector2(0, 0.38f), Vector2.one, new Vector2(12, 0), new Vector2(-12, -10));
-            b.reportStampLabel.fontStyle = FontStyle.Bold;
             b.reportStampLabel.color = GameUiStyle.Accent;
-            b.reportStampLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.reportStampLabel.enableWordWrapping = true;
             b.reportStampDetail = CreateText("StampDetail", stamp.transform, "", 14, TextAnchor.UpperCenter);
             Stretch(b.reportStampDetail.rectTransform, new Vector2(0, 0.08f), new Vector2(1, 0.4f), new Vector2(12, 4), new Vector2(-12, 0));
             b.reportStampDetail.color = GameUiStyle.TextColor;
-            b.reportStampDetail.horizontalOverflow = HorizontalWrapMode.Wrap;
+            b.reportStampDetail.enableWordWrapping = true;
 
             var sidebar = CreatePanel("Sidebar", root.transform, new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
             GameUiStyle.ApplyFramedPanel(sidebar.GetComponent<Image>());
 
-            b.reportTitle = CreateText("TagsH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            b.reportTitle = CreateDisplayText("TagsH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
             Stretch(b.reportTitle.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.reportTitle.color = GameUiStyle.Accent;
-            b.reportTitle.fontStyle = FontStyle.Bold;
 
-            b.boosterHeading = CreateText("BoostH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
+            b.boosterHeading = CreateDisplayText("BoostH", sidebar.transform, "", 26, TextAnchor.MiddleLeft);
             Stretch(b.boosterHeading.rectTransform, new Vector2(0, 0.88f), Vector2.one, new Vector2(18, -10), new Vector2(-18, -4));
             b.boosterHeading.color = GameUiStyle.Accent;
-            b.boosterHeading.fontStyle = FontStyle.Bold;
             b.boosterHeading.gameObject.SetActive(false);
 
             // Keep reportBody as a hidden legacy binding (summary moved into stamp + tags).
@@ -591,10 +581,9 @@ namespace MasterBidder.UI
             root.GetComponent<Image>().color = GameUiStyle.Bg;
             var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-300, -130), new Vector2(300, 130));
             GameUiStyle.ApplyPanel(card.GetComponent<Image>());
-            b.endTitle = CreateText("Title", card.transform, "", 34, TextAnchor.MiddleCenter);
+            b.endTitle = CreateDisplayText("Title", card.transform, "", 34, TextAnchor.MiddleCenter);
             Stretch(b.endTitle.rectTransform, new Vector2(0, 0.4f), new Vector2(1, 0.9f), new Vector2(20, 0), new Vector2(-20, 0));
             b.endTitle.color = GameUiStyle.Accent;
-            b.endTitle.fontStyle = FontStyle.Bold;
             b.btnRestart = CreatePrimaryButton("Restart", card.transform, out b.restartLabel);
             Place(b.btnRestart, 0.2f, 0.12f, 0.8f, 0.35f);
             return root;
@@ -626,15 +615,14 @@ namespace MasterBidder.UI
             var tipCg = tip.AddComponent<CanvasGroup>();
             tipCg.blocksRaycasts = false;
             tipCg.interactable = false;
-            b.effectTooltipTitle = CreateText("Title", tip.transform, "", 14, TextAnchor.UpperLeft);
+            b.effectTooltipTitle = CreateDisplayText("Title", tip.transform, "", 14, TextAnchor.UpperLeft);
             Stretch(b.effectTooltipTitle.rectTransform, new Vector2(0, 0.62f), Vector2.one, new Vector2(12, -8), new Vector2(-12, -6));
             b.effectTooltipTitle.color = GameUiStyle.Accent;
-            b.effectTooltipTitle.fontStyle = FontStyle.Bold;
             b.effectTooltipTitle.raycastTarget = false;
             b.effectTooltipBody = CreateText("Body", tip.transform, "", 12, TextAnchor.UpperLeft);
             Stretch(b.effectTooltipBody.rectTransform, new Vector2(0, 0), new Vector2(1, 0.62f), new Vector2(12, 8), new Vector2(-12, 0));
-            b.effectTooltipBody.horizontalOverflow = HorizontalWrapMode.Wrap;
-            b.effectTooltipBody.verticalOverflow = VerticalWrapMode.Overflow;
+            b.effectTooltipBody.enableWordWrapping = true;
+            b.effectTooltipBody.overflowMode = TextOverflowModes.Overflow;
             b.effectTooltipBody.raycastTarget = false;
             tip.SetActive(false);
             b.effectTooltip = tip;
@@ -699,7 +687,7 @@ namespace MasterBidder.UI
         {
             var scrollGo = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGo.transform.SetParent(parent, false);
-            Stretch(scrollGo.GetComponent<RectTransform>(), aMin, aMax, new Vector2(14, 10), new Vector2(-14, -10));
+            Stretch(scrollGo.GetComponent<RectTransform>(), aMin, aMax, new Vector2(10, 6), new Vector2(-10, -4));
             scrollGo.GetComponent<Image>().sprite = null;
             scrollGo.GetComponent<Image>().color = new Color(0.15f, 0.12f, 0.1f, 0.06f);
             var scroll = scrollGo.GetComponent<ScrollRect>();
@@ -755,47 +743,46 @@ namespace MasterBidder.UI
             return go;
         }
 
-        static Text CreateText(string name, Transform parent, string value, int size, TextAnchor anchor)
+        static TextMeshProUGUI CreateText(string name, Transform parent, string value, int size, TextAnchor anchor)
         {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
-            go.transform.SetParent(parent, false);
-            var text = go.GetComponent<Text>();
-            text.text = value;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (text.font == null) text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            text.fontSize = size;
-            text.color = GameUiStyle.TextColor;
-            text.alignment = anchor;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            return text;
+            return GameUiStyle.CreateTmpText(name, parent, value, size, anchor);
         }
 
-        static Button CreateButton(string name, Transform parent, out Text label)
+        static TextMeshProUGUI CreateDisplayText(string name, Transform parent, string value, int size, TextAnchor anchor, bool bold = true)
+        {
+            return GameUiStyle.CreateDisplayText(name, parent, value, size, anchor, bold);
+        }
+
+        static void MakeUiBold(TextMeshProUGUI text)
+        {
+            GameUiStyle.ApplyUiFont(text, bold: true);
+        }
+
+        static Button CreateButton(string name, Transform parent, out TextMeshProUGUI label)
             => CreateSecondaryButton(name, parent, out label);
 
-        static Button CreatePrimaryButton(string name, Transform parent, out Text label)
+        static Button CreatePrimaryButton(string name, Transform parent, out TextMeshProUGUI label)
         {
             var btn = CreateButtonBase(name, parent, out label);
             GameUiStyle.ApplyPrimaryButton(btn.GetComponent<Image>(), label);
             return btn;
         }
 
-        static Button CreateSecondaryButton(string name, Transform parent, out Text label)
+        static Button CreateSecondaryButton(string name, Transform parent, out TextMeshProUGUI label)
         {
             var btn = CreateButtonBase(name, parent, out label);
             GameUiStyle.ApplySecondaryButton(btn.GetComponent<Image>(), label);
             return btn;
         }
 
-        static Button CreateDangerButton(string name, Transform parent, out Text label)
+        static Button CreateDangerButton(string name, Transform parent, out TextMeshProUGUI label)
         {
             var btn = CreateButtonBase(name, parent, out label);
             GameUiStyle.ApplyDangerButton(btn.GetComponent<Image>(), label);
             return btn;
         }
 
-        static Button CreateButtonBase(string name, Transform parent, out Text label)
+        static Button CreateButtonBase(string name, Transform parent, out TextMeshProUGUI label)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(parent, false);
@@ -803,6 +790,7 @@ namespace MasterBidder.UI
             var btn = go.GetComponent<Button>();
             btn.targetGraphic = img;
             label = CreateText("Label", go.transform, name, 16, TextAnchor.MiddleCenter);
+            MakeUiBold(label);
             Stretch(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(8, 4), new Vector2(-8, -4));
             return btn;
         }

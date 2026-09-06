@@ -1,11 +1,13 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace MasterBidder.UI
 {
     /// <summary>
-    /// Wired references on the GameUI prefab root. Edit the prefab in the Editor;
-    /// GameUiShell reads these at runtime after Instantiate.
+    /// Wired references on the GameUI prefab root. Edit layout, fonts, spacing, and
+    /// colors on the prefab in the Editor; GameUiShell reads these bindings and only
+    /// updates dynamic text, sprites, and state-driven tints at runtime.
     /// </summary>
     public class GameUiBindings : MonoBehaviour
     {
@@ -24,109 +26,109 @@ namespace MasterBidder.UI
         public GameObject tutorial;
 
         [Header("Chrome")]
-        public Text chromeTitle;
-        public Dropdown langDropdown;
+        public TextMeshProUGUI chromeTitle;
+        public TMP_Dropdown langDropdown;
 
         [Header("Intro")]
-        public Text introTitle;
-        public Text introSubtitle;
-        public Text introLede;
-        public Text introRules;
+        public TextMeshProUGUI introTitle;
+        public TextMeshProUGUI introSubtitle;
+        public TextMeshProUGUI introLede;
+        public TextMeshProUGUI introRules;
         public Button btnContinue;
         public Button btnStart;
-        public Text continueLabel;
-        public Text startLabel;
+        public TextMeshProUGUI continueLabel;
+        public TextMeshProUGUI startLabel;
 
         [Header("Brief")]
-        public Text briefDay;
-        public Text briefCapital;
-        public Text briefClientHeading;
-        public Text briefWorkshopHeading;
-        public Text briefOrderPreview;
+        public TextMeshProUGUI briefDay;
+        public TextMeshProUGUI briefCapital;
+        public TextMeshProUGUI briefClientHeading;
+        public TextMeshProUGUI briefWorkshopHeading;
+        public TextMeshProUGUI briefOrderPreview;
         public GameObject briefActiveClient;
         public Image briefActivePortrait;
-        public Text briefActiveName;
-        public Text briefActiveTags;
+        public TextMeshProUGUI briefActiveName;
+        public TextMeshProUGUI briefActiveTags;
         public Transform briefEffectsHost;
         public Transform collectorList;
         public Transform upgradeList;
         public Button btnBriefPanelToggle;
-        public Text briefPanelToggleLabel;
+        public TextMeshProUGUI briefPanelToggleLabel;
         public Button btnEnterHall;
         public Button btnReset;
-        public Text enterLabel;
-        public Text resetLabel;
+        public TextMeshProUGUI enterLabel;
+        public TextMeshProUGUI resetLabel;
 
         [Header("Auction")]
-        public Text aucHud;
+        public TextMeshProUGUI aucHud;
         public Transform effectsUpgrades;
         public Transform effectsBoosters;
         public GameObject effectTooltip;
-        public Text effectTooltipTitle;
-        public Text effectTooltipBody;
-        public Text orderCard;
+        public TextMeshProUGUI effectTooltipTitle;
+        public TextMeshProUGUI effectTooltipBody;
+        public TextMeshProUGUI orderCard;
         public GameObject auctionActiveClient;
         public Image auctionActivePortrait;
-        public Text auctionActiveName;
-        public Text auctionActiveTags;
-        public Text livePrice;
-        public Text liveBudget;
-        public Text liveSpeed;
-        public Text[] fieldLabels = new Text[5];
-        public Text[] fieldValues = new Text[5];
+        public TextMeshProUGUI auctionActiveName;
+        public TextMeshProUGUI auctionActiveTags;
+        public TextMeshProUGUI livePrice;
+        public TextMeshProUGUI liveBudget;
+        public TextMeshProUGUI liveSpeed;
+        public TextMeshProUGUI[] fieldLabels = new TextMeshProUGUI[5];
+        public TextMeshProUGUI[] fieldValues = new TextMeshProUGUI[5];
         public Image[] fieldRows = new Image[5];
-        public Text resultBanner;
-        public Text fundsHint;
-        public Text familiarBadge;
+        public TextMeshProUGUI resultBanner;
+        public TextMeshProUGUI fundsHint;
+        public TextMeshProUGUI familiarBadge;
         public Button btnStartLot;
         public Button btnBuy;
         public Button btnSkip;
         public Button btnFinishDay;
-        public Text startLotLabel;
-        public Text buyLabel;
-        public Text skipLabel;
-        public Text finishLabel;
+        public TextMeshProUGUI startLotLabel;
+        public TextMeshProUGUI buyLabel;
+        public TextMeshProUGUI skipLabel;
+        public TextMeshProUGUI finishLabel;
         public Transform audienceRow;
         public Image[] rivalHeads = new Image[15];
 
         [Header("Collector popup")]
-        public Text popupName;
-        public Text popupTagline;
-        public Text popupSpeech;
-        public Text popupTags;
-        public Text popupWarning;
+        public TextMeshProUGUI popupName;
+        public TextMeshProUGUI popupTagline;
+        public TextMeshProUGUI popupSpeech;
+        public TextMeshProUGUI popupTags;
+        public TextMeshProUGUI popupWarning;
         public Image popupPortrait;
         public Button btnPopupStart;
-        public Text popupStartLabel;
+        public TextMeshProUGUI popupStartLabel;
 
         [Header("Purchase card")]
-        public Text pcTitle;
-        public Text pcArtist;
-        public Text pcMeta;
-        public Text pcFact;
+        public TextMeshProUGUI pcTitle;
+        public TextMeshProUGUI pcArtist;
+        public TextMeshProUGUI pcMeta;
+        public TextMeshProUGUI pcFact;
         public Button btnPcContinue;
-        public Text pcContinueLabel;
+        public TextMeshProUGUI pcContinueLabel;
 
         [Header("Tutorial")]
-        public Text tutorialText;
+        public TextMeshProUGUI tutorialText;
 
         [Header("Report")]
-        public Text reportTitle;
-        public Text reportBody;
-        public Text boosterHeading;
+        public TextMeshProUGUI reportTitle;
+        public TextMeshProUGUI reportBody;
+        public TextMeshProUGUI boosterHeading;
         public Transform boosterList;
         public Transform purchaseTagList;
         public GameObject reportStamp;
-        public Text reportStampLabel;
-        public Text reportStampDetail;
+        public TextMeshProUGUI reportStampLabel;
+        public TextMeshProUGUI reportStampDetail;
         public Button btnReportPanelToggle;
-        public Text reportPanelToggleLabel;
+        public TextMeshProUGUI reportPanelToggleLabel;
         public Button btnReportContinue;
-        public Text reportContinueLabel;
+        public TextMeshProUGUI reportContinueLabel;
 
         [Header("End")]
-        public Text endTitle;
+        public TextMeshProUGUI endTitle;
         public Button btnRestart;
-        public Text restartLabel;
+        public TextMeshProUGUI restartLabel;
     }
 }

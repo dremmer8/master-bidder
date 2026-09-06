@@ -352,6 +352,7 @@ MonoBehaviour:
   lockCursorWhileInspecting: 1
   showPivotMarker: 1
   pivotMarkerScale: 0.008333
+  inputEnabled: 1
   drawGizmos: 1
 --- !u!1 &17072040
 GameObject:
@@ -3615,6 +3616,7 @@ MonoBehaviour:
   collectorCardPrefab: {fileID: 6214594991594453258, guid: 0a99d36de1afd4d4c8888cd147d19e82, type: 3}
   upgradeRowPrefab: {fileID: 2540454464059006800, guid: f2cc6a275be773b44a15d535383b0142, type: 3}
   boosterRowPrefab: {fileID: 5253892432031418403, guid: 66cc9f8b254010f4fab2d88886ec0876, type: 3}
+  purchaseTagPrefab: {fileID: 0}
 --- !u!1 &984222109
 GameObject:
   m_ObjectHideFlags: 0
