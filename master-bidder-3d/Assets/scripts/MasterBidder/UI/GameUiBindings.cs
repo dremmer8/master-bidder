@@ -29,6 +29,12 @@ namespace MasterBidder.UI
         public TextMeshProUGUI chromeTitle;
         public TMP_Dropdown langDropdown;
 
+        [Header("Active Client")]
+        public GameObject activeClient;
+        public Image activePortrait;
+        public TextMeshProUGUI activeName;
+        public TextMeshProUGUI activeTags;
+
         [Header("Intro")]
         public TextMeshProUGUI introTitle;
         public TextMeshProUGUI introSubtitle;
@@ -44,11 +50,6 @@ namespace MasterBidder.UI
         public TextMeshProUGUI briefCapital;
         public TextMeshProUGUI briefClientHeading;
         public TextMeshProUGUI briefWorkshopHeading;
-        public TextMeshProUGUI briefOrderPreview;
-        public GameObject briefActiveClient;
-        public Image briefActivePortrait;
-        public TextMeshProUGUI briefActiveName;
-        public TextMeshProUGUI briefActiveTags;
         public Transform briefEffectsHost;
         public Transform collectorList;
         public Transform upgradeList;
@@ -67,10 +68,6 @@ namespace MasterBidder.UI
         public TextMeshProUGUI effectTooltipTitle;
         public TextMeshProUGUI effectTooltipBody;
         public TextMeshProUGUI orderCard;
-        public GameObject auctionActiveClient;
-        public Image auctionActivePortrait;
-        public TextMeshProUGUI auctionActiveName;
-        public TextMeshProUGUI auctionActiveTags;
         public TextMeshProUGUI livePrice;
         public TextMeshProUGUI liveBudget;
         public TextMeshProUGUI liveSpeed;

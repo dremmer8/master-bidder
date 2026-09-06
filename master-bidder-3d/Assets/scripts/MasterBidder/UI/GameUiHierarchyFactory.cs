@@ -137,6 +137,8 @@ namespace MasterBidder.UI
             b.auction = BuildAuction(canvasGo.transform, b);
             b.report = BuildReport(canvasGo.transform, b);
             b.end = BuildEnd(canvasGo.transform, b);
+            // Shared strip above screen roots so layout is edited once for all gameplay screens.
+            BuildActiveClient(canvasGo.transform, b);
             b.collectorPopup = BuildCollectorPopup(canvasGo.transform, b);
             b.purchaseCard = BuildPurchaseCard(canvasGo.transform, b);
             b.tutorial = BuildTutorial(canvasGo.transform, b);
@@ -184,6 +186,52 @@ namespace MasterBidder.UI
             b.langDropdown.options.Clear();
             b.langDropdown.options.Add(new TMP_Dropdown.OptionData("Русский"));
             b.langDropdown.options.Add(new TMP_Dropdown.OptionData("English"));
+        }
+
+        static void BuildActiveClient(Transform parent, GameUiBindings b)
+        {
+            // Absolute strip under Chrome — same rect on Brief, Auction, and Report.
+            var active = CreatePanel(
+                "ActiveClient",
+                parent,
+                new Vector2(0.015f, 1f),
+                new Vector2(0.42f, 1f),
+                new Vector2(6, -128),
+                new Vector2(-6, -56));
+            GameUiStyle.ApplyCard(active.GetComponent<Image>());
+            b.activeClient = active;
+            b.activePortrait = CreatePanel(
+                    "Portrait",
+                    active.transform,
+                    new Vector2(0, 0.08f),
+                    new Vector2(0.16f, 0.92f),
+                    new Vector2(8, 0),
+                    new Vector2(-2, 0))
+                .GetComponent<Image>();
+            b.activePortrait.sprite = null;
+            b.activePortrait.color = GameUiStyle.PanelLight;
+            b.activePortrait.preserveAspect = true;
+            b.activeName = CreateDisplayText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(
+                b.activeName.rectTransform,
+                new Vector2(0.17f, 0.52f),
+                new Vector2(0.48f, 0.92f),
+                new Vector2(4, 0),
+                new Vector2(-4, -2));
+            b.activeName.color = GameUiStyle.Accent;
+            b.activeTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
+            Stretch(
+                b.activeTags.rectTransform,
+                new Vector2(0.48f, 0.08f),
+                Vector2.one,
+                new Vector2(4, 2),
+                new Vector2(-10, -2));
+            b.activeTags.color = GameUiStyle.TextColor;
+            MakeUiBold(b.activeTags);
+            b.activeTags.enableWordWrapping = true;
+            b.activeTags.overflowMode = TextOverflowModes.Overflow;
+            b.activeTags.lineSpacing = 0f;
+            active.SetActive(false);
         }
 
         static GameObject BuildIntro(Transform parent, GameUiBindings b)
@@ -236,27 +284,8 @@ namespace MasterBidder.UI
             var lang = chrome.Find("Lang");
             if (lang != null) lang.gameObject.SetActive(false);
 
-            // Compact strip: portrait + name + large tags (sketch-sized).
-            var active = CreatePanel("ActiveClient", root.transform, new Vector2(0.015f, 0.86f), new Vector2(0.42f, 0.98f), new Vector2(6, -4), new Vector2(-6, -4));
-            GameUiStyle.ApplyCard(active.GetComponent<Image>());
-            b.briefActiveClient = active;
-            b.briefActivePortrait = CreatePanel("Portrait", active.transform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0)).GetComponent<Image>();
-            b.briefActivePortrait.sprite = null;
-            b.briefActivePortrait.color = GameUiStyle.PanelLight;
-            b.briefActivePortrait.preserveAspect = true;
-            b.briefActiveName = CreateDisplayText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
-            Stretch(b.briefActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
-            b.briefActiveName.color = GameUiStyle.Accent;
-            b.briefActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
-            Stretch(b.briefActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
-            b.briefActiveTags.color = GameUiStyle.TextColor;
-            MakeUiBold(b.briefActiveTags);
-            b.briefActiveTags.enableWordWrapping = true;
-            b.briefActiveTags.overflowMode = TextOverflowModes.Overflow;
-            b.briefActiveTags.lineSpacing = 0f;
-            b.briefOrderPreview = b.briefActiveTags;
-
             // Right sidebar: heading → list → actions (icons live in Chrome, like auction).
+            // Active client strip is shared on the GameUI root (see BuildActiveClient).
             var sidebar = CreatePanel("Sidebar", root.transform, new Vector2(0.66f, 0.02f), new Vector2(0.985f, 0.98f), new Vector2(6, 8), new Vector2(-12, -8));
             GameUiStyle.ApplyFramedPanel(sidebar.GetComponent<Image>());
 
@@ -303,23 +332,6 @@ namespace MasterBidder.UI
             b.rivalHeads = System.Array.Empty<Image>();
             audience.SetActive(false);
 
-            // Compact client strip under Chrome (portrait + name + large tags).
-            var active = CreatePanel("ActiveClient", root.transform, new Vector2(0.015f, 1f), new Vector2(0.42f, 1f), new Vector2(6, -128), new Vector2(-6, -56));
-            GameUiStyle.ApplyCard(active.GetComponent<Image>());
-            b.auctionActiveClient = active;
-            b.auctionActivePortrait = CreatePanel("Portrait", active.transform, new Vector2(0, 0.08f), new Vector2(0.16f, 0.92f), new Vector2(8, 0), new Vector2(-2, 0)).GetComponent<Image>();
-            b.auctionActivePortrait.sprite = null;
-            b.auctionActivePortrait.color = GameUiStyle.PanelLight;
-            b.auctionActivePortrait.preserveAspect = true;
-            b.auctionActiveName = CreateDisplayText("Name", active.transform, "", 14, TextAnchor.MiddleLeft);
-            Stretch(b.auctionActiveName.rectTransform, new Vector2(0.17f, 0.52f), new Vector2(0.48f, 0.92f), new Vector2(4, 0), new Vector2(-4, -2));
-            b.auctionActiveName.color = GameUiStyle.Accent;
-            b.auctionActiveTags = CreateText("Tags", active.transform, "", 20, TextAnchor.MiddleLeft);
-            Stretch(b.auctionActiveTags.rectTransform, new Vector2(0.48f, 0.08f), new Vector2(1, 0.92f), new Vector2(4, 2), new Vector2(-10, -2));
-            b.auctionActiveTags.color = GameUiStyle.TextColor;
-            MakeUiBold(b.auctionActiveTags);
-            b.auctionActiveTags.enableWordWrapping = true;
-
             var hud = CreatePanel("HudRight", root.transform, new Vector2(0.72f, 0.02f), new Vector2(0.985f, 1f), new Vector2(6, 8), new Vector2(-12, -56));
             GameUiStyle.ApplyFramedPanel(hud.GetComponent<Image>());
 
@@ -329,7 +341,7 @@ namespace MasterBidder.UI
             MakeUiBold(b.aucHud);
             b.aucHud.enableWordWrapping = true;
 
-            // Legacy binding kept hidden — client lives in ActiveClient strip.
+            // Legacy binding kept hidden — client lives in shared ActiveClient strip.
             b.orderCard = CreateText("Order", hud.transform, "", 14, TextAnchor.MiddleLeft);
             b.orderCard.gameObject.SetActive(false);
 

@@ -27,16 +27,14 @@ namespace MasterBidder.UI
 
             Set(b.briefDay,
                 $"{LocaleService.T("brief.day")} 1 / 15   ·   {LocaleService.T("brief.capital")} 40 000 ₽");
-            Set(b.briefActiveName, "Барон Аркадий Светозаров");
-            Set(b.briefActiveTags, "Портрет  ·  Высокое Возрождение");
+            Set(b.activeName, "Барон Аркадий Светозаров");
+            Set(b.activeTags, "Портрет  ·  Высокое Возрождение");
             Set(b.briefClientHeading, LocaleService.T("brief.ordersHeading"));
             Set(b.briefWorkshopHeading, LocaleService.T("brief.workshop"));
             Set(b.briefPanelToggleLabel, LocaleService.T("brief.toUpgrades"));
             Set(b.enterLabel, LocaleService.T("brief.enterHall"));
             Set(b.resetLabel, LocaleService.T("brief.resetProgress"));
 
-            Set(b.auctionActiveName, "Барон Аркадий Светозаров");
-            Set(b.auctionActiveTags, "Портрет  ·  Высокое Возрождение");
             Set(b.aucHud,
                 $"{LocaleService.T("auction.day")} 1 · {LocaleService.T("auction.venue")} Обычный аукцион · " +
                 $"{LocaleService.T("auction.lot")} 1/10");

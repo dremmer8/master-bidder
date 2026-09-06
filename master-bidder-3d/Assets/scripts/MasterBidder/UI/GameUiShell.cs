@@ -415,6 +415,13 @@ namespace MasterBidder.UI
 
             if (screen != GameScreen.Report)
                 _reportSoundPlayed = false;
+
+            // Shared ActiveClient lives outside screen roots; hide on intro/end only.
+            bool showActiveClientChrome = screen == GameScreen.Brief
+                                          || screen == GameScreen.Auction
+                                          || screen == GameScreen.Report;
+            if (!showActiveClientChrome && _b?.activeClient != null)
+                _b.activeClient.SetActive(false);
         }
 
         public void ShowCollectorPopup(DayOrder order, CollectorData collector = null)
@@ -594,73 +601,46 @@ namespace MasterBidder.UI
             RebuildActiveEffects(state);
         }
 
-        void RefreshActiveClientPanel(GameSession session)
+        void RefreshActiveClientPanel(GameSession session, DayOrder orderOverride = null)
         {
-            if (_b?.briefActiveClient == null) return;
+            if (_b?.activeClient == null) return;
             var state = session?.State;
             var catalog = _flow?.Catalog;
-            var collector = state != null && catalog != null
-                ? catalog.FindCollector(state.SelectedBranchId)
-                : null;
-            var order = state?.PendingOrder;
-            bool show = collector != null && order != null;
-            _b.briefActiveClient.SetActive(show);
-            if (!show) return;
+            var order = orderOverride ?? state?.PendingOrder;
 
-            if (_b.briefActiveName != null)
-                _b.briefActiveName.text = collector.nameRu ?? order.NameRu ?? "";
-
-            if (_b.briefActiveTags != null)
-                _b.briefActiveTags.text = order.CriteriaLabel ?? "";
-
-            if (_b.briefActivePortrait != null)
-            {
-                if (collector.portrait != null)
-                {
-                    _b.briefActivePortrait.sprite = collector.portrait;
-                    _b.briefActivePortrait.color = Color.white;
-                    _b.briefActivePortrait.enabled = true;
-                }
-                else
-                {
-                    _b.briefActivePortrait.sprite = null;
-                    _b.briefActivePortrait.color = GameUiStyle.PanelLight;
-                }
-            }
-        }
-
-        void RefreshAuctionActiveClient(DayOrder order, GameSession session)
-        {
-            if (_b?.auctionActiveClient == null) return;
-            var catalog = _flow?.Catalog;
             CollectorData collector = null;
             if (order != null && catalog != null)
                 collector = catalog.FindCollector(order.CollectorId);
-            if (collector == null && session?.State != null && catalog != null)
-                collector = catalog.FindCollector(session.State.SelectedBranchId);
+            if (collector == null && state != null && catalog != null)
+                collector = catalog.FindCollector(state.SelectedBranchId);
 
-            bool show = order != null;
-            _b.auctionActiveClient.SetActive(show);
+            // Auction passes an order override and shows whenever a day order exists.
+            // Brief requires both a selected collector and a pending order.
+            bool show = orderOverride != null
+                ? order != null
+                : collector != null && order != null;
+
+            _b.activeClient.SetActive(show);
             if (!show) return;
 
-            if (_b.auctionActiveName != null)
-                _b.auctionActiveName.text = collector?.nameRu ?? order.NameRu ?? "";
+            if (_b.activeName != null)
+                _b.activeName.text = collector?.nameRu ?? order.NameRu ?? "";
 
-            if (_b.auctionActiveTags != null)
-                _b.auctionActiveTags.text = order.CriteriaLabel ?? "";
+            if (_b.activeTags != null)
+                _b.activeTags.text = order.CriteriaLabel ?? "";
 
-            if (_b.auctionActivePortrait != null)
+            if (_b.activePortrait != null)
             {
                 if (collector?.portrait != null)
                 {
-                    _b.auctionActivePortrait.sprite = collector.portrait;
-                    _b.auctionActivePortrait.color = Color.white;
-                    _b.auctionActivePortrait.enabled = true;
+                    _b.activePortrait.sprite = collector.portrait;
+                    _b.activePortrait.color = Color.white;
+                    _b.activePortrait.enabled = true;
                 }
                 else
                 {
-                    _b.auctionActivePortrait.sprite = null;
-                    _b.auctionActivePortrait.color = GameUiStyle.PanelLight;
+                    _b.activePortrait.sprite = null;
+                    _b.activePortrait.color = GameUiStyle.PanelLight;
                 }
             }
         }
@@ -771,7 +751,7 @@ namespace MasterBidder.UI
                 $"{LocaleService.T("auction.lot")} {state.CurrentLotIndex + 1}/{state.Lots.Count}";
 
             var order = state.DayOrders.Count > 0 ? state.DayOrders[0] : state.PendingOrder;
-            RefreshAuctionActiveClient(order, session);
+            RefreshActiveClientPanel(session, order);
 
             var lot = state.CurrentLot;
             int price = lot != null

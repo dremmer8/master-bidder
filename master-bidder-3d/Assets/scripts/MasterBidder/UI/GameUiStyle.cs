@@ -198,16 +198,14 @@ namespace MasterBidder.UI
 
             ApplyUiFont(b.briefDay, bold: true);
             ApplyUiFont(b.briefCapital, bold: true);
-            ApplyDisplayFont(b.briefActiveName, bold: true);
-            ApplyUiFont(b.briefActiveTags, bold: true);
+            ApplyDisplayFont(b.activeName, bold: true);
+            ApplyUiFont(b.activeTags, bold: true);
             ApplyDisplayFont(b.briefClientHeading, bold: true);
             ApplyDisplayFont(b.briefWorkshopHeading, bold: true);
             ApplyUiFont(b.briefPanelToggleLabel, bold: true);
             ApplyUiFont(b.enterLabel, bold: true);
             ApplyUiFont(b.resetLabel, bold: true);
 
-            ApplyDisplayFont(b.auctionActiveName, bold: true);
-            ApplyUiFont(b.auctionActiveTags, bold: true);
             ApplyUiFont(b.aucHud, bold: true);
             ApplyUiFont(b.orderCard);
             ApplyUiFont(b.livePrice, bold: true);
