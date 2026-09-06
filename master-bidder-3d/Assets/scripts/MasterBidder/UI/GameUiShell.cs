@@ -793,7 +793,8 @@ namespace MasterBidder.UI
 
             bool standby = state.AwaitingLotStart || IsCollectorPopupVisible;
             bool presenting = _flow != null && _flow.IsPresentingLot;
-            bool busy = state.LotResolved || state.FastForwarding || _purchaseCardVisible || presenting;
+            bool resolvingPurchase = _flow != null && _flow.IsResolvingPurchase;
+            bool busy = state.LotResolved || state.FastForwarding || resolvingPurchase || presenting;
             var day1Tut = session.GetDay1TutorialStep(state.CurrentLotIndex);
             // Match session gates: coaching lots only unlock the taught action after the coach appears.
             bool buyAllowed = day1Tut == TutorialStep.None
@@ -1062,11 +1063,8 @@ namespace MasterBidder.UI
 
             if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
             {
-                if (_purchaseCardVisible)
-                {
-                    _flow.OnPurchaseCardDismiss();
+                if (_flow.IsResolvingPurchase)
                     return;
-                }
                 if (IsCollectorPopupVisible)
                 {
                     _flow.OnCollectorPopupStart();
@@ -1079,11 +1077,6 @@ namespace MasterBidder.UI
                     if (state.AwaitingLotStart) _flow.OnStartLot();
                     else _flow.OnBuy();
                 }
-            }
-
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (_purchaseCardVisible) _flow.OnPurchaseCardDismiss();
             }
 
             if (_lastRaisedRival >= 0 && Time.unscaledTime > _rivalRaiseUntil)

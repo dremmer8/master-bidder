@@ -24,13 +24,16 @@ namespace MasterBidder.Flow
         GameSession _session;
         AuctionTimerHost _timers;
         GameUiShell _ui;
-        bool _awaitingPurchaseDismiss;
+        bool _resolvingPurchase;
         Coroutine _presentRoutine;
+        Coroutine _purchaseResolveRoutine;
 
         public GameSession Session => _session;
         public GameCatalog Catalog => catalog;
         /// <summary>True while cloth/lot presentation is in progress (actions should stay locked).</summary>
         public bool IsPresentingLot => _presentRoutine != null;
+        /// <summary>True while waiting on the sold-ticket appear beat after a buy.</summary>
+        public bool IsResolvingPurchase => _resolvingPurchase;
 
         void Awake()
         {
@@ -105,7 +108,7 @@ namespace MasterBidder.Flow
 
         void HandleScreen(GameScreen screen)
         {
-            _awaitingPurchaseDismiss = false;
+            CancelPurchaseResolve();
             _ui.HidePurchaseCard();
             _ui.ShowScreen(screen);
             _ui.Refresh(_session);
@@ -132,6 +135,9 @@ namespace MasterBidder.Flow
             AudioService.PlayRivalRaise();
             AudioService.PlayOutcome("lost");
             _ui.RaiseRandomRival();
+            // Ticket appear replaces the old fixed resolution pause.
+            _timers.CancelResolution();
+            BeginPurchaseResolve();
         }
 
         void OnPresentLotRequested()
@@ -216,7 +222,7 @@ namespace MasterBidder.Flow
 
         public void OnBuy()
         {
-            if (_session == null || _awaitingPurchaseDismiss) return;
+            if (_session == null || _resolvingPurchase) return;
             if (!_session.TryBuy(out bool insufficient))
             {
                 if (insufficient)
@@ -227,30 +233,23 @@ namespace MasterBidder.Flow
                 return;
             }
 
-            _awaitingPurchaseDismiss = true;
             _timers.CancelResolution();
             AudioService.StopTension();
             AudioService.StopVoiceover();
             AudioService.PlayOutcome("won");
-            var lot = _session.State.PurchasesToday[_session.State.PurchasesToday.Count - 1];
-            var presented = _session.State.CurrentLot;
-            _ui.ShowPurchaseCard(presented, lot.Price);
             _ui.Refresh(_session);
+            BeginPurchaseResolve();
         }
 
         public void OnPurchaseCardDismiss()
         {
-            if (!_awaitingPurchaseDismiss) return;
-            _awaitingPurchaseDismiss = false;
-            AudioService.StopVoiceover();
-            AudioService.PlayCardClose();
-            _ui.HidePurchaseCard();
-            _session?.AdvanceLot();
+            // Purchase card removed — kept for UI bindings; advance is driven by ticket resolve.
+            if (!_resolvingPurchase) return;
         }
 
         public void OnSkip()
         {
-            if (_session == null || _awaitingPurchaseDismiss) return;
+            if (_session == null || _resolvingPurchase) return;
             var state = _session.State;
             if (state == null) return;
             // Match MVP: ignore re-entry while already skipping / resolved (spam-safe).
@@ -277,7 +276,7 @@ namespace MasterBidder.Flow
 
         public void OnFinishDay()
         {
-            if (_awaitingPurchaseDismiss) return;
+            if (_resolvingPurchase) return;
             _session?.FinishDayEarly();
         }
 
@@ -348,6 +347,46 @@ namespace MasterBidder.Flow
                 presentation.PresentPaintingData(data, onComplete);
             else
                 presentation.PresentPaintingById(id, onComplete);
+        }
+
+        void BeginPurchaseResolve()
+        {
+            if (_purchaseResolveRoutine != null)
+                StopCoroutine(_purchaseResolveRoutine);
+            _purchaseResolveRoutine = StartCoroutine(PurchaseResolveRoutine());
+        }
+
+        void CancelPurchaseResolve()
+        {
+            if (_purchaseResolveRoutine != null)
+            {
+                StopCoroutine(_purchaseResolveRoutine);
+                _purchaseResolveRoutine = null;
+            }
+
+            _resolvingPurchase = false;
+        }
+
+        IEnumerator PurchaseResolveRoutine()
+        {
+            _resolvingPurchase = true;
+            _ui?.Refresh(_session);
+            presentation?.ExitInspectMode();
+
+            var ticket = presentation != null ? presentation.Ticket : null;
+            if (ticket != null)
+            {
+                yield return ticket.AppearAndWait();
+                yield return new WaitForSeconds(1f);
+            }
+            else
+            {
+                yield return new WaitForSeconds(CampaignConfig.ResolutionPauseSeconds);
+            }
+
+            _resolvingPurchase = false;
+            _purchaseResolveRoutine = null;
+            _session?.AdvanceLot();
         }
     }
 }

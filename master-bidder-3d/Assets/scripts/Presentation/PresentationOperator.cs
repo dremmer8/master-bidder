@@ -14,6 +14,7 @@ namespace MasterBidder.Presentation
         [SerializeField] private CanvasController canvas;
         [SerializeField] private PresentationLightRig lightRig;
         [SerializeField] private PresentationInspectCamera inspectCamera;
+        [SerializeField] private PresentationTicketController ticket;
 
         [Header("Demo")]
         [Tooltip("When false, Spacebar random-present is disabled (game flow owns input).")]
@@ -33,6 +34,7 @@ namespace MasterBidder.Presentation
         public CanvasController Canvas => canvas;
         public PresentationLightRig LightRig => lightRig;
         public PresentationInspectCamera InspectCamera => inspectCamera;
+        public PresentationTicketController Ticket => ticket;
 
         private void Awake()
         {
@@ -54,6 +56,11 @@ namespace MasterBidder.Presentation
             if (inspectCamera == null)
             {
                 inspectCamera = GetComponent<PresentationInspectCamera>();
+            }
+
+            if (ticket == null)
+            {
+                ticket = FindObjectOfType<PresentationTicketController>();
             }
         }
 
@@ -179,6 +186,7 @@ namespace MasterBidder.Presentation
             if (canvas != null && canvas.ApplyRandomPainting())
             {
                 AimLight();
+                BindTicketToCanvas();
             }
         }
 
@@ -188,10 +196,17 @@ namespace MasterBidder.Presentation
             if (canvas != null && canvas.NextPainting())
             {
                 AimLight();
+                BindTicketToCanvas();
             }
         }
 
         public void AimLight() => lightRig?.AimAtPainting();
+
+        public void BindTicketToCanvas()
+        {
+            if (ticket == null || canvas == null) return;
+            ticket.BindToCanvas(canvas.CanvasMesh);
+        }
 
         public void ExitInspectMode()
         {
@@ -248,6 +263,7 @@ namespace MasterBidder.Presentation
             else
             {
                 AimLight();
+                BindTicketToCanvas();
             }
 
             yield return cloth.RaiseAndWait();

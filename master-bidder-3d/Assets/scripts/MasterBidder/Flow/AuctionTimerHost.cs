@@ -176,8 +176,7 @@ namespace MasterBidder.Flow
             yield return new WaitForSeconds(rivalDelay);
             if (!state.LotResolved)
                 _session.ApplyRivalWin(clearTimers: false);
-            if (state.LotResolved)
-                ScheduleResolutionThenAdvance(CampaignConfig.ResolutionPauseSeconds);
+            // Advance is owned by AppFlow ticket appear resolve (OnRivalWon).
             _skipRoutine = null;
         }
 
@@ -203,10 +202,7 @@ namespace MasterBidder.Flow
         {
             yield return new WaitForSeconds(delay);
             _session?.ApplyRivalWin();
-            if (_session != null && _session.State.LotResolved)
-            {
-                ScheduleResolutionThenAdvance(CampaignConfig.ResolutionPauseSeconds);
-            }
+            // Advance is owned by AppFlow ticket appear resolve (OnRivalWon).
             _rivalRoutine = null;
         }
     }
