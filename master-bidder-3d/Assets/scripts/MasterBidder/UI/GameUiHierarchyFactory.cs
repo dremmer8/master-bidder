@@ -41,6 +41,7 @@ namespace MasterBidder.UI
             view.portraitRoot = portrait;
             view.label = t;
             view.button = btn;
+            GameUiSampleContent.ApplyCollectorCard(view);
             return card;
         }
 
@@ -70,6 +71,7 @@ namespace MasterBidder.UI
             view.label = t;
             view.buyButton = buy;
             view.buyLabel = bl;
+            GameUiSampleContent.ApplyUpgradeRow(view);
             return row;
         }
 
@@ -97,6 +99,7 @@ namespace MasterBidder.UI
             view.label = t;
             view.buyButton = buy;
             view.buyLabel = bl;
+            GameUiSampleContent.ApplyBoosterRow(view);
             return row;
         }
 
@@ -141,6 +144,7 @@ namespace MasterBidder.UI
             b.collectorPopup.SetActive(false);
             b.purchaseCard.SetActive(false);
             b.tutorial.SetActive(false);
+            GameUiSampleContent.Apply(b);
             return canvasGo;
         }
 
@@ -523,6 +527,7 @@ namespace MasterBidder.UI
             view.title = title;
             view.meta = meta;
             view.stamp = stamp;
+            GameUiSampleContent.ApplyPurchaseTag(view);
             return card;
         }
 

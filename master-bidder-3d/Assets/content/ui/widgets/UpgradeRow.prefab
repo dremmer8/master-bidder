@@ -65,10 +65,12 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\u042D\u043A\u0441\u043F\u0435\u0440\u0442-\u043E\u0446\u0435\u043D\u0449\u0438\u043A
+    \u2014 12\u202F000 \u20BD\n\u0420\u0430\u043D\u044C\u0448\u0435 \u0440\u0430\u0441\u043A\u0440\u044B\u0432\u0430\u0435\u0442
+    \u0441\u0432\u0435\u0434\u0435\u043D\u0438\u044F \u043E \u043B\u043E\u0442\u0435."
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: ff67c645a783741409410ff6791e110b, type: 2}
-  m_sharedMaterial: {fileID: 5263351064058682483, guid: ff67c645a783741409410ff6791e110b, type: 2}
+  m_sharedMaterial: {fileID: -1273755584573505820, guid: ff67c645a783741409410ff6791e110b, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -512,10 +514,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: B
+  m_text: Buy
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6720ef2af7e6ee94c9a3f35c88bad22d, type: 2}
-  m_sharedMaterial: {fileID: -3444735532968540038, guid: 6720ef2af7e6ee94c9a3f35c88bad22d, type: 2}
+  m_sharedMaterial: {fileID: -1568298496542987431, guid: 6720ef2af7e6ee94c9a3f35c88bad22d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

@@ -65,10 +65,12 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\u0411\u0430\u0440\u043E\u043D \u0410\u0440\u043A\u0430\u0434\u0438\u0439
+    \u0421\u0432\u0435\u0442\u043E\u0437\u0430\u0440\u043E\u0432\n\u041C\u0438\u0441\u0441\u0438\u044F
+    1/10"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: ff67c645a783741409410ff6791e110b, type: 2}
-  m_sharedMaterial: {fileID: 5263351064058682483, guid: ff67c645a783741409410ff6791e110b, type: 2}
+  m_sharedMaterial: {fileID: -1273755584573505820, guid: ff67c645a783741409410ff6791e110b, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

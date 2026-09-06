@@ -1,5 +1,6 @@
 using System.IO;
 using MasterBidder.Flow;
+using MasterBidder.Services;
 using MasterBidder.UI;
 using TMPro;
 using UnityEditor;
@@ -61,6 +62,98 @@ namespace MasterBidder.Editor
                     "Edit layout/fonts/spacing on the prefabs — runtime will keep your changes.\n" +
                     "Tip: run Master Bidder → Import UI Atlas Sprites first for 9-slice borders.",
                     "OK");
+            }
+        }
+
+        /// <summary>
+        /// Writes Russian sample copy into existing UI prefabs without touching layout.
+        /// Menu: Master Bidder → Fill UI Prefab Sample Text
+        /// </summary>
+        [MenuItem("Master Bidder/Fill UI Prefab Sample Text", priority = 22)]
+        public static void FillSampleTextMenu()
+        {
+            if (!FillSampleText())
+            {
+                EditorUtility.DisplayDialog(
+                    "UI Sample Text",
+                    "Could not fill sample text. Generate UI Prefabs first.",
+                    "OK");
+                return;
+            }
+
+            EditorUtility.DisplayDialog(
+                "UI Sample Text",
+                "Russian sample copy written into GameUI + widget prefabs.\n" +
+                "Layout/fonts/anchors were not changed. Runtime still replaces text via LocaleService.",
+                "OK");
+        }
+
+        public static bool FillSampleText()
+        {
+            LocaleService.Init();
+            bool any = false;
+
+            any |= FillGameUiPrefab();
+            any |= FillWidget(CollectorCardPath, root =>
+                GameUiSampleContent.ApplyCollectorCard(root.GetComponent<CollectorCardView>()));
+            any |= FillWidget(UpgradeRowPath, root =>
+                GameUiSampleContent.ApplyUpgradeRow(root.GetComponent<UpgradeRowView>()));
+            any |= FillWidget(BoosterRowPath, root =>
+                GameUiSampleContent.ApplyBoosterRow(root.GetComponent<BoosterRowView>()));
+            any |= FillWidget(PurchaseTagPath, root =>
+                GameUiSampleContent.ApplyPurchaseTag(root.GetComponent<PurchaseTagView>()));
+
+            if (any)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                Debug.Log("[GameUiPrefabGenerator] Sample UI text filled on prefabs.");
+            }
+
+            return any;
+        }
+
+        static bool FillGameUiPrefab()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameUiPrefabPath);
+            if (prefab == null) return false;
+
+            string path = AssetDatabase.GetAssetPath(prefab);
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                var bindings = root.GetComponent<GameUiBindings>();
+                if (bindings == null)
+                {
+                    Debug.LogError("[GameUiPrefabGenerator] GameUI.prefab missing GameUiBindings.");
+                    return false;
+                }
+
+                GameUiSampleContent.Apply(bindings);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        static bool FillWidget(string prefabPath, System.Action<GameObject> apply)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null) return false;
+
+            var root = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                apply(root);
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
             }
         }
 
