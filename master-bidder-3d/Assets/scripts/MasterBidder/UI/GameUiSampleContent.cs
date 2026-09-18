@@ -15,6 +15,19 @@ namespace MasterBidder.UI
             if (b == null) return;
 
             Set(b.chromeTitle, LocaleService.T("chrome.title"));
+            Set(b.catalogButtonLabel, LocaleService.T("chrome.catalog"));
+            Set(b.licensesButtonLabel, LocaleService.T("chrome.licenses"));
+            Set(b.catalogTitle, LocaleService.T("catalog.title"));
+            Set(b.catalogCloseLabel, LocaleService.T("catalog.close"));
+            Set(b.catalogPageLabel, string.Format(LocaleService.T("catalog.page"), 1, 1));
+            if (b.catalogSearch != null && b.catalogSearch.placeholder is TextMeshProUGUI ph)
+                ph.text = LocaleService.T("catalog.search");
+
+            Set(b.licensesTitle, LocaleService.T("licenses.title"));
+            Set(b.licensesCloseLabel, LocaleService.T("licenses.close"));
+            Set(b.examAbandonLabel, LocaleService.T("exam.abandon"));
+            Set(b.examNextLabel, LocaleService.T("exam.next"));
+            Set(b.examResultOkLabel, LocaleService.T("exam.ok"));
 
             Set(b.introTitle, LocaleService.T("intro.title"));
             Set(b.introSubtitle, LocaleService.T("intro.subtitle"));
@@ -128,6 +141,20 @@ namespace MasterBidder.UI
             Set(view.meta, "48 000 ₽  ·  " + LocaleService.T("report.commission") + " 12 400 ₽");
             Set(view.stamp, LocaleService.T("report.correct"));
             if (view.stamp != null) view.stamp.color = GameUiStyle.Good;
+        }
+
+        public static void ApplyHangTag(HangTagView view)
+        {
+            if (view == null) return;
+            view.Bind(
+                paintingThumb: null,
+                title: "Джоконда",
+                style: "Возрождение",
+                genre: "Портрет",
+                author: "Леонардо да Винчи",
+                owner: "Барон Аркадий Светозаров",
+                broker: "Вы",
+                matched: true);
         }
 
         static void Set(TMP_Text text, string value)

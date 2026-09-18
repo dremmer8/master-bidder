@@ -46,6 +46,10 @@ namespace MasterBidder.Core
             public string pendingResultJson;
             public string[] branchProgressKeys;
             public int[] branchProgressValues;
+            public string[] catalogDiscoveredIds;
+            public string[] catalogProgressKeys;
+            public string catalogProgressFlat;
+            public string[] ownedLicenses;
         }
 
         [Serializable]
@@ -132,6 +136,10 @@ namespace MasterBidder.Core
                 };
             }
 
+            string[] catalogProgressKeys;
+            string catalogProgressFlat = CatalogProgress.SerializeProgressFlat(
+                state.CatalogFieldProgress, out catalogProgressKeys);
+
             return new SaveData
             {
                 version = Version,
@@ -165,7 +173,11 @@ namespace MasterBidder.Core
                     ? JsonUtility.ToJson(state.PendingResult)
                     : string.Empty,
                 branchProgressKeys = branchKeys.ToArray(),
-                branchProgressValues = branchVals.ToArray()
+                branchProgressValues = branchVals.ToArray(),
+                catalogDiscoveredIds = ToArray(state.CatalogDiscoveredIds),
+                catalogProgressKeys = catalogProgressKeys,
+                catalogProgressFlat = catalogProgressFlat,
+                ownedLicenses = ToArray(state.OwnedLicenses)
             };
         }
 
@@ -176,6 +188,10 @@ namespace MasterBidder.Core
             state.DayStartCapital = data.dayStartCapital;
             state.ClientBudgetRemaining = data.clientBudgetRemaining;
             state.SeenArtworkIds = new HashSet<string>(data.seenArtworkIds ?? Array.Empty<string>());
+            state.CatalogDiscoveredIds = new HashSet<string>(data.catalogDiscoveredIds ?? Array.Empty<string>());
+            state.CatalogFieldProgress = CatalogProgress.DeserializeProgressFlat(
+                data.catalogProgressKeys, data.catalogProgressFlat);
+            state.OwnedLicenses = new HashSet<string>(data.ownedLicenses ?? Array.Empty<string>());
             state.ArtworkPurchaseDays = new Dictionary<string, int>();
             if (data.artworkPurchaseDayKeys != null)
             {

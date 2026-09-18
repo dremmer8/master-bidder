@@ -171,6 +171,10 @@ namespace MasterBidder.Flow
                 if (_session.State.LotResolved) yield break;
                 if (_session.State.CurrentLotIndex >= _session.State.Lots.Count) yield break;
 
+                var lot = _session.State.CurrentLot;
+                if (lot != null)
+                    _session.MarkCatalogDiscovered(lot.Id);
+
                 _timers.StartLotTimers();
             }
             finally
@@ -311,6 +315,18 @@ namespace MasterBidder.Flow
             AudioService.PlaySelect();
             _session?.SelectBranch(id);
         }
+
+        public bool StartLicenseExam(string tierId) =>
+            _session != null && _session.StartLicenseExam(tierId);
+
+        public void SetExamAnswer(string answer) => _session?.SetExamAnswer(answer);
+
+        public bool SubmitExamCardAndAdvance() =>
+            _session != null && _session.SubmitExamCardAndAdvance();
+
+        public void AbandonLicenseExam() => _session?.AbandonLicenseExam();
+
+        public void ClearFinishedExam() => _session?.ClearFinishedExam();
 
         void EnsureSession()
         {

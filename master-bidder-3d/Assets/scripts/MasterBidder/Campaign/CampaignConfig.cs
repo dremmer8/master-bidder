@@ -48,6 +48,19 @@ namespace MasterBidder.Campaign
             "genre", "period", "artist", "fact", "title"
         };
 
+        /// <summary>Seconds of hold required to fully study one auction field line.</summary>
+        public const float CatalogStudySeconds = 5f;
+
+        /// <summary>Paintings shown per catalog book spread.</summary>
+        public const int CatalogPageSize = 4;
+
+        public const string LicenseRegularId = "regular";
+        public const string LicenseEliteId = "elite";
+        public const int LicenseExamFeeRegular = 5000;
+        public const int LicenseExamFeeElite = 15000;
+        public const int LicenseExamQuestionCount = 10;
+        public const float LicenseExamPassRatio = 0.8f;
+
         public static int RarityCommissionValue(ArtworkRarity rarity)
         {
             switch (rarity)

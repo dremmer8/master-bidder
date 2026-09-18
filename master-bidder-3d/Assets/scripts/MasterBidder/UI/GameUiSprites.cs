@@ -28,6 +28,8 @@ namespace MasterBidder.UI
         static Sprite _toastError;
         static Sprite _iconClose;
         static Sprite _iconInfo;
+        static Sprite _circleMask;
+        static Sprite _dotOn;
         static bool _loaded;
 
         public static Sprite Panel => Ensure(ref _panel, "panel");
@@ -49,6 +51,8 @@ namespace MasterBidder.UI
         public static Sprite ToastError => Ensure(ref _toastError, "toast_error");
         public static Sprite IconClose => Ensure(ref _iconClose, "icon_close");
         public static Sprite IconInfo => Ensure(ref _iconInfo, "icon_info");
+        public static Sprite CircleMask => Ensure(ref _circleMask, "circle_mask");
+        public static Sprite DotOn => Ensure(ref _dotOn, "dot_on");
 
         public static void Warmup()
         {

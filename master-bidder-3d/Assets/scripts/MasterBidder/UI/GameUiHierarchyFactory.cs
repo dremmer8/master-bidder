@@ -142,10 +142,16 @@ namespace MasterBidder.UI
             b.collectorPopup = BuildCollectorPopup(canvasGo.transform, b);
             b.purchaseCard = BuildPurchaseCard(canvasGo.transform, b);
             b.tutorial = BuildTutorial(canvasGo.transform, b);
+            b.paintingCatalog = BuildPaintingCatalog(canvasGo.transform, b);
+            b.licensesHub = BuildLicensesHub(canvasGo.transform, b);
+            b.licenseExam = BuildLicenseExam(canvasGo.transform, b);
 
             b.collectorPopup.SetActive(false);
             b.purchaseCard.SetActive(false);
             b.tutorial.SetActive(false);
+            b.paintingCatalog.SetActive(false);
+            b.licensesHub.SetActive(false);
+            b.licenseExam.SetActive(false);
             GameUiSampleContent.Apply(b);
             return canvasGo;
         }
@@ -154,8 +160,17 @@ namespace MasterBidder.UI
         {
             var bar = CreatePanel("Chrome", parent, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -52), Vector2.zero);
             GameUiStyle.ApplySliced(bar.GetComponent<Image>(), GameUiSprites.Banner, GameUiStyle.SpriteReady);
+
+            b.btnCatalog = CreateSecondaryButton("CatalogBtn", bar.transform, out b.catalogButtonLabel);
+            Stretch(b.btnCatalog.GetComponent<RectTransform>(), new Vector2(0, 0.12f), new Vector2(0, 0.88f), new Vector2(10, 0), new Vector2(118, 0));
+            b.catalogButtonLabel.fontSize = 13;
+
+            b.btnLicenses = CreateSecondaryButton("LicensesBtn", bar.transform, out b.licensesButtonLabel);
+            Stretch(b.btnLicenses.GetComponent<RectTransform>(), new Vector2(0, 0.12f), new Vector2(0, 0.88f), new Vector2(122, 0), new Vector2(236, 0));
+            b.licensesButtonLabel.fontSize = 13;
+
             b.chromeTitle = CreateDisplayText("Title", bar.transform, "", 16, TextAnchor.MiddleLeft);
-            Stretch(b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(28, 0), new Vector2(-8, 0));
+            Stretch(b.chromeTitle.rectTransform, new Vector2(0, 0), new Vector2(0.28f, 1), new Vector2(246, 0), new Vector2(-8, 0));
 
             BuildEffectsHud(bar.transform, parent, b);
 
@@ -363,6 +378,7 @@ namespace MasterBidder.UI
             b.fieldLabels = new TextMeshProUGUI[5];
             b.fieldValues = new TextMeshProUGUI[5];
             b.fieldRows = new Image[5];
+            b.fieldStudyFills = new Image[5];
             // Fact (index 3) gets a taller band so long copy stays inside the row.
             float[] rowTops = { 1f, 0.86f, 0.72f, 0.58f, 0.18f, 0f };
             for (int i = 0; i < 5; i++)
@@ -376,14 +392,21 @@ namespace MasterBidder.UI
                     : new Color(0.2f, 0.16f, 0.12f, 0.04f);
                 row.AddComponent<RectMask2D>();
                 b.fieldRows[i] = row.GetComponent<Image>();
+                b.fieldRows[i].raycastTarget = true;
+
+                FieldStudyHold.EnsureBarUnderRow(row.transform, out _, out var studyFill);
+                b.fieldStudyFills[i] = studyFill;
+
                 b.fieldLabels[i] = CreateText("L", row.transform, "", 12, TextAnchor.UpperLeft);
                 Stretch(b.fieldLabels[i].rectTransform, new Vector2(0, 0), new Vector2(0.38f, 1), new Vector2(10, 4), new Vector2(0, -4));
                 b.fieldLabels[i].color = GameUiStyle.Dim;
+                b.fieldLabels[i].raycastTarget = false;
                 b.fieldValues[i] = CreateText("V", row.transform, "", 13, TextAnchor.UpperLeft);
                 Stretch(b.fieldValues[i].rectTransform, new Vector2(0.38f, 0), Vector2.one, new Vector2(4, 4), new Vector2(-10, -4));
                 b.fieldValues[i].enableWordWrapping = true;
                 b.fieldValues[i].overflowMode = TextOverflowModes.Truncate;
                 b.fieldValues[i].color = GameUiStyle.TextColor;
+                b.fieldValues[i].raycastTarget = false;
             }
 
             b.familiarBadge = CreateText("Familiar", hud.transform, "", 12, TextAnchor.MiddleCenter);
@@ -513,6 +536,328 @@ namespace MasterBidder.UI
             return root;
         }
 
+        public static GameObject BuildPaintingCatalogOverlay(Transform parent, GameUiBindings b) =>
+            BuildPaintingCatalog(parent, b);
+
+        static GameObject BuildPaintingCatalog(Transform parent, GameUiBindings b)
+        {
+            var root = CreatePanel("PaintingCatalog", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            root.GetComponent<Image>().sprite = null;
+            root.GetComponent<Image>().color = GameUiStyle.Overlay;
+
+            var book = CreatePanel("Book", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-520, -300), new Vector2(520, 300));
+            GameUiStyle.ApplyFramedPanel(book.GetComponent<Image>());
+
+            b.catalogTitle = CreateDisplayText("Title", book.transform, "", 22, TextAnchor.MiddleLeft);
+            Stretch(b.catalogTitle.rectTransform, new Vector2(0, 0.9f), new Vector2(0.55f, 1), new Vector2(24, -10), new Vector2(-8, -8));
+            b.catalogTitle.color = GameUiStyle.Accent;
+
+            var searchGo = new GameObject("Search", typeof(RectTransform), typeof(Image));
+            searchGo.transform.SetParent(book.transform, false);
+            Stretch(searchGo.GetComponent<RectTransform>(), new Vector2(0.55f, 0.9f), new Vector2(0.88f, 1),
+                new Vector2(4, -12), new Vector2(-8, -10));
+            var searchBg = searchGo.GetComponent<Image>();
+            GameUiStyle.ApplyCard(searchBg);
+            b.catalogSearch = searchGo.AddComponent<TMP_InputField>();
+            b.catalogSearch.targetGraphic = searchBg;
+            var searchText = CreateText("Text", searchGo.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(searchText.rectTransform, Vector2.zero, Vector2.one, new Vector2(10, 2), new Vector2(-10, -2));
+            searchText.color = GameUiStyle.TextColor;
+            var placeholder = CreateText("Placeholder", searchGo.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(placeholder.rectTransform, Vector2.zero, Vector2.one, new Vector2(10, 2), new Vector2(-10, -2));
+            placeholder.color = GameUiStyle.Dim;
+            b.catalogSearch.textComponent = searchText;
+            b.catalogSearch.placeholder = placeholder;
+            b.catalogSearch.caretColor = GameUiStyle.Accent;
+
+            b.btnCatalogClose = CreateSecondaryButton("Close", book.transform, out b.catalogCloseLabel);
+            Stretch(b.btnCatalogClose.GetComponent<RectTransform>(), new Vector2(0.88f, 0.9f), new Vector2(1, 1),
+                new Vector2(4, -12), new Vector2(-16, -10));
+            b.catalogCloseLabel.fontSize = 14;
+
+            var spread = CreatePanel("Spread", book.transform, new Vector2(0, 0.12f), new Vector2(1, 0.9f),
+                new Vector2(16, 8), new Vector2(-16, -8));
+            spread.GetComponent<Image>().color = new Color(0.95f, 0.92f, 0.86f, 0.35f);
+
+            // Vertical divider between left/right pages.
+            var gutter = CreatePanel("Gutter", spread.transform, new Vector2(0.495f, 0.04f), new Vector2(0.505f, 0.96f),
+                Vector2.zero, Vector2.zero);
+            gutter.GetComponent<Image>().color = new Color(0.35f, 0.28f, 0.2f, 0.25f);
+
+            b.catalogSlots = new PaintingCatalogSlotView[4];
+            // Left page: slots 0,1 — right page: slots 2,3
+            Vector2[] slotMins =
+            {
+                new Vector2(0.02f, 0.52f), new Vector2(0.02f, 0.04f),
+                new Vector2(0.52f, 0.52f), new Vector2(0.52f, 0.04f)
+            };
+            Vector2[] slotMaxs =
+            {
+                new Vector2(0.48f, 0.96f), new Vector2(0.48f, 0.48f),
+                new Vector2(0.98f, 0.96f), new Vector2(0.98f, 0.48f)
+            };
+            for (int i = 0; i < 4; i++)
+                b.catalogSlots[i] = BuildCatalogSlot("Slot" + i, spread.transform, slotMins[i], slotMaxs[i]);
+
+            b.btnCatalogPrev = CreateSecondaryButton("Prev", book.transform, out var prevLabel);
+            Stretch(b.btnCatalogPrev.GetComponent<RectTransform>(), new Vector2(0.02f, 0.02f), new Vector2(0.14f, 0.11f),
+                Vector2.zero, Vector2.zero);
+            prevLabel.text = "‹";
+            prevLabel.fontSize = 22;
+
+            b.catalogPageLabel = CreateText("Page", book.transform, "", 14, TextAnchor.MiddleCenter);
+            Stretch(b.catalogPageLabel.rectTransform, new Vector2(0.14f, 0.02f), new Vector2(0.86f, 0.11f),
+                Vector2.zero, Vector2.zero);
+            b.catalogPageLabel.color = GameUiStyle.Dim;
+
+            b.btnCatalogNext = CreateSecondaryButton("Next", book.transform, out var nextLabel);
+            Stretch(b.btnCatalogNext.GetComponent<RectTransform>(), new Vector2(0.86f, 0.02f), new Vector2(0.98f, 0.11f),
+                Vector2.zero, Vector2.zero);
+            nextLabel.text = "›";
+            nextLabel.fontSize = 22;
+
+            return root;
+        }
+
+        static PaintingCatalogSlotView BuildCatalogSlot(string name, Transform parent, Vector2 aMin, Vector2 aMax)
+        {
+            var panel = CreatePanel(name, parent, aMin, aMax, new Vector2(4, 4), new Vector2(-4, -4));
+            panel.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.08f);
+            var view = panel.AddComponent<PaintingCatalogSlotView>();
+            view.root = panel;
+
+            var thumbGo = new GameObject("Thumb", typeof(RectTransform), typeof(RawImage));
+            thumbGo.transform.SetParent(panel.transform, false);
+            Stretch(thumbGo.GetComponent<RectTransform>(), new Vector2(0, 0.15f), new Vector2(0.38f, 1),
+                new Vector2(6, 4), new Vector2(-4, -6));
+            view.thumbnail = thumbGo.GetComponent<RawImage>();
+            view.thumbnail.color = new Color(0.85f, 0.82f, 0.76f, 1f);
+
+            view.unknownMark = CreateDisplayText("Unknown", panel.transform, "?", 42, TextAnchor.MiddleCenter);
+            Stretch(view.unknownMark.rectTransform, new Vector2(0, 0.15f), new Vector2(0.38f, 1),
+                new Vector2(6, 4), new Vector2(-4, -6));
+            view.unknownMark.color = GameUiStyle.Dim;
+
+            view.fieldLabels = new TextMeshProUGUI[5];
+            view.fieldValues = new TextMeshProUGUI[5];
+            for (int i = 0; i < 5; i++)
+            {
+                float yMax = 1f - i * 0.17f;
+                float yMin = yMax - 0.16f;
+                view.fieldLabels[i] = CreateText("FL" + i, panel.transform, "", 10, TextAnchor.MiddleLeft);
+                Stretch(view.fieldLabels[i].rectTransform, new Vector2(0.4f, yMin), new Vector2(0.58f, yMax),
+                    new Vector2(2, 0), new Vector2(-2, 0));
+                view.fieldLabels[i].color = GameUiStyle.Dim;
+                view.fieldLabels[i].fontSize = 10;
+
+                view.fieldValues[i] = CreateText("FV" + i, panel.transform, "", 11, TextAnchor.MiddleLeft);
+                Stretch(view.fieldValues[i].rectTransform, new Vector2(0.58f, yMin), new Vector2(1, yMax),
+                    new Vector2(2, 0), new Vector2(-6, 0));
+                view.fieldValues[i].color = GameUiStyle.TextColor;
+                view.fieldValues[i].enableWordWrapping = false;
+                view.fieldValues[i].overflowMode = TextOverflowModes.Ellipsis;
+                view.fieldValues[i].fontSize = 11;
+            }
+
+            return view;
+        }
+
+        public static GameObject BuildLicensesHubOverlay(Transform parent, GameUiBindings b) =>
+            BuildLicensesHub(parent, b);
+
+        public static GameObject BuildLicenseExamOverlay(Transform parent, GameUiBindings b) =>
+            BuildLicenseExam(parent, b);
+
+        static GameObject BuildLicensesHub(Transform parent, GameUiBindings b)
+        {
+            var root = CreatePanel("LicensesHub", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            root.GetComponent<Image>().sprite = null;
+            root.GetComponent<Image>().color = GameUiStyle.Overlay;
+
+            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-320, -220), new Vector2(320, 220));
+            GameUiStyle.ApplyFramedPanel(card.GetComponent<Image>());
+
+            b.licensesTitle = CreateDisplayText("Title", card.transform, "", 22, TextAnchor.MiddleLeft);
+            Stretch(b.licensesTitle.rectTransform, new Vector2(0, 0.86f), new Vector2(0.78f, 1),
+                new Vector2(24, -12), new Vector2(-8, -10));
+            b.licensesTitle.color = GameUiStyle.Accent;
+
+            b.btnLicensesClose = CreateSecondaryButton("Close", card.transform, out b.licensesCloseLabel);
+            Stretch(b.btnLicensesClose.GetComponent<RectTransform>(), new Vector2(0.82f, 0.86f), new Vector2(1, 1),
+                new Vector2(4, -12), new Vector2(-16, -10));
+            b.licensesCloseLabel.fontSize = 14;
+
+            b.licensesRegularStatus = CreateText("RegularStatus", card.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(b.licensesRegularStatus.rectTransform, new Vector2(0, 0.62f), new Vector2(1, 0.78f),
+                new Vector2(28, 0), new Vector2(-28, 0));
+            b.licensesRegularStatus.color = GameUiStyle.TextColor;
+
+            b.btnExamRegular = CreatePrimaryButton("ExamRegular", card.transform, out b.examRegularLabel);
+            Stretch(b.btnExamRegular.GetComponent<RectTransform>(), new Vector2(0.08f, 0.48f), new Vector2(0.92f, 0.6f),
+                Vector2.zero, Vector2.zero);
+
+            b.licensesEliteStatus = CreateText("EliteStatus", card.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(b.licensesEliteStatus.rectTransform, new Vector2(0, 0.32f), new Vector2(1, 0.46f),
+                new Vector2(28, 0), new Vector2(-28, 0));
+            b.licensesEliteStatus.color = GameUiStyle.TextColor;
+
+            b.btnExamElite = CreatePrimaryButton("ExamElite", card.transform, out b.examEliteLabel);
+            Stretch(b.btnExamElite.GetComponent<RectTransform>(), new Vector2(0.08f, 0.18f), new Vector2(0.92f, 0.3f),
+                Vector2.zero, Vector2.zero);
+
+            b.licensesHint = CreateText("Hint", card.transform, "", 13, TextAnchor.MiddleCenter);
+            Stretch(b.licensesHint.rectTransform, new Vector2(0, 0.02f), new Vector2(1, 0.16f),
+                new Vector2(24, 4), new Vector2(-24, -4));
+            b.licensesHint.color = GameUiStyle.Dim;
+            b.licensesHint.enableWordWrapping = true;
+
+            return root;
+        }
+
+        static GameObject BuildLicenseExam(Transform parent, GameUiBindings b)
+        {
+            var root = CreatePanel("LicenseExam", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            root.GetComponent<Image>().sprite = null;
+            root.GetComponent<Image>().color = GameUiStyle.Overlay;
+
+            // Stacked card hint behind
+            var back = CreatePanel("CardBack", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-300, -268), new Vector2(340, 252));
+            GameUiStyle.ApplyCard(back.GetComponent<Image>());
+            back.GetComponent<Image>().color = new Color(0.9f, 0.86f, 0.8f, 0.7f);
+
+            var card = CreatePanel("Card", root.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(-320, -280), new Vector2(320, 280));
+            GameUiStyle.ApplyFramedPanel(card.GetComponent<Image>());
+
+            b.examProgress = CreateText("Progress", card.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(b.examProgress.rectTransform, new Vector2(0, 0.92f), new Vector2(0.7f, 1),
+                new Vector2(20, -8), new Vector2(-8, -6));
+            b.examProgress.color = GameUiStyle.Dim;
+
+            b.btnExamAbandon = CreateSecondaryButton("Abandon", card.transform, out b.examAbandonLabel);
+            Stretch(b.btnExamAbandon.GetComponent<RectTransform>(), new Vector2(0.72f, 0.92f), new Vector2(1, 1),
+                new Vector2(4, -8), new Vector2(-14, -6));
+            b.examAbandonLabel.fontSize = 12;
+
+            var heroGo = new GameObject("Hero", typeof(RectTransform), typeof(RawImage));
+            heroGo.transform.SetParent(card.transform, false);
+            Stretch(heroGo.GetComponent<RectTransform>(), new Vector2(0.08f, 0.52f), new Vector2(0.92f, 0.9f),
+                Vector2.zero, Vector2.zero);
+            b.examHeroImage = heroGo.GetComponent<RawImage>();
+            b.examHeroImage.color = new Color(0.85f, 0.82f, 0.76f, 1f);
+
+            b.examPrompt = CreateText("Prompt", card.transform, "", 15, TextAnchor.UpperLeft);
+            Stretch(b.examPrompt.rectTransform, new Vector2(0.08f, 0.4f), new Vector2(0.92f, 0.52f),
+                Vector2.zero, Vector2.zero);
+            b.examPrompt.color = GameUiStyle.TextColor;
+            b.examPrompt.enableWordWrapping = true;
+
+            // Dropdown
+            b.examDropdownRoot = CreatePanel("DropdownRoot", card.transform, new Vector2(0.08f, 0.22f), new Vector2(0.92f, 0.38f),
+                Vector2.zero, Vector2.zero);
+            GameUiStyle.ApplyCard(b.examDropdownRoot.GetComponent<Image>());
+            b.examDropdown = b.examDropdownRoot.AddComponent<TMP_Dropdown>();
+            b.examDropdown.targetGraphic = b.examDropdownRoot.GetComponent<Image>();
+            var ddLabel = CreateText("Label", b.examDropdownRoot.transform, "", 14, TextAnchor.MiddleLeft);
+            Stretch(ddLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 2), new Vector2(-12, -2));
+            ddLabel.color = GameUiStyle.TextColor;
+            b.examDropdown.captionText = ddLabel;
+            var ddTemplate = CreatePanel("Template", b.examDropdownRoot.transform, Vector2.zero, new Vector2(1, 0),
+                new Vector2(0, -140), new Vector2(0, 0));
+            ddTemplate.SetActive(false);
+            var ddViewport = CreatePanel("Viewport", ddTemplate.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var ddContent = new GameObject("Content", typeof(RectTransform));
+            ddContent.transform.SetParent(ddViewport.transform, false);
+            Stretch(ddContent.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var ddItem = CreatePanel("Item", ddContent.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var ddItemLabel = CreateText("ItemLabel", ddItem.transform, "Option", 14, TextAnchor.MiddleLeft);
+            Stretch(ddItemLabel.rectTransform, Vector2.zero, Vector2.one, new Vector2(10, 0), new Vector2(-10, 0));
+            ddItem.AddComponent<Toggle>().targetGraphic = ddItem.GetComponent<Image>();
+            b.examDropdown.template = ddTemplate.GetComponent<RectTransform>();
+            b.examDropdown.itemText = ddItemLabel;
+
+            // Quiz 4
+            b.examQuizRoot = CreatePanel("QuizRoot", card.transform, new Vector2(0.08f, 0.14f), new Vector2(0.92f, 0.4f),
+                Vector2.zero, Vector2.zero);
+            b.examQuizRoot.GetComponent<Image>().color = new Color(1, 1, 1, 0.02f);
+            b.examQuizButtons = new Button[4];
+            b.examQuizLabels = new TextMeshProUGUI[4];
+            for (int i = 0; i < 4; i++)
+            {
+                float yMax = 1f - i * 0.25f;
+                float yMin = yMax - 0.23f;
+                b.examQuizButtons[i] = CreateSecondaryButton("Q" + i, b.examQuizRoot.transform, out b.examQuizLabels[i]);
+                Stretch(b.examQuizButtons[i].GetComponent<RectTransform>(), new Vector2(0, yMin), new Vector2(1, yMax),
+                    Vector2.zero, Vector2.zero);
+                b.examQuizLabels[i].fontSize = 13;
+                b.examQuizLabels[i].enableWordWrapping = true;
+            }
+
+            // Text input
+            b.examInputRoot = CreatePanel("InputRoot", card.transform, new Vector2(0.08f, 0.24f), new Vector2(0.92f, 0.38f),
+                Vector2.zero, Vector2.zero);
+            GameUiStyle.ApplyCard(b.examInputRoot.GetComponent<Image>());
+            b.examTextInput = b.examInputRoot.AddComponent<TMP_InputField>();
+            b.examTextInput.targetGraphic = b.examInputRoot.GetComponent<Image>();
+            var inText = CreateText("Text", b.examInputRoot.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(inText.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 2), new Vector2(-12, -2));
+            inText.color = GameUiStyle.TextColor;
+            var inPh = CreateText("Placeholder", b.examInputRoot.transform, "", 15, TextAnchor.MiddleLeft);
+            Stretch(inPh.rectTransform, Vector2.zero, Vector2.one, new Vector2(12, 2), new Vector2(-12, -2));
+            inPh.color = GameUiStyle.Dim;
+            b.examTextInput.textComponent = inText;
+            b.examTextInput.placeholder = inPh;
+
+            // Pick painting 2x2
+            b.examPickRoot = CreatePanel("PickRoot", card.transform, new Vector2(0.08f, 0.14f), new Vector2(0.92f, 0.5f),
+                Vector2.zero, Vector2.zero);
+            b.examPickRoot.GetComponent<Image>().color = new Color(1, 1, 1, 0.02f);
+            b.examPickButtons = new Button[4];
+            b.examPickImages = new RawImage[4];
+            Vector2[] pMins = { new Vector2(0, 0.52f), new Vector2(0.52f, 0.52f), new Vector2(0, 0), new Vector2(0.52f, 0) };
+            Vector2[] pMaxs = { new Vector2(0.48f, 1), new Vector2(1, 1), new Vector2(0.48f, 0.48f), new Vector2(1, 0.48f) };
+            for (int i = 0; i < 4; i++)
+            {
+                var go = new GameObject("Pick" + i, typeof(RectTransform), typeof(Image), typeof(Button));
+                go.transform.SetParent(b.examPickRoot.transform, false);
+                Stretch(go.GetComponent<RectTransform>(), pMins[i], pMaxs[i], new Vector2(2, 2), new Vector2(-2, -2));
+                GameUiStyle.ApplyCard(go.GetComponent<Image>());
+                b.examPickButtons[i] = go.GetComponent<Button>();
+                b.examPickButtons[i].targetGraphic = go.GetComponent<Image>();
+                var raw = new GameObject("Img", typeof(RectTransform), typeof(RawImage));
+                raw.transform.SetParent(go.transform, false);
+                Stretch(raw.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, new Vector2(4, 4), new Vector2(-4, -4));
+                b.examPickImages[i] = raw.GetComponent<RawImage>();
+                b.examPickImages[i].raycastTarget = false;
+            }
+
+            b.btnExamNext = CreatePrimaryButton("Next", card.transform, out b.examNextLabel);
+            Stretch(b.btnExamNext.GetComponent<RectTransform>(), new Vector2(0.55f, 0.03f), new Vector2(0.92f, 0.12f),
+                Vector2.zero, Vector2.zero);
+
+            // Result overlay on top of card
+            b.examResultRoot = CreatePanel("Result", card.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            b.examResultRoot.GetComponent<Image>().color = new Color(0.12f, 0.1f, 0.08f, 0.88f);
+            b.examResultText = CreateDisplayText("ResultText", b.examResultRoot.transform, "", 20, TextAnchor.MiddleCenter);
+            Stretch(b.examResultText.rectTransform, new Vector2(0.1f, 0.35f), new Vector2(0.9f, 0.7f), Vector2.zero, Vector2.zero);
+            b.examResultText.color = GameUiStyle.OnDark;
+            b.examResultText.enableWordWrapping = true;
+            b.btnExamResultOk = CreatePrimaryButton("ResultOk", b.examResultRoot.transform, out b.examResultOkLabel);
+            Stretch(b.btnExamResultOk.GetComponent<RectTransform>(), new Vector2(0.3f, 0.12f), new Vector2(0.7f, 0.26f),
+                Vector2.zero, Vector2.zero);
+            b.examResultRoot.SetActive(false);
+
+            b.examDropdownRoot.SetActive(false);
+            b.examQuizRoot.SetActive(false);
+            b.examInputRoot.SetActive(false);
+            b.examPickRoot.SetActive(false);
+
+            return root;
+        }
+
         public static GameObject BuildPurchaseTag()
         {
             var card = CreatePanel("PurchaseTag", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -541,6 +886,199 @@ namespace MasterBidder.UI
             view.stamp = stamp;
             GameUiSampleContent.ApplyPurchaseTag(view);
             return card;
+        }
+
+        /// <summary>
+        /// Vertical hang-tag: header hole, painting thumb + fields, perforation,
+        /// tear-off with broker/title duplicate and full-width match stamp.
+        /// Proportions follow the hand sketch (~header 8% / body 60% / perf 4% / tear 28%).
+        /// </summary>
+        public static GameObject BuildHangTag()
+        {
+            GameUiSprites.Warmup();
+
+            var card = CreatePanel("HangTag", null, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var cardRt = card.GetComponent<RectTransform>();
+            cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRt.pivot = new Vector2(0.5f, 0.5f);
+            cardRt.sizeDelta = new Vector2(260f, 420f);
+            var le = card.AddComponent<LayoutElement>();
+            le.minWidth = 240f;
+            le.preferredWidth = 260f;
+            le.minHeight = 400f;
+            le.preferredHeight = 420f;
+            GameUiStyle.ApplyCard(card.GetComponent<Image>());
+
+            // ── Header (hole) ──────────────────────────────────────────────
+            var header = CreatePanel("Header", card.transform, new Vector2(0, 0.92f), Vector2.one, Vector2.zero, Vector2.zero);
+            header.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            header.GetComponent<Image>().raycastTarget = false;
+
+            var holeRing = CreateCircle("HoleRing", header.transform, GameUiSprites.CircleMask ?? GameUiSprites.DotOn);
+            PlaceCentered(holeRing.rectTransform, 0.5f, 0.55f, 22f, 22f);
+            holeRing.color = GameUiStyle.Accent;
+            holeRing.raycastTarget = false;
+
+            var holeCore = CreateCircle("HoleCore", header.transform, GameUiSprites.CircleMask ?? GameUiSprites.DotOn);
+            PlaceCentered(holeCore.rectTransform, 0.5f, 0.55f, 12f, 12f);
+            holeCore.color = GameUiStyle.PanelLight;
+            holeCore.raycastTarget = false;
+
+            var headerRule = CreatePanel("HeaderRule", header.transform, new Vector2(0.08f, 0.02f), new Vector2(0.92f, 0.08f), Vector2.zero, Vector2.zero);
+            headerRule.GetComponent<Image>().color = new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.55f);
+            headerRule.GetComponent<Image>().raycastTarget = false;
+
+            // ── Body ───────────────────────────────────────────────────────
+            var body = CreatePanel("Body", card.transform, new Vector2(0, 0.32f), new Vector2(1, 0.92f), Vector2.zero, Vector2.zero);
+            body.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            body.GetComponent<Image>().raycastTarget = false;
+
+            // Circular painting thumbnail (top-left).
+            var thumbRoot = CreatePanel("Thumbnail", body.transform, new Vector2(0.04f, 0.62f), new Vector2(0.38f, 0.96f), Vector2.zero, Vector2.zero);
+            var thumbMaskImg = thumbRoot.GetComponent<Image>();
+            var circle = GameUiSprites.CircleMask ?? GameUiSprites.DotOn;
+            if (circle != null)
+            {
+                thumbMaskImg.sprite = circle;
+                thumbMaskImg.type = Image.Type.Simple;
+                thumbMaskImg.color = Color.white;
+            }
+            else
+            {
+                thumbMaskImg.color = GameUiStyle.PanelLight;
+            }
+            thumbMaskImg.raycastTarget = false;
+            var mask = thumbRoot.AddComponent<Mask>();
+            mask.showMaskGraphic = true;
+
+            var thumb = CreateIcon("Img", thumbRoot.transform);
+            Stretch(thumb.rectTransform, Vector2.zero, Vector2.one, new Vector2(4, 4), new Vector2(-4, -4));
+            thumb.color = new Color(1f, 1f, 1f, 0.4f);
+
+            // Title row beside thumbnail.
+            var titleLabel = CreateText("TitleL", body.transform, "", 11, TextAnchor.MiddleLeft);
+            Stretch(titleLabel.rectTransform, new Vector2(0.4f, 0.86f), new Vector2(0.96f, 0.96f), Vector2.zero, Vector2.zero);
+            titleLabel.color = GameUiStyle.Dim;
+
+            var titleValue = CreateDisplayText("TitleV", body.transform, "", 15, TextAnchor.UpperLeft);
+            Stretch(titleValue.rectTransform, new Vector2(0.4f, 0.64f), new Vector2(0.96f, 0.86f), Vector2.zero, Vector2.zero);
+            titleValue.enableWordWrapping = true;
+            titleValue.overflowMode = TextOverflowModes.Ellipsis;
+
+            // Field stack under thumb+title.
+            CreateFieldRow(body.transform, "Style", 0.48f, 0.60f, out var styleLabel, out var styleValue);
+            CreateFieldRow(body.transform, "Genre", 0.36f, 0.48f, out var genreLabel, out var genreValue);
+            CreateFieldRow(body.transform, "Author", 0.24f, 0.36f, out var authorLabel, out var authorValue);
+            CreateFieldRow(body.transform, "Owner", 0.10f, 0.24f, out var ownerLabel, out var ownerValue);
+
+            // ── Perforation ────────────────────────────────────────────────
+            var perf = CreatePanel("Perforation", card.transform, new Vector2(0, 0.28f), new Vector2(1, 0.32f), Vector2.zero, Vector2.zero);
+            perf.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            perf.GetComponent<Image>().raycastTarget = false;
+            var dotSprite = GameUiSprites.DotOn ?? GameUiSprites.CircleMask;
+            for (int i = 0; i < 11; i++)
+            {
+                float x = 0.06f + i * (0.88f / 10f);
+                var dot = CreateCircle("D" + i, perf.transform, dotSprite);
+                PlaceCentered(dot.rectTransform, x, 0.5f, 7f, 7f);
+                dot.color = new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, 0.7f);
+                dot.raycastTarget = false;
+            }
+
+            // ── Tear-off (stamp covers entire bottom) ──────────────────────
+            var tear = CreatePanel("TearOff", card.transform, new Vector2(0, 0), new Vector2(1, 0.28f), Vector2.zero, Vector2.zero);
+            tear.GetComponent<Image>().color = new Color(GameUiStyle.PanelLight.r, GameUiStyle.PanelLight.g, GameUiStyle.PanelLight.b, 0.55f);
+            tear.GetComponent<Image>().raycastTarget = false;
+
+            CreateFieldRow(tear.transform, "Broker", 0.58f, 0.88f, out var brokerLabel, out var brokerValue);
+            CreateFieldRow(tear.transform, "TearTitle", 0.28f, 0.58f, out var tearTitleLabel, out var tearTitleValue);
+
+            // Stamp overlay: full tear-off area, lightly rotated.
+            var stampRoot = new GameObject("Stamp", typeof(RectTransform));
+            stampRoot.transform.SetParent(tear.transform, false);
+            var stampRt = stampRoot.GetComponent<RectTransform>();
+            Stretch(stampRt, new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.92f), Vector2.zero, Vector2.zero);
+            stampRt.localEulerAngles = new Vector3(0f, 0f, -12f);
+
+            var stampBg = stampRoot.AddComponent<Image>();
+            GameUiStyle.ApplySliced(stampBg, GameUiSprites.PanelCard ?? GameUiSprites.Panel, new Color(GameUiStyle.Good.r, GameUiStyle.Good.g, GameUiStyle.Good.b, 0.18f));
+            stampBg.raycastTarget = false;
+
+            var stamp = CreateDisplayText("StampLabel", stampRoot.transform, "", 22, TextAnchor.MiddleCenter);
+            Stretch(stamp.rectTransform, Vector2.zero, Vector2.one, new Vector2(8, 4), new Vector2(-8, -4));
+            stamp.enableWordWrapping = true;
+            stamp.color = GameUiStyle.Good;
+
+            var view = card.AddComponent<HangTagView>();
+            view.background = card.GetComponent<Image>();
+            view.holeRing = holeRing;
+            view.holeCore = holeCore;
+            view.thumbnail = thumb;
+            view.thumbnailRoot = thumbRoot;
+            view.titleLabel = titleLabel;
+            view.titleValue = titleValue;
+            view.styleLabel = styleLabel;
+            view.styleValue = styleValue;
+            view.genreLabel = genreLabel;
+            view.genreValue = genreValue;
+            view.authorLabel = authorLabel;
+            view.authorValue = authorValue;
+            view.ownerLabel = ownerLabel;
+            view.ownerValue = ownerValue;
+            view.brokerLabel = brokerLabel;
+            view.brokerValue = brokerValue;
+            view.tearTitleLabel = tearTitleLabel;
+            view.tearTitleValue = tearTitleValue;
+            view.stampBackground = stampBg;
+            view.stamp = stamp;
+
+            GameUiSampleContent.ApplyHangTag(view);
+            return card;
+        }
+
+        static void CreateFieldRow(
+            Transform parent,
+            string name,
+            float yMin,
+            float yMax,
+            out TextMeshProUGUI label,
+            out TextMeshProUGUI value)
+        {
+            var row = CreatePanel(name, parent, new Vector2(0.04f, yMin), new Vector2(0.96f, yMax), Vector2.zero, Vector2.zero);
+            row.GetComponent<Image>().color = new Color(0, 0, 0, 0);
+            row.GetComponent<Image>().raycastTarget = false;
+
+            label = CreateText("L", row.transform, "", 11, TextAnchor.MiddleLeft);
+            Stretch(label.rectTransform, new Vector2(0, 0), new Vector2(0.34f, 1), Vector2.zero, Vector2.zero);
+            label.color = GameUiStyle.Dim;
+
+            value = CreateText("V", row.transform, "", 13, TextAnchor.MiddleLeft);
+            Stretch(value.rectTransform, new Vector2(0.34f, 0), Vector2.one, Vector2.zero, Vector2.zero);
+            value.enableWordWrapping = false;
+            value.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        static Image CreateCircle(string name, Transform parent, Sprite sprite)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            if (sprite != null)
+            {
+                img.sprite = sprite;
+                img.type = Image.Type.Simple;
+            }
+            img.color = Color.white;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        static void PlaceCentered(RectTransform rt, float anchorX, float anchorY, float width, float height)
+        {
+            rt.anchorMin = rt.anchorMax = new Vector2(anchorX, anchorY);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(width, height);
+            rt.anchoredPosition = Vector2.zero;
         }
 
         static GameObject BuildReport(Transform parent, GameUiBindings b)

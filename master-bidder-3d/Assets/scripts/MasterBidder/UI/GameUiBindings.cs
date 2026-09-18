@@ -24,10 +24,17 @@ namespace MasterBidder.UI
         public GameObject collectorPopup;
         public GameObject purchaseCard;
         public GameObject tutorial;
+        public GameObject paintingCatalog;
+        public GameObject licensesHub;
+        public GameObject licenseExam;
 
         [Header("Chrome")]
         public TextMeshProUGUI chromeTitle;
         public TMP_Dropdown langDropdown;
+        public Button btnCatalog;
+        public TextMeshProUGUI catalogButtonLabel;
+        public Button btnLicenses;
+        public TextMeshProUGUI licensesButtonLabel;
 
         [Header("Active Client")]
         public GameObject activeClient;
@@ -74,6 +81,7 @@ namespace MasterBidder.UI
         public TextMeshProUGUI[] fieldLabels = new TextMeshProUGUI[5];
         public TextMeshProUGUI[] fieldValues = new TextMeshProUGUI[5];
         public Image[] fieldRows = new Image[5];
+        public Image[] fieldStudyFills = new Image[5];
         public TextMeshProUGUI resultBanner;
         public TextMeshProUGUI fundsHint;
         public TextMeshProUGUI familiarBadge;
@@ -108,6 +116,51 @@ namespace MasterBidder.UI
 
         [Header("Tutorial")]
         public TextMeshProUGUI tutorialText;
+
+        [Header("Painting catalog")]
+        public TextMeshProUGUI catalogTitle;
+        public TMP_InputField catalogSearch;
+        public TextMeshProUGUI catalogPageLabel;
+        public Button btnCatalogPrev;
+        public Button btnCatalogNext;
+        public Button btnCatalogClose;
+        public TextMeshProUGUI catalogCloseLabel;
+        public PaintingCatalogSlotView[] catalogSlots = new PaintingCatalogSlotView[4];
+
+        [Header("Licenses hub")]
+        public TextMeshProUGUI licensesTitle;
+        public Button btnLicensesClose;
+        public TextMeshProUGUI licensesCloseLabel;
+        public TextMeshProUGUI licensesRegularStatus;
+        public TextMeshProUGUI licensesEliteStatus;
+        public TextMeshProUGUI licensesHint;
+        public Button btnExamRegular;
+        public TextMeshProUGUI examRegularLabel;
+        public Button btnExamElite;
+        public TextMeshProUGUI examEliteLabel;
+
+        [Header("License exam")]
+        public TextMeshProUGUI examProgress;
+        public TextMeshProUGUI examPrompt;
+        public RawImage examHeroImage;
+        public GameObject examDropdownRoot;
+        public TMP_Dropdown examDropdown;
+        public GameObject examQuizRoot;
+        public Button[] examQuizButtons = new Button[4];
+        public TextMeshProUGUI[] examQuizLabels = new TextMeshProUGUI[4];
+        public GameObject examInputRoot;
+        public TMP_InputField examTextInput;
+        public GameObject examPickRoot;
+        public Button[] examPickButtons = new Button[4];
+        public RawImage[] examPickImages = new RawImage[4];
+        public Button btnExamNext;
+        public TextMeshProUGUI examNextLabel;
+        public Button btnExamAbandon;
+        public TextMeshProUGUI examAbandonLabel;
+        public GameObject examResultRoot;
+        public TextMeshProUGUI examResultText;
+        public Button btnExamResultOk;
+        public TextMeshProUGUI examResultOkLabel;
 
         [Header("Report")]
         public TextMeshProUGUI reportTitle;

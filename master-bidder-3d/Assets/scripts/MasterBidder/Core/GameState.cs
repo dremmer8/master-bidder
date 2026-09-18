@@ -13,11 +13,20 @@ namespace MasterBidder.Core
         public int DayStartCapital = Campaign.CampaignConfig.StartingCapital;
 
         public HashSet<string> SeenArtworkIds = new HashSet<string>();
+        /// <summary>Artwork ids whose image was revealed after the auction cloth raised.</summary>
+        public HashSet<string> CatalogDiscoveredIds = new HashSet<string>();
+        /// <summary>Per-artwork study progress for the 5 reveal fields (0..1 each).</summary>
+        public Dictionary<string, float[]> CatalogFieldProgress = new Dictionary<string, float[]>();
         public Dictionary<string, int> ArtworkPurchaseDays = new Dictionary<string, int>();
         public HashSet<string> Upgrades = new HashSet<string>();
         public HashSet<string> PendingBoosters = new HashSet<string>();
         public HashSet<string> ActiveBoosters = new HashSet<string>();
+        /// <summary>Global venue licenses: "regular", "elite".</summary>
+        public HashSet<string> OwnedLicenses = new HashSet<string>();
         public List<string> BoosterOffers = new List<string>();
+
+        /// <summary>In-progress license exam (not persisted mid-attempt).</summary>
+        public ExamSession ActiveExam;
 
         public bool LotMasterLucky;
         public bool CreditLineUsed;

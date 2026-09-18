@@ -31,6 +31,39 @@ namespace MasterBidder.Editor
         public const string UpgradeRowPath = WidgetsFolder + "/UpgradeRow.prefab";
         public const string BoosterRowPath = WidgetsFolder + "/BoosterRow.prefab";
         public const string PurchaseTagPath = WidgetsFolder + "/PurchaseTag.prefab";
+        public const string HangTagPath = WidgetsFolder + "/HangTag.prefab";
+
+        [MenuItem("Master Bidder/Generate Hang Tag Prefab", priority = 21)]
+        public static void GenerateHangTagMenu()
+        {
+            if (!EnsureTmpEssentials())
+            {
+                EditorUtility.DisplayDialog("Hang Tag", "TextMesh Pro essentials missing.", "OK");
+                return;
+            }
+
+            if (!GameUiFontSetup.CreateAll())
+            {
+                EditorUtility.DisplayDialog("Hang Tag", "UI font assets missing. Run Master Bidder → Create UI Font Assets.", "OK");
+                return;
+            }
+
+            Directory.CreateDirectory(Path.Combine(Application.dataPath, "content/ui/widgets"));
+            AssetDatabase.Refresh();
+
+            LocaleService.Init();
+            LocaleService.SetLanguage("ru");
+            var hangTag = GameUiHierarchyFactory.BuildHangTag();
+            PrefabUtility.SaveAsPrefabAsset(hangTag, HangTagPath);
+            Object.DestroyImmediate(hangTag);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            EditorUtility.DisplayDialog(
+                "Hang Tag",
+                $"Created/updated:\n• {HangTagPath}\n\nOpen it in the Prefab Editor to tweak spacing.",
+                "OK");
+        }
 
         [MenuItem("Master Bidder/Generate UI Prefabs", priority = 20)]
         public static void GenerateMenu()
@@ -57,7 +90,8 @@ namespace MasterBidder.Editor
                     $"• {CollectorCardPath}\n" +
                     $"• {UpgradeRowPath}\n" +
                     $"• {BoosterRowPath}\n" +
-                    $"• {PurchaseTagPath}\n\n" +
+                    $"• {PurchaseTagPath}\n" +
+                    $"• {HangTagPath}\n\n" +
                     "Assigned on GameUiShell in the open scene (if present).\n\n" +
                     "Edit layout/fonts/spacing on the prefabs — runtime will keep your changes.\n" +
                     "Tip: run Master Bidder → Import UI Atlas Sprites first for 9-slice borders.",
@@ -102,6 +136,8 @@ namespace MasterBidder.Editor
                 GameUiSampleContent.ApplyBoosterRow(root.GetComponent<BoosterRowView>()));
             any |= FillWidget(PurchaseTagPath, root =>
                 GameUiSampleContent.ApplyPurchaseTag(root.GetComponent<PurchaseTagView>()));
+            any |= FillWidget(HangTagPath, root =>
+                GameUiSampleContent.ApplyHangTag(root.GetComponent<HangTagView>()));
 
             if (any)
             {
@@ -157,6 +193,37 @@ namespace MasterBidder.Editor
             }
         }
 
+        /// <summary>Batchmode entry: -executeMethod MasterBidder.Editor.GameUiPrefabGenerator.GenerateHangTagBatch</summary>
+        public static void GenerateHangTagBatch()
+        {
+            if (!EnsureTmpEssentials())
+            {
+                Debug.LogError("[GameUiPrefabGenerator] TMP essentials missing.");
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            if (!GameUiFontSetup.CreateAll())
+            {
+                Debug.LogError("[GameUiPrefabGenerator] Font assets missing.");
+                EditorApplication.Exit(1);
+                return;
+            }
+
+            Directory.CreateDirectory(Path.Combine(Application.dataPath, "content/ui/widgets"));
+            AssetDatabase.Refresh();
+
+            LocaleService.Init();
+            LocaleService.SetLanguage("ru");
+            var hangTag = GameUiHierarchyFactory.BuildHangTag();
+            PrefabUtility.SaveAsPrefabAsset(hangTag, HangTagPath);
+            Object.DestroyImmediate(hangTag);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("[GameUiPrefabGenerator] HangTag prefab ready at " + HangTagPath);
+            EditorApplication.Exit(0);
+        }
+
         /// <summary>Batchmode entry: -executeMethod MasterBidder.Editor.GameUiPrefabGenerator.GenerateBatch</summary>
         public static void GenerateBatch()
         {
@@ -208,18 +275,21 @@ namespace MasterBidder.Editor
             var upgradeRow = GameUiHierarchyFactory.BuildUpgradeRow();
             var boosterRow = GameUiHierarchyFactory.BuildBoosterRow();
             var purchaseTag = GameUiHierarchyFactory.BuildPurchaseTag();
+            var hangTag = GameUiHierarchyFactory.BuildHangTag();
             var gameUi = GameUiHierarchyFactory.BuildGameUi();
 
             PrefabUtility.SaveAsPrefabAsset(collectorCard, CollectorCardPath);
             PrefabUtility.SaveAsPrefabAsset(upgradeRow, UpgradeRowPath);
             PrefabUtility.SaveAsPrefabAsset(boosterRow, BoosterRowPath);
             PrefabUtility.SaveAsPrefabAsset(purchaseTag, PurchaseTagPath);
+            PrefabUtility.SaveAsPrefabAsset(hangTag, HangTagPath);
             PrefabUtility.SaveAsPrefabAsset(gameUi, GameUiPrefabPath);
 
             Object.DestroyImmediate(collectorCard);
             Object.DestroyImmediate(upgradeRow);
             Object.DestroyImmediate(boosterRow);
             Object.DestroyImmediate(purchaseTag);
+            Object.DestroyImmediate(hangTag);
             Object.DestroyImmediate(gameUi);
 
             AssetDatabase.SaveAssets();

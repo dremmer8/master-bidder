@@ -246,6 +246,64 @@ namespace MasterBidder.UI
 
             ApplyUiFont(b.tutorialText, bold: true);
 
+            ApplyUiFont(b.catalogButtonLabel, bold: true);
+            ApplyUiFont(b.licensesButtonLabel, bold: true);
+            ApplyDisplayFont(b.catalogTitle, bold: true);
+            ApplyUiFont(b.catalogCloseLabel, bold: true);
+            ApplyUiFont(b.catalogPageLabel);
+            if (b.catalogSearch != null)
+            {
+                ApplyUiFont(b.catalogSearch.textComponent);
+                if (b.catalogSearch.placeholder is TextMeshProUGUI ph)
+                    ApplyUiFont(ph);
+            }
+
+            ApplyDisplayFont(b.licensesTitle, bold: true);
+            ApplyUiFont(b.licensesCloseLabel, bold: true);
+            ApplyUiFont(b.licensesRegularStatus);
+            ApplyUiFont(b.licensesEliteStatus);
+            ApplyUiFont(b.licensesHint);
+            ApplyUiFont(b.examRegularLabel, bold: true);
+            ApplyUiFont(b.examEliteLabel, bold: true);
+            ApplyUiFont(b.examProgress);
+            ApplyUiFont(b.examPrompt);
+            ApplyUiFont(b.examNextLabel, bold: true);
+            ApplyUiFont(b.examAbandonLabel, bold: true);
+            ApplyDisplayFont(b.examResultText, bold: true);
+            ApplyUiFont(b.examResultOkLabel, bold: true);
+            if (b.examTextInput != null)
+            {
+                ApplyUiFont(b.examTextInput.textComponent);
+                if (b.examTextInput.placeholder is TextMeshProUGUI eph)
+                    ApplyUiFont(eph);
+            }
+
+            if (b.examQuizLabels != null)
+            {
+                for (int i = 0; i < b.examQuizLabels.Length; i++)
+                    ApplyUiFont(b.examQuizLabels[i], bold: true);
+            }
+
+            if (b.catalogSlots != null)
+            {
+                for (int s = 0; s < b.catalogSlots.Length; s++)
+                {
+                    var slot = b.catalogSlots[s];
+                    if (slot == null) continue;
+                    ApplyDisplayFont(slot.unknownMark, bold: true);
+                    if (slot.fieldLabels != null)
+                    {
+                        for (int i = 0; i < slot.fieldLabels.Length; i++)
+                            ApplyUiFont(slot.fieldLabels[i]);
+                    }
+                    if (slot.fieldValues != null)
+                    {
+                        for (int i = 0; i < slot.fieldValues.Length; i++)
+                            ApplyUiFont(slot.fieldValues[i]);
+                    }
+                }
+            }
+
             ApplyDisplayFont(b.reportStampLabel, bold: true);
             ApplyUiFont(b.reportStampDetail);
             ApplyDisplayFont(b.reportTitle, bold: true);
@@ -292,6 +350,26 @@ namespace MasterBidder.UI
             if (view == null) return;
             ApplyDisplayFont(view.title, bold: true);
             ApplyUiFont(view.meta);
+            ApplyDisplayFont(view.stamp, bold: true);
+        }
+
+        public static void ApplyWidgetTypography(HangTagView view)
+        {
+            if (view == null) return;
+            ApplyUiFont(view.titleLabel);
+            ApplyDisplayFont(view.titleValue, bold: true);
+            ApplyUiFont(view.styleLabel);
+            ApplyUiFont(view.styleValue);
+            ApplyUiFont(view.genreLabel);
+            ApplyUiFont(view.genreValue);
+            ApplyUiFont(view.authorLabel);
+            ApplyUiFont(view.authorValue);
+            ApplyUiFont(view.ownerLabel);
+            ApplyUiFont(view.ownerValue);
+            ApplyUiFont(view.brokerLabel);
+            ApplyUiFont(view.brokerValue);
+            ApplyUiFont(view.tearTitleLabel);
+            ApplyUiFont(view.tearTitleValue);
             ApplyDisplayFont(view.stamp, bold: true);
         }
 

@@ -32,7 +32,7 @@ namespace MasterBidder.UI
         Canvas _canvas;
 
         GameObject _intro, _brief, _auction, _report, _end;
-        GameObject _collectorPopup, _purchaseCard, _tutorial;
+        GameObject _collectorPopup, _purchaseCard, _tutorial, _paintingCatalog, _licensesHub, _licenseExam;
 
         readonly List<GameObject> _collectorCards = new List<GameObject>();
         readonly List<GameObject> _upgradeRows = new List<GameObject>();
@@ -50,10 +50,23 @@ namespace MasterBidder.UI
         Coroutine _reportPurchaseRevealRoutine;
         readonly List<GameObject> _purchaseTags = new List<GameObject>();
 
+        GameSession _session;
+        GameScreen _currentScreen = GameScreen.Intro;
+        int _catalogPage;
+        string _catalogQuery = "";
+        readonly List<NineSlice3D.PaintingData> _catalogFiltered = new List<NineSlice3D.PaintingData>();
+        int _studyingFieldIndex = -1;
+        readonly FieldStudyHold[] _fieldStudyHolds = new FieldStudyHold[5];
+        bool _catalogListenersWired;
+        bool _licenseListenersWired;
+        int _examSelectedQuiz = -1;
+        int _examSelectedPick = -1;
+
         static readonly string[] FieldIds = { "genre", "period", "artist", "fact", "title" };
 
         public bool IsPurchaseCardVisible => _purchaseCardVisible;
         public bool IsCollectorPopupVisible => _collectorPopup != null && _collectorPopup.activeSelf;
+        public bool IsPaintingCatalogVisible => _paintingCatalog != null && _paintingCatalog.activeSelf;
 
         public void Bind(AppFlow flow) => _flow = flow;
 
@@ -110,6 +123,9 @@ namespace MasterBidder.UI
             ResolveEffectsHudRefs();
             ApplyBriefPanelMode();
             ApplyReportPanelMode();
+            EnsureCatalogOverlay();
+            EnsureLicensesOverlay();
+            EnsureFieldStudyHolds();
             WireListeners();
         }
 
@@ -321,10 +337,16 @@ namespace MasterBidder.UI
             _collectorPopup = b.collectorPopup;
             _purchaseCard = b.purchaseCard;
             _tutorial = b.tutorial;
+            _paintingCatalog = b.paintingCatalog;
+            _licensesHub = b.licensesHub;
+            _licenseExam = b.licenseExam;
 
             if (_collectorPopup != null) _collectorPopup.SetActive(false);
             if (_purchaseCard != null) _purchaseCard.SetActive(false);
             if (_tutorial != null) _tutorial.SetActive(false);
+            if (_paintingCatalog != null) _paintingCatalog.SetActive(false);
+            if (_licensesHub != null) _licensesHub.SetActive(false);
+            if (_licenseExam != null) _licenseExam.SetActive(false);
         }
 
         void WireListeners()
@@ -351,6 +373,8 @@ namespace MasterBidder.UI
                 _b.btnPopupStart.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnCollectorPopupStart(); });
             if (_b.btnPcContinue != null)
                 _b.btnPcContinue.onClick.AddListener(() => _flow?.OnPurchaseCardDismiss());
+            WireCatalogListeners();
+            WireLicenseListeners();
             if (_b.btnReportContinue != null)
                 _b.btnReportContinue.onClick.AddListener(() => { AudioService.PlayClick(); _flow?.OnReportContinue(); });
             if (_b.btnReportPanelToggle != null)
@@ -376,6 +400,7 @@ namespace MasterBidder.UI
 
         public void ShowScreen(GameScreen screen)
         {
+            _currentScreen = screen;
             if (_intro) _intro.SetActive(screen == GameScreen.Intro);
             if (_brief) _brief.SetActive(screen == GameScreen.Brief);
             if (_auction) _auction.SetActive(screen == GameScreen.Auction);
@@ -392,6 +417,8 @@ namespace MasterBidder.UI
             // Shared Chrome: title + effects + day/capital. Same on every gameplay screen.
             var chrome = EffectsChromeParent();
             ResolveChromeBindings();
+            EnsureCatalogOverlay();
+            EnsureLicensesOverlay();
 
             var chromeEffects = chrome != null ? chrome.Find("EffectsHud") : null;
             bool gameplay = screen == GameScreen.Brief || screen == GameScreen.Auction
@@ -412,6 +439,27 @@ namespace MasterBidder.UI
 
             if (_b.chromeTitle != null)
                 _b.chromeTitle.gameObject.SetActive(true);
+
+            // Catalog always; licenses only on Brief (order selection).
+            if (_b.btnCatalog != null)
+                _b.btnCatalog.gameObject.SetActive(true);
+            if (_b.btnLicenses != null)
+                _b.btnLicenses.gameObject.SetActive(screen == GameScreen.Brief);
+
+            if (screen != GameScreen.Brief)
+            {
+                HideLicensesHub();
+                if (_licenseExam != null && _licenseExam.activeSelf
+                    && _session?.State?.ActiveExam != null
+                    && !_session.State.ActiveExam.Finished)
+                {
+                    // Leaving brief mid-exam forfeits the attempt.
+                    _flow?.AbandonLicenseExam();
+                    HideLicenseExam();
+                }
+                else
+                    HideLicenseExam();
+            }
 
             if (screen == GameScreen.End)
                 AudioService.PlayCampaignEnd();
@@ -549,13 +597,24 @@ namespace MasterBidder.UI
         public void Refresh(GameSession session)
         {
             if (_b == null) return;
+            _session = session;
             if (_b.chromeTitle) _b.chromeTitle.text = LocaleService.T("chrome.title");
+            if (_b.catalogButtonLabel != null)
+                _b.catalogButtonLabel.text = LocaleService.T("chrome.catalog");
+            if (_b.licensesButtonLabel != null)
+                _b.licensesButtonLabel.text = LocaleService.T("chrome.licenses");
             RefreshChromeStatus(session);
             RefreshIntro(session);
             RefreshBrief(session);
             RefreshAuction(session);
             RefreshReport(session);
             RefreshEnd(session);
+            if (IsPaintingCatalogVisible)
+                RefreshPaintingCatalog();
+            if (_licensesHub != null && _licensesHub.activeSelf)
+                RefreshLicensesHub();
+            if (_licenseExam != null && _licenseExam.activeSelf)
+                RefreshLicenseExamCard();
         }
 
         void RefreshChromeStatus(GameSession session)
@@ -772,6 +831,12 @@ namespace MasterBidder.UI
             if (_b.orderCard != null)
                 _b.orderCard.gameObject.SetActive(false);
 
+            bool presenting = _flow != null && _flow.IsPresentingLot;
+            bool resolvingPurchase = _flow != null && _flow.IsResolvingPurchase;
+            // Lot resolved / between lots: kill in-progress study so bars don't bleed onto masked rows.
+            if (state.LotResolved || state.AwaitingLotStart || state.FastForwarding || presenting || resolvingPurchase)
+                AbortAllFieldStudy();
+
             RefreshRevealFields(state, lot, order);
             if (_b.familiarBadge != null)
             {
@@ -798,8 +863,6 @@ namespace MasterBidder.UI
                 SetToastActive(_b.fundsHint, false);
 
             bool standby = state.AwaitingLotStart || IsCollectorPopupVisible;
-            bool presenting = _flow != null && _flow.IsPresentingLot;
-            bool resolvingPurchase = _flow != null && _flow.IsResolvingPurchase;
             bool busy = state.LotResolved || state.FastForwarding || resolvingPurchase || presenting;
             var day1Tut = session.GetDay1TutorialStep(state.CurrentLotIndex);
             // Match session gates: coaching lots only unlock the taught action after the coach appears.
@@ -842,22 +905,38 @@ namespace MasterBidder.UI
                 string raw = lot == null ? "—" : FieldValue(lot, id);
                 bool revealed = state.RevealStep > i
                                 || (!string.IsNullOrEmpty(state.FreeRevealedField) && state.FreeRevealedField == id);
+                bool learned = lot != null && CatalogProgress.IsLearned(state, lot.Id, i);
                 _b.fieldValues[i].text = revealed ? raw : AuctionRules.MaskValue(raw);
-                _b.fieldValues[i].color = revealed ? GameUiStyle.TextColor : GameUiStyle.Dim;
+
+                bool isTarget = order != null && IsOrderTarget(order, id);
+                if (learned && revealed)
+                {
+                    // Studied line: dark plate, white label + value.
+                    _b.fieldRows[i].color = FieldStudyHold.LearnedRowColor;
+                    _b.fieldLabels[i].color = GameUiStyle.OnDark;
+                    _b.fieldValues[i].color = GameUiStyle.OnDark;
+                }
+                else
+                {
+                    _b.fieldLabels[i].color = GameUiStyle.Dim;
+                    _b.fieldValues[i].color = revealed ? GameUiStyle.TextColor : GameUiStyle.Dim;
+                    if (isTarget)
+                        _b.fieldRows[i].color = new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, revealed ? 0.34f : 0.22f);
+                    else if (revealed)
+                        _b.fieldRows[i].color = new Color(0.2f, 0.16f, 0.12f, 0.12f);
+                    else
+                        _b.fieldRows[i].color = i % 2 == 0
+                            ? new Color(0.2f, 0.16f, 0.12f, 0.08f)
+                            : new Color(0.2f, 0.16f, 0.12f, 0.03f);
+                }
+
                 if (revealed)
                     GameUiStyle.ApplyUiFont(_b.fieldValues[i], bold: true);
                 else
                     GameUiStyle.ApplyUiFont(_b.fieldValues[i]);
 
-                bool isTarget = order != null && IsOrderTarget(order, id);
-                if (isTarget)
-                    _b.fieldRows[i].color = new Color(GameUiStyle.Accent.r, GameUiStyle.Accent.g, GameUiStyle.Accent.b, revealed ? 0.34f : 0.22f);
-                else if (revealed)
-                    _b.fieldRows[i].color = new Color(0.2f, 0.16f, 0.12f, 0.12f);
-                else
-                    _b.fieldRows[i].color = i % 2 == 0
-                        ? new Color(0.2f, 0.16f, 0.12f, 0.08f)
-                        : new Color(0.2f, 0.16f, 0.12f, 0.03f);
+                if (_fieldStudyHolds != null && i < _fieldStudyHolds.Length && _fieldStudyHolds[i] != null)
+                    _fieldStudyHolds[i].RefreshFromShell();
             }
         }
 
@@ -1407,6 +1486,783 @@ namespace MasterBidder.UI
                 if (list[i] != null) Destroy(list[i]);
             }
             list.Clear();
+        }
+
+        void EnsureCatalogOverlay()
+        {
+            if (_b == null || _canvas == null) return;
+
+            if (_b.btnCatalog == null)
+            {
+                var chrome = EffectsChromeParent();
+                if (chrome != null)
+                {
+                    _b.btnCatalog = CreateRuntimeCatalogButton(chrome, out _b.catalogButtonLabel);
+                    EnsureChromeTitleClearsLeftButtons(128f);
+                }
+            }
+
+            if (_b.paintingCatalog == null)
+            {
+                _b.paintingCatalog = GameUiHierarchyFactory.BuildPaintingCatalogOverlay(_canvas.transform, _b);
+                _b.paintingCatalog.SetActive(false);
+            }
+
+            _paintingCatalog = _b.paintingCatalog;
+            WireCatalogListeners();
+        }
+
+        /// <summary>
+        /// Nudge chrome title right only if it would sit under runtime chrome buttons.
+        /// Never rewrites anchors — preserves hand-tuned prefab layout.
+        /// </summary>
+        static void EnsureChromeTitleClearsLeftButtons(TextMeshProUGUI title, float minLeftInset)
+        {
+            if (title == null) return;
+            var rt = title.rectTransform;
+            if (rt.offsetMin.x < minLeftInset)
+                rt.offsetMin = new Vector2(minLeftInset, rt.offsetMin.y);
+        }
+
+        void EnsureChromeTitleClearsLeftButtons(float minLeftInset) =>
+            EnsureChromeTitleClearsLeftButtons(_b != null ? _b.chromeTitle : null, minLeftInset);
+
+        void WireLicenseListeners()
+        {
+            if (_b == null || _licenseListenersWired) return;
+            if (_b.btnLicenses == null || _b.licensesHub == null || _b.licenseExam == null) return;
+
+            _b.btnLicenses.onClick.AddListener(() => { AudioService.PlayClick(); ToggleLicensesHub(); });
+            if (_b.btnLicensesClose != null)
+                _b.btnLicensesClose.onClick.AddListener(() => { AudioService.PlayClick(); HideLicensesHub(); });
+            if (_b.btnExamRegular != null)
+                _b.btnExamRegular.onClick.AddListener(() => TryStartExam(CampaignConfig.LicenseRegularId));
+            if (_b.btnExamElite != null)
+                _b.btnExamElite.onClick.AddListener(() => TryStartExam(CampaignConfig.LicenseEliteId));
+            if (_b.btnExamNext != null)
+                _b.btnExamNext.onClick.AddListener(() => { AudioService.PlayClick(); OnExamNext(); });
+            if (_b.btnExamAbandon != null)
+                _b.btnExamAbandon.onClick.AddListener(() => { AudioService.PlayClick(); OnExamAbandon(); });
+            if (_b.btnExamResultOk != null)
+                _b.btnExamResultOk.onClick.AddListener(() => { AudioService.PlayClick(); OnExamResultOk(); });
+            if (_b.examDropdown != null)
+                _b.examDropdown.onValueChanged.AddListener(OnExamDropdownChanged);
+            if (_b.examTextInput != null)
+                _b.examTextInput.onValueChanged.AddListener(OnExamTextChanged);
+            if (_b.examQuizButtons != null)
+            {
+                for (int i = 0; i < _b.examQuizButtons.Length; i++)
+                {
+                    int idx = i;
+                    if (_b.examQuizButtons[i] != null)
+                        _b.examQuizButtons[i].onClick.AddListener(() => OnExamQuizPicked(idx));
+                }
+            }
+
+            if (_b.examPickButtons != null)
+            {
+                for (int i = 0; i < _b.examPickButtons.Length; i++)
+                {
+                    int idx = i;
+                    if (_b.examPickButtons[i] != null)
+                        _b.examPickButtons[i].onClick.AddListener(() => OnExamPickPicked(idx));
+                }
+            }
+
+            _licenseListenersWired = true;
+        }
+
+        void EnsureLicensesOverlay()
+        {
+            if (_b == null || _canvas == null) return;
+
+            if (_b.btnLicenses == null)
+            {
+                var chrome = EffectsChromeParent();
+                if (chrome != null)
+                {
+                    _b.btnLicenses = CreateRuntimeLicensesButton(chrome, out _b.licensesButtonLabel);
+                    EnsureChromeTitleClearsLeftButtons(246f);
+                }
+            }
+
+            if (_b.licensesHub == null)
+            {
+                _b.licensesHub = GameUiHierarchyFactory.BuildLicensesHubOverlay(_canvas.transform, _b);
+                _b.licensesHub.SetActive(false);
+            }
+
+            if (_b.licenseExam == null)
+            {
+                _b.licenseExam = GameUiHierarchyFactory.BuildLicenseExamOverlay(_canvas.transform, _b);
+                _b.licenseExam.SetActive(false);
+            }
+
+            _licensesHub = _b.licensesHub;
+            _licenseExam = _b.licenseExam;
+            WireLicenseListeners();
+        }
+
+        static Button CreateRuntimeLicensesButton(Transform chrome, out TextMeshProUGUI label)
+        {
+            var go = new GameObject("LicensesBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(chrome, false);
+            if (chrome.Find("CatalogBtn") != null)
+                go.transform.SetSiblingIndex(chrome.Find("CatalogBtn").GetSiblingIndex() + 1);
+            else
+                go.transform.SetAsFirstSibling();
+            StretchUi(go.GetComponent<RectTransform>(), new Vector2(0, 0.12f), new Vector2(0, 0.88f),
+                new Vector2(122, 0), new Vector2(236, 0));
+            var img = go.GetComponent<Image>();
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            GameUiStyle.ApplySecondaryButton(img);
+            label = GameUiStyle.CreateTmpText("Label", go.transform, LocaleService.T("chrome.licenses"), 13,
+                TextAnchor.MiddleCenter);
+            GameUiStyle.ApplyUiFont(label, bold: true);
+            StretchUi(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(6, 2), new Vector2(-6, -2));
+            return btn;
+        }
+
+        public void ToggleLicensesHub()
+        {
+            if (_licensesHub != null && _licensesHub.activeSelf) HideLicensesHub();
+            else ShowLicensesHub();
+        }
+
+        public void ShowLicensesHub()
+        {
+            EnsureLicensesOverlay();
+            HidePaintingCatalog();
+            HideLicenseExam();
+            if (_licensesHub == null) return;
+            if (_b.licensesTitle != null)
+                _b.licensesTitle.text = LocaleService.T("licenses.title");
+            if (_b.licensesCloseLabel != null)
+                _b.licensesCloseLabel.text = LocaleService.T("licenses.close");
+            _licensesHub.SetActive(true);
+            _licensesHub.transform.SetAsLastSibling();
+            RefreshLicensesHub();
+        }
+
+        public void HideLicensesHub()
+        {
+            if (_licensesHub != null) _licensesHub.SetActive(false);
+        }
+
+        void RefreshLicensesHub()
+        {
+            if (_b == null) return;
+            var state = _session?.State;
+            bool hasRegular = LicenseRules.OwnsRegular(state);
+            bool hasElite = LicenseRules.OwnsElite(state);
+            int discovered = _session?.DiscoveredPaintingCount() ?? 0;
+
+            if (_b.licensesRegularStatus != null)
+            {
+                _b.licensesRegularStatus.text = hasRegular
+                    ? LocaleService.T("licenses.regular.owned")
+                    : LocaleService.T("licenses.regular.locked");
+                _b.licensesRegularStatus.color = hasRegular ? GameUiStyle.Good : GameUiStyle.TextColor;
+            }
+
+            if (_b.licensesEliteStatus != null)
+            {
+                _b.licensesEliteStatus.text = hasElite
+                    ? LocaleService.T("licenses.elite.owned")
+                    : LocaleService.T("licenses.elite.locked");
+                _b.licensesEliteStatus.color = hasElite ? GameUiStyle.Good : GameUiStyle.TextColor;
+            }
+
+            if (_b.examRegularLabel != null)
+                _b.examRegularLabel.text = string.Format(
+                    LocaleService.T("licenses.exam.regular"),
+                    CampaignConfig.LicenseExamFeeRegular.ToString("N0"));
+            if (_b.examEliteLabel != null)
+                _b.examEliteLabel.text = string.Format(
+                    LocaleService.T("licenses.exam.elite"),
+                    CampaignConfig.LicenseExamFeeElite.ToString("N0"));
+
+            bool canRegular = _session != null && _session.CanStartLicenseExam(CampaignConfig.LicenseRegularId);
+            bool canElite = _session != null && _session.CanStartLicenseExam(CampaignConfig.LicenseEliteId);
+            if (_b.btnExamRegular != null)
+            {
+                _b.btnExamRegular.gameObject.SetActive(!hasRegular);
+                _b.btnExamRegular.interactable = canRegular;
+            }
+
+            if (_b.btnExamElite != null)
+            {
+                _b.btnExamElite.gameObject.SetActive(!hasElite);
+                _b.btnExamElite.interactable = canElite;
+            }
+
+            if (_b.licensesHint != null)
+            {
+                if (discovered <= 0)
+                    _b.licensesHint.text = LocaleService.T("licenses.hint.needPaintings");
+                else if (!hasRegular && !canRegular)
+                    _b.licensesHint.text = LocaleService.T("licenses.hint.needMoney");
+                else if (!hasRegular)
+                    _b.licensesHint.text = LocaleService.T("licenses.hint.ready");
+                else if (!hasElite && !canElite)
+                    _b.licensesHint.text = LocaleService.T("licenses.hint.needMoney");
+                else
+                    _b.licensesHint.text = LocaleService.T("licenses.hint.ready");
+            }
+        }
+
+        void TryStartExam(string tierId)
+        {
+            AudioService.PlayClick();
+            if (_flow == null || !_flow.StartLicenseExam(tierId))
+            {
+                RefreshLicensesHub();
+                return;
+            }
+
+            HideLicensesHub();
+            ShowLicenseExam();
+        }
+
+        void ShowLicenseExam()
+        {
+            EnsureLicensesOverlay();
+            if (_licenseExam == null) return;
+            if (_b.examResultRoot != null) _b.examResultRoot.SetActive(false);
+            _licenseExam.SetActive(true);
+            _licenseExam.transform.SetAsLastSibling();
+            RefreshLicenseExamCard();
+        }
+
+        void HideLicenseExam()
+        {
+            if (_licenseExam != null) _licenseExam.SetActive(false);
+        }
+
+        void RefreshLicenseExamCard()
+        {
+            if (_b == null) return;
+            var exam = _session?.State?.ActiveExam;
+            if (exam == null)
+            {
+                HideLicenseExam();
+                return;
+            }
+
+            if (exam.Finished)
+            {
+                ShowExamResult(exam);
+                return;
+            }
+
+            var q = exam.Current;
+            if (q == null) return;
+
+            if (_b.examProgress != null)
+                _b.examProgress.text = string.Format(
+                    LocaleService.T("exam.progress"), exam.CurrentIndex + 1, exam.Questions.Length);
+            if (_b.examPrompt != null)
+                _b.examPrompt.text = q.Prompt ?? "";
+            if (_b.examNextLabel != null)
+                _b.examNextLabel.text = exam.IsLastCard
+                    ? LocaleService.T("exam.submit")
+                    : LocaleService.T("exam.next");
+            if (_b.examAbandonLabel != null)
+                _b.examAbandonLabel.text = LocaleService.T("exam.abandon");
+
+            string answer = exam.PlayerAnswers != null && exam.CurrentIndex < exam.PlayerAnswers.Length
+                ? exam.PlayerAnswers[exam.CurrentIndex]
+                : "";
+
+            if (_b.examDropdownRoot != null) _b.examDropdownRoot.SetActive(false);
+            if (_b.examQuizRoot != null) _b.examQuizRoot.SetActive(false);
+            if (_b.examInputRoot != null) _b.examInputRoot.SetActive(false);
+            if (_b.examPickRoot != null) _b.examPickRoot.SetActive(false);
+            if (_b.examHeroImage != null) _b.examHeroImage.gameObject.SetActive(true);
+
+            var painting = _session.Catalog?.FindPainting(q.TargetArtworkId);
+            if (_b.examHeroImage != null && q.Kind != ExamQuestionKind.PickPainting)
+            {
+                _b.examHeroImage.texture = painting != null ? painting.albedoTexture : null;
+                _b.examHeroImage.color = _b.examHeroImage.texture != null
+                    ? Color.white
+                    : new Color(0.85f, 0.82f, 0.76f, 1f);
+            }
+
+            switch (q.Kind)
+            {
+                case ExamQuestionKind.DropdownRestore:
+                    ShowExamDropdown(q, answer);
+                    break;
+                case ExamQuestionKind.Quiz4:
+                    ShowExamQuiz(q, answer);
+                    break;
+                case ExamQuestionKind.TextInput:
+                    ShowExamInput(q, answer);
+                    break;
+                case ExamQuestionKind.PickPainting:
+                    if (_b.examHeroImage != null) _b.examHeroImage.gameObject.SetActive(false);
+                    ShowExamPick(q, answer);
+                    break;
+            }
+        }
+
+        void ShowExamDropdown(ExamQuestion q, string answer)
+        {
+            if (_b.examDropdownRoot == null || _b.examDropdown == null) return;
+            _b.examDropdownRoot.SetActive(true);
+            _b.examDropdown.onValueChanged.RemoveListener(OnExamDropdownChanged);
+            _b.examDropdown.ClearOptions();
+            var opts = new List<TMP_Dropdown.OptionData>();
+            if (q.Options != null)
+            {
+                for (int i = 0; i < q.Options.Length; i++)
+                    opts.Add(new TMP_Dropdown.OptionData(q.Options[i]));
+            }
+
+            _b.examDropdown.AddOptions(opts);
+            int sel = 0;
+            if (!string.IsNullOrEmpty(answer) && q.Options != null)
+            {
+                for (int i = 0; i < q.Options.Length; i++)
+                {
+                    if (LicenseExamGenerator.AnswersMatch(q.Options[i], answer))
+                    {
+                        sel = i;
+                        break;
+                    }
+                }
+            }
+
+            _b.examDropdown.value = sel;
+            _b.examDropdown.RefreshShownValue();
+            _b.examDropdown.onValueChanged.AddListener(OnExamDropdownChanged);
+            if (q.Options != null && q.Options.Length > 0)
+                _flow?.SetExamAnswer(q.Options[sel]);
+        }
+
+        void ShowExamQuiz(ExamQuestion q, string answer)
+        {
+            if (_b.examQuizRoot == null) return;
+            _b.examQuizRoot.SetActive(true);
+            _examSelectedQuiz = -1;
+            for (int i = 0; i < 4; i++)
+            {
+                bool has = q.Options != null && i < q.Options.Length;
+                if (_b.examQuizButtons[i] != null)
+                    _b.examQuizButtons[i].gameObject.SetActive(has);
+                if (!has) continue;
+                if (_b.examQuizLabels[i] != null)
+                    _b.examQuizLabels[i].text = q.Options[i];
+                bool selected = LicenseExamGenerator.AnswersMatch(q.Options[i], answer);
+                if (selected) _examSelectedQuiz = i;
+                TintQuizButton(i, selected);
+            }
+        }
+
+        void ShowExamInput(ExamQuestion q, string answer)
+        {
+            if (_b.examInputRoot == null || _b.examTextInput == null) return;
+            _b.examInputRoot.SetActive(true);
+            _b.examTextInput.onValueChanged.RemoveListener(OnExamTextChanged);
+            _b.examTextInput.text = answer ?? "";
+            if (_b.examTextInput.placeholder is TextMeshProUGUI ph)
+                ph.text = LocaleService.T("exam.input.placeholder");
+            _b.examTextInput.onValueChanged.AddListener(OnExamTextChanged);
+        }
+
+        void ShowExamPick(ExamQuestion q, string answer)
+        {
+            if (_b.examPickRoot == null) return;
+            _b.examPickRoot.SetActive(true);
+            _examSelectedPick = -1;
+            for (int i = 0; i < 4; i++)
+            {
+                bool has = q.Options != null && i < q.Options.Length;
+                if (_b.examPickButtons[i] != null)
+                    _b.examPickButtons[i].gameObject.SetActive(has);
+                if (!has) continue;
+                var p = _session?.Catalog?.FindPainting(q.Options[i]);
+                if (_b.examPickImages[i] != null)
+                {
+                    _b.examPickImages[i].texture = p != null ? p.albedoTexture : null;
+                    _b.examPickImages[i].color = _b.examPickImages[i].texture != null
+                        ? Color.white
+                        : new Color(0.75f, 0.72f, 0.68f, 1f);
+                }
+
+                bool selected = LicenseExamGenerator.AnswersMatch(q.Options[i], answer);
+                if (selected) _examSelectedPick = i;
+                TintPickButton(i, selected);
+            }
+        }
+
+        void TintQuizButton(int index, bool selected)
+        {
+            if (_b.examQuizButtons == null || index < 0 || index >= _b.examQuizButtons.Length) return;
+            var img = _b.examQuizButtons[index]?.GetComponent<Image>();
+            if (img == null) return;
+            if (selected) GameUiStyle.ApplyPrimaryButton(img, _b.examQuizLabels[index]);
+            else GameUiStyle.ApplySecondaryButton(img, _b.examQuizLabels[index]);
+        }
+
+        void TintPickButton(int index, bool selected)
+        {
+            if (_b.examPickButtons == null || index < 0 || index >= _b.examPickButtons.Length) return;
+            var img = _b.examPickButtons[index]?.GetComponent<Image>();
+            if (img == null) return;
+            img.color = selected ? GameUiStyle.SelectedTint : Color.white;
+        }
+
+        void OnExamDropdownChanged(int value)
+        {
+            var q = _session?.State?.ActiveExam?.Current;
+            if (q?.Options == null || value < 0 || value >= q.Options.Length) return;
+            _flow?.SetExamAnswer(q.Options[value]);
+        }
+
+        void OnExamTextChanged(string value) => _flow?.SetExamAnswer(value);
+
+        void OnExamQuizPicked(int index)
+        {
+            var q = _session?.State?.ActiveExam?.Current;
+            if (q?.Options == null || index < 0 || index >= q.Options.Length) return;
+            _examSelectedQuiz = index;
+            _flow?.SetExamAnswer(q.Options[index]);
+            for (int i = 0; i < 4; i++)
+                TintQuizButton(i, i == index);
+        }
+
+        void OnExamPickPicked(int index)
+        {
+            var q = _session?.State?.ActiveExam?.Current;
+            if (q?.Options == null || index < 0 || index >= q.Options.Length) return;
+            _examSelectedPick = index;
+            _flow?.SetExamAnswer(q.Options[index]);
+            for (int i = 0; i < 4; i++)
+                TintPickButton(i, i == index);
+        }
+
+        void OnExamNext()
+        {
+            CommitCurrentExamAnswer();
+            bool finished = _flow != null && _flow.SubmitExamCardAndAdvance();
+            if (finished)
+                RefreshLicenseExamCard();
+            else
+                RefreshLicenseExamCard();
+        }
+
+        void CommitCurrentExamAnswer()
+        {
+            var exam = _session?.State?.ActiveExam;
+            var q = exam?.Current;
+            if (q == null) return;
+            switch (q.Kind)
+            {
+                case ExamQuestionKind.DropdownRestore:
+                    if (_b.examDropdown != null && q.Options != null
+                        && _b.examDropdown.value >= 0 && _b.examDropdown.value < q.Options.Length)
+                        _flow?.SetExamAnswer(q.Options[_b.examDropdown.value]);
+                    break;
+                case ExamQuestionKind.TextInput:
+                    if (_b.examTextInput != null)
+                        _flow?.SetExamAnswer(_b.examTextInput.text);
+                    break;
+                case ExamQuestionKind.Quiz4:
+                    if (_examSelectedQuiz >= 0 && q.Options != null && _examSelectedQuiz < q.Options.Length)
+                        _flow?.SetExamAnswer(q.Options[_examSelectedQuiz]);
+                    break;
+                case ExamQuestionKind.PickPainting:
+                    if (_examSelectedPick >= 0 && q.Options != null && _examSelectedPick < q.Options.Length)
+                        _flow?.SetExamAnswer(q.Options[_examSelectedPick]);
+                    break;
+            }
+        }
+
+        void OnExamAbandon()
+        {
+            _flow?.AbandonLicenseExam();
+            HideLicenseExam();
+            ShowLicensesHub();
+        }
+
+        void ShowExamResult(ExamSession exam)
+        {
+            if (_b.examResultRoot == null) return;
+            _b.examResultRoot.SetActive(true);
+            int need = (int)Mathf.CeilToInt(exam.Questions.Length * CampaignConfig.LicenseExamPassRatio);
+            if (_b.examResultText != null)
+            {
+                _b.examResultText.text = exam.Passed
+                    ? string.Format(LocaleService.T("exam.pass"), exam.CorrectCount, exam.Questions.Length)
+                    : string.Format(LocaleService.T("exam.fail"), exam.CorrectCount, exam.Questions.Length, need);
+                _b.examResultText.color = exam.Passed ? GameUiStyle.Good : GameUiStyle.Bad;
+            }
+
+            if (_b.examResultOkLabel != null)
+                _b.examResultOkLabel.text = LocaleService.T("exam.ok");
+        }
+
+        void OnExamResultOk()
+        {
+            _flow?.ClearFinishedExam();
+            HideLicenseExam();
+            ShowLicensesHub();
+            RefreshChromeStatus(_session);
+        }
+
+        void WireCatalogListeners()
+        {
+            if (_b == null || _catalogListenersWired) return;
+            if (_b.btnCatalog == null || _b.paintingCatalog == null) return;
+
+            _b.btnCatalog.onClick.AddListener(() => { AudioService.PlayClick(); TogglePaintingCatalog(); });
+            if (_b.btnCatalogClose != null)
+                _b.btnCatalogClose.onClick.AddListener(() => { AudioService.PlayClick(); HidePaintingCatalog(); });
+            if (_b.btnCatalogPrev != null)
+                _b.btnCatalogPrev.onClick.AddListener(() => { AudioService.PlayClick(); ShiftCatalogPage(-1); });
+            if (_b.btnCatalogNext != null)
+                _b.btnCatalogNext.onClick.AddListener(() => { AudioService.PlayClick(); ShiftCatalogPage(1); });
+            if (_b.catalogSearch != null)
+                _b.catalogSearch.onValueChanged.AddListener(OnCatalogSearchChanged);
+            _catalogListenersWired = true;
+        }
+
+        static Button CreateRuntimeCatalogButton(Transform chrome, out TextMeshProUGUI label)
+        {
+            var go = new GameObject("CatalogBtn", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(chrome, false);
+            go.transform.SetAsFirstSibling();
+            StretchUi(go.GetComponent<RectTransform>(), new Vector2(0, 0.12f), new Vector2(0, 0.88f),
+                new Vector2(10, 0), new Vector2(118, 0));
+            var img = go.GetComponent<Image>();
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            GameUiStyle.ApplySecondaryButton(img);
+            label = GameUiStyle.CreateTmpText("Label", go.transform, LocaleService.T("chrome.catalog"), 13,
+                TextAnchor.MiddleCenter);
+            GameUiStyle.ApplyUiFont(label, bold: true);
+            StretchUi(label.rectTransform, Vector2.zero, Vector2.one, new Vector2(6, 2), new Vector2(-6, -2));
+            return btn;
+        }
+
+        void EnsureFieldStudyHolds()
+        {
+            if (_b?.fieldRows == null) return;
+            if (_b.fieldStudyFills == null || _b.fieldStudyFills.Length != 5)
+                _b.fieldStudyFills = new Image[5];
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (_b.fieldRows[i] == null) continue;
+                var row = _b.fieldRows[i].transform;
+                // Row must receive pointer events for hold-to-study.
+                _b.fieldRows[i].raycastTarget = true;
+
+                FieldStudyHold.EnsureBarUnderRow(row, out var track, out var fill);
+                _b.fieldStudyFills[i] = fill;
+
+                // Remove legacy full-row StudyFill if present (from older builds).
+                var legacy = row.Find("StudyFill");
+                if (legacy != null)
+                    Destroy(legacy.gameObject);
+
+                var hold = row.GetComponent<FieldStudyHold>();
+                if (hold == null) hold = row.gameObject.AddComponent<FieldStudyHold>();
+                hold.Bind(this, i, track, fill);
+                _fieldStudyHolds[i] = hold;
+
+                if (_b.fieldLabels != null && i < _b.fieldLabels.Length && _b.fieldLabels[i] != null)
+                    _b.fieldLabels[i].raycastTarget = false;
+                if (_b.fieldValues != null && i < _b.fieldValues.Length && _b.fieldValues[i] != null)
+                    _b.fieldValues[i].raycastTarget = false;
+            }
+        }
+
+        public void TogglePaintingCatalog()
+        {
+            if (IsPaintingCatalogVisible) HidePaintingCatalog();
+            else ShowPaintingCatalog();
+        }
+
+        public void ShowPaintingCatalog()
+        {
+            EnsureCatalogOverlay();
+            if (_paintingCatalog == null) return;
+            _catalogPage = 0;
+            if (_b.catalogSearch != null)
+            {
+                _catalogQuery = _b.catalogSearch.text ?? "";
+            }
+
+            if (_b.catalogTitle != null)
+                _b.catalogTitle.text = LocaleService.T("catalog.title");
+            if (_b.catalogCloseLabel != null)
+                _b.catalogCloseLabel.text = LocaleService.T("catalog.close");
+            if (_b.catalogSearch != null && _b.catalogSearch.placeholder is TextMeshProUGUI ph)
+                ph.text = LocaleService.T("catalog.search");
+
+            _paintingCatalog.SetActive(true);
+            _paintingCatalog.transform.SetAsLastSibling();
+            RefreshPaintingCatalog();
+        }
+
+        public void HidePaintingCatalog()
+        {
+            if (_paintingCatalog != null) _paintingCatalog.SetActive(false);
+        }
+
+        void OnCatalogSearchChanged(string value)
+        {
+            _catalogQuery = value ?? "";
+            _catalogPage = 0;
+            RefreshPaintingCatalog();
+        }
+
+        void ShiftCatalogPage(int delta)
+        {
+            int pageCount = Mathf.Max(1, Mathf.CeilToInt(_catalogFiltered.Count / (float)CampaignConfig.CatalogPageSize));
+            _catalogPage = Mathf.Clamp(_catalogPage + delta, 0, pageCount - 1);
+            RefreshPaintingCatalog();
+        }
+
+        void RefreshPaintingCatalog()
+        {
+            if (_b == null) return;
+            var state = _session?.State;
+            var catalog = _session?.Catalog;
+            _catalogFiltered.Clear();
+            if (catalog?.paintings != null)
+            {
+                for (int i = 0; i < catalog.paintings.Count; i++)
+                {
+                    var p = catalog.paintings[i];
+                    if (p == null || string.IsNullOrEmpty(p.artworkId)) continue;
+                    if (CatalogProgress.MatchesSearch(p, state, _catalogQuery))
+                        _catalogFiltered.Add(p);
+                }
+            }
+
+            int pageSize = CampaignConfig.CatalogPageSize;
+            int pageCount = Mathf.Max(1, Mathf.CeilToInt(_catalogFiltered.Count / (float)pageSize));
+            _catalogPage = Mathf.Clamp(_catalogPage, 0, pageCount - 1);
+            int start = _catalogPage * pageSize;
+
+            if (_b.catalogSlots != null)
+            {
+                for (int s = 0; s < _b.catalogSlots.Length; s++)
+                {
+                    var slot = _b.catalogSlots[s];
+                    if (slot == null) continue;
+                    int idx = start + s;
+                    if (idx < _catalogFiltered.Count)
+                        slot.Bind(_catalogFiltered[idx], state);
+                    else
+                        slot.Clear();
+                }
+            }
+
+            if (_b.catalogPageLabel != null)
+            {
+                _b.catalogPageLabel.text = _catalogFiltered.Count == 0 && !string.IsNullOrWhiteSpace(_catalogQuery)
+                    ? LocaleService.T("catalog.empty")
+                    : string.Format(LocaleService.T("catalog.page"), _catalogPage + 1, pageCount);
+            }
+
+            if (_b.btnCatalogPrev != null)
+                _b.btnCatalogPrev.interactable = _catalogPage > 0;
+            if (_b.btnCatalogNext != null)
+                _b.btnCatalogNext.interactable = _catalogPage < pageCount - 1;
+        }
+
+        public bool IsFieldStudyAllowed(int fieldIndex)
+        {
+            if (!ShouldShowStudyProgressBar(fieldIndex)) return false;
+            var state = _session.State;
+            if (state.LotResolved || state.FastForwarding) return false;
+            if (_flow != null && (_flow.IsPresentingLot || _flow.IsResolvingPurchase)) return false;
+            if (IsPaintingCatalogVisible || IsCollectorPopupVisible || IsPurchaseCardVisible) return false;
+            if (CatalogProgress.IsLearned(state, state.CurrentLot.Id, fieldIndex)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the study bar may be drawn (revealed row on current lot).
+        /// True even after lot resolve so partial fill stays visible and frozen.
+        /// </summary>
+        public bool ShouldShowStudyProgressBar(int fieldIndex)
+        {
+            if (_session?.State == null) return false;
+            if (_currentScreen != GameScreen.Auction) return false;
+            var state = _session.State;
+            var lot = state.CurrentLot;
+            if (lot == null || state.AwaitingLotStart) return false;
+            if (fieldIndex < 0 || fieldIndex >= FieldIds.Length) return false;
+
+            string id = FieldIds[fieldIndex];
+            return state.RevealStep > fieldIndex
+                   || (!string.IsNullOrEmpty(state.FreeRevealedField) && state.FreeRevealedField == id);
+        }
+
+        public bool TryBeginFieldStudy(int fieldIndex)
+        {
+            if (!IsFieldStudyAllowed(fieldIndex)) return false;
+            _studyingFieldIndex = fieldIndex;
+            return true;
+        }
+
+        public float GetFieldStudyProgress(int fieldIndex)
+        {
+            var state = _session?.State;
+            var lot = state?.CurrentLot;
+            if (state == null || lot == null) return 0f;
+            return CatalogProgress.GetProgress(state, lot.Id, fieldIndex);
+        }
+
+        public bool IsFieldStudyComplete(int fieldIndex) => GetFieldStudyProgress(fieldIndex) >= 1f;
+
+        public float TickFieldStudy(int fieldIndex, float deltaTime)
+        {
+            var state = _session?.State;
+            var lot = state?.CurrentLot;
+            if (state == null || lot == null) return 0f;
+            if (!IsFieldStudyAllowed(fieldIndex) || _studyingFieldIndex != fieldIndex)
+                return CatalogProgress.GetProgress(state, lot.Id, fieldIndex);
+
+            float current = CatalogProgress.GetProgress(state, lot.Id, fieldIndex);
+            if (current >= 1f) return 1f;
+            float next = current + deltaTime / CampaignConfig.CatalogStudySeconds;
+            CatalogProgress.SetProgress(state, lot.Id, fieldIndex, next);
+            return CatalogProgress.GetProgress(state, lot.Id, fieldIndex);
+        }
+
+        public void CancelFieldStudy(int fieldIndex)
+        {
+            if (_studyingFieldIndex == fieldIndex)
+                _studyingFieldIndex = -1;
+        }
+
+        public void AbortAllFieldStudy()
+        {
+            _studyingFieldIndex = -1;
+            if (_fieldStudyHolds == null) return;
+            for (int i = 0; i < _fieldStudyHolds.Length; i++)
+                _fieldStudyHolds[i]?.ForceStopFill();
+        }
+
+        public void EndFieldStudy(int fieldIndex)
+        {
+            if (_studyingFieldIndex == fieldIndex)
+                _studyingFieldIndex = -1;
+            if (_session?.State != null && _auction != null && _auction.activeSelf)
+            {
+                var order = _session.State.DayOrders != null && _session.State.DayOrders.Count > 0
+                    ? _session.State.DayOrders[0]
+                    : _session.State.PendingOrder;
+                RefreshRevealFields(_session.State, _session.State.CurrentLot, order);
+            }
         }
     }
 }

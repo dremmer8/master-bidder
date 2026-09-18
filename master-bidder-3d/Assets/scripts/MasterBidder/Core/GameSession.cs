@@ -115,7 +115,8 @@ namespace MasterBidder.Core
                 ? prog
                 : 0;
             var branchCfg = CampaignConfig.GetBranchMissionConfig(missionIndex, collector.LadderLength);
-            var venue = CampaignConfig.GetVenue(branchCfg.VenueTier);
+            var clampedTier = LicenseRules.ClampVenue(branchCfg.VenueTier, State);
+            var venue = CampaignConfig.GetVenue(clampedTier);
             var tags = collector.GetOrderTagsForMission(missionIndex);
             var order = AuctionRules.BuildOrder(
                 collector, branchCfg, venue, State, tags, Catalog.paintings, Rng);
@@ -427,6 +428,103 @@ namespace MasterBidder.Core
         {
             if (State == null) return;
             State.RevealStep = step;
+            Notify();
+        }
+
+        public void MarkCatalogDiscovered(string artworkId)
+        {
+            if (State == null || string.IsNullOrEmpty(artworkId)) return;
+            if (CatalogProgress.IsDiscovered(State, artworkId)) return;
+            CatalogProgress.MarkDiscovered(State, artworkId);
+            Notify();
+        }
+
+        public int DiscoveredPaintingCount()
+        {
+            if (State == null) return 0;
+            return LicenseExamGenerator.CollectDiscovered(State, Catalog).Count;
+        }
+
+        public bool CanStartLicenseExam(string tierId) =>
+            State != null && LicenseRules.CanAttemptExam(State, tierId, DiscoveredPaintingCount());
+
+        /// <summary>Charges fee and opens a new exam session. Returns false if blocked.</summary>
+        public bool StartLicenseExam(string tierId)
+        {
+            if (State == null || !CanStartLicenseExam(tierId)) return false;
+            if (State.ActiveExam != null && !State.ActiveExam.Finished) return false;
+
+            int fee = LicenseRules.ExamFee(tierId);
+            State.Capital -= fee;
+            var session = LicenseExamGenerator.Generate(State, Catalog, Rng);
+            session.TierId = tierId;
+            session.FeePaid = true;
+            State.ActiveExam = session;
+            Notify();
+            return true;
+        }
+
+        public void SetExamAnswer(string answer)
+        {
+            var exam = State?.ActiveExam;
+            if (exam == null || exam.Finished) return;
+            if (exam.PlayerAnswers == null || exam.CurrentIndex < 0
+                || exam.CurrentIndex >= exam.PlayerAnswers.Length)
+                return;
+            exam.PlayerAnswers[exam.CurrentIndex] = answer ?? string.Empty;
+        }
+
+        /// <summary>Advance to next card, or grade if on the last card. Returns true when finished.</summary>
+        public bool SubmitExamCardAndAdvance()
+        {
+            var exam = State?.ActiveExam;
+            if (exam == null || exam.Finished) return true;
+
+            if (!exam.IsLastCard)
+            {
+                exam.CurrentIndex++;
+                Notify();
+                return false;
+            }
+
+            return FinishLicenseExam();
+        }
+
+        public bool FinishLicenseExam()
+        {
+            var exam = State?.ActiveExam;
+            if (exam == null) return true;
+
+            exam.CorrectCount = LicenseExamGenerator.Grade(exam);
+            int need = (int)Math.Ceiling(exam.Questions.Length * CampaignConfig.LicenseExamPassRatio);
+            exam.Passed = exam.CorrectCount >= need;
+            exam.Finished = true;
+            if (exam.Passed)
+                LicenseRules.Grant(State, exam.TierId);
+
+            // Venue may unlock immediately for current brief day.
+            if (exam.Passed)
+                PrepareDayLots();
+
+            SaveProgress(SavePhase.Brief);
+            Notify();
+            return true;
+        }
+
+        public void AbandonLicenseExam()
+        {
+            if (State?.ActiveExam == null) return;
+            // Fee already spent; mark failed and clear.
+            State.ActiveExam.Finished = true;
+            State.ActiveExam.Passed = false;
+            State.ActiveExam = null;
+            Notify();
+        }
+
+        public void ClearFinishedExam()
+        {
+            if (State?.ActiveExam != null && State.ActiveExam.Finished)
+                State.ActiveExam = null;
             Notify();
         }
 
