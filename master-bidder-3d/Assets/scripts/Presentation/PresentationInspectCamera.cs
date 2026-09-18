@@ -9,6 +9,7 @@ namespace MasterBidder.Presentation
     /// Hall ↔ inspect blends through a proxy camera.
     /// Scroll-up from the hall enters inspect; scroll-down at max stand-off returns to the hall.
     /// RMB also toggles. Mouse look moves a surface pivot; LMB reframes to the locked pivot.
+    /// Field study can start a short auto flythrough across the painting while the study bar fills.
     /// </summary>
     public class PresentationInspectCamera : MonoBehaviour
     {
@@ -53,8 +54,34 @@ namespace MasterBidder.Presentation
         [Tooltip("When false, scroll/RMB cannot enter inspect (e.g. brief / intro).")]
         [SerializeField] private bool inputEnabled = true;
 
+        [Header("Study Flythrough")]
+        [Tooltip("Seconds to travel between each painting waypoint.")]
+        [SerializeField] private float studySegmentDuration = 10.35f;
+        [Tooltip("Seconds to linger on the final close-up before handing control back.")]
+        [SerializeField] private float studyEndHoldDuration = 4.95f;
+        [Tooltip("Inset from painting edges for auto waypoints (0–1).")]
+        [Range(0.5f, 1f)]
+        [SerializeField] private float studyEdgeInset = 0.92f;
+
         [Header("Debug")]
         [SerializeField] private bool drawGizmos = true;
+
+        private struct StudyWaypoint
+        {
+            public float Nx;
+            public float Ny;
+            public float DistanceFactor;
+        }
+
+        /// <summary>
+        /// Short scripted path: upper-left → lower-right → center detail (closer).
+        /// </summary>
+        private static readonly StudyWaypoint[] StudyPath =
+        {
+            new StudyWaypoint { Nx = -0.38f, Ny = 0.30f, DistanceFactor = 1.05f },
+            new StudyWaypoint { Nx = 0.36f, Ny = -0.26f, DistanceFactor = 0.92f },
+            new StudyWaypoint { Nx = -0.10f, Ny = 0.06f, DistanceFactor = 0.78f },
+        };
 
         private CameraMode mode = CameraMode.Hall;
         private bool hasPivot;
@@ -85,11 +112,23 @@ namespace MasterBidder.Presentation
         private float halfWidth;
         private float halfHeight;
 
+        private bool studyFlythrough;
+        private bool studyPathPending;
+        private bool studySuppressCursorLock;
+        private int studyWaypointIndex;
+        private float studySegmentT;
+        private bool studyHoldingEnd;
+        private Vector3 studyFromPivot;
+        private Vector3 studyToPivot;
+        private float studyFromDistance;
+        private float studyToDistance;
+
         private const float ZoomSettleEpsilon = 0.001f;
         private const float ZoomLimitHysteresis = 0.005f;
 
         public bool IsInspecting => mode == CameraMode.Inspect || mode == CameraMode.ToInspect;
         public bool IsTransitioning => mode == CameraMode.ToInspect || mode == CameraMode.ToHall;
+        public bool IsStudyFlythrough => studyFlythrough;
         public Vector3 Pivot => pivot;
 
         /// <summary>
@@ -137,12 +176,21 @@ namespace MasterBidder.Presentation
         private void Update()
         {
             if (!Application.isPlaying) return;
-            if (!inputEnabled)
+
+            // Study cinematic keeps running even if manual inspect input is gated off mid-path,
+            // but a hard input disable still snaps out of inspect (lot change / venue leave).
+            if (!inputEnabled && !studyFlythrough)
             {
                 if (mode != CameraMode.Hall && !IsTransitioning)
                     ExitInspect(snap: true);
                 else if (IsTransitioning)
                     TickTransition();
+                return;
+            }
+
+            if (studyFlythrough)
+            {
+                TickStudyFlythroughFrame();
                 return;
             }
 
@@ -199,6 +247,201 @@ namespace MasterBidder.Presentation
             UpdatePivotMarker();
         }
 
+        /// <summary>
+        /// Background cinematic while the player holds a catalog field study row:
+        /// enter inspect (if needed), drift across a few surface points with a gentle zoom-in,
+        /// then leave the player in inspect. Cursor stays unlocked so UI hold still works.
+        /// </summary>
+        public void StartStudyFlythrough()
+        {
+            if (studyFlythrough) return;
+
+            ResolveRefs();
+            EnsureProxyCamera();
+            if (inspectCamera == null || canvasMesh == null || mainCamera == null)
+            {
+                Debug.LogWarning("[InspectCamera] Cannot start study flythrough — missing cameras or canvas.", this);
+                return;
+            }
+
+            if (!RefreshSurface())
+            {
+                Debug.LogWarning("[InspectCamera] Cannot start study flythrough — no painting surface.", this);
+                return;
+            }
+
+            // Allow enter even if InputEnabled was briefly false; auction study only fires in-hall.
+            if (!inputEnabled && mode == CameraMode.Hall)
+                return;
+
+            studyFlythrough = true;
+            studySuppressCursorLock = true;
+            studyPathPending = false;
+            studyHoldingEnd = false;
+            CancelPan();
+            SetCursorLocked(false);
+
+            if (mode == CameraMode.ToHall)
+                ExitInspect(snap: true);
+
+            if (mode == CameraMode.Hall)
+            {
+                EnterInspect(snap: false);
+                SetCursorLocked(false);
+                studyPathPending = true;
+                return;
+            }
+
+            if (mode == CameraMode.ToInspect)
+            {
+                studyPathPending = true;
+                return;
+            }
+
+            if (mode == CameraMode.Inspect)
+                BeginStudyPath();
+        }
+
+        private void TickStudyFlythroughFrame()
+        {
+            if (IsTransitioning)
+            {
+                TickTransition();
+                return;
+            }
+
+            if (studyPathPending && mode == CameraMode.Inspect)
+            {
+                studyPathPending = false;
+                BeginStudyPath();
+            }
+
+            if (mode != CameraMode.Inspect || inspectCamera == null)
+            {
+                CancelStudyFlythrough();
+                return;
+            }
+
+            TickStudyPath();
+            UpdatePivotMarker();
+        }
+
+        private void BeginStudyPath()
+        {
+            if (!RefreshSurface())
+            {
+                CancelStudyFlythrough();
+                return;
+            }
+
+            CancelPan();
+            RefreshZoomLimits();
+
+            if (!hasPivot)
+            {
+                pivot = surfaceCenter;
+                hasPivot = true;
+            }
+
+            distance = targetDistance = Mathf.Clamp(distance > 0.01f ? distance : enterDistance,
+                effectiveMinDistance, maxDistance);
+
+            studyWaypointIndex = 0;
+            studySegmentT = 0f;
+            studyHoldingEnd = false;
+            LoadStudySegment(fromCurrent: true);
+        }
+
+        private void LoadStudySegment(bool fromCurrent)
+        {
+            if (studyWaypointIndex < 0 || studyWaypointIndex >= StudyPath.Length)
+            {
+                FinishStudyFlythrough();
+                return;
+            }
+
+            StudyWaypoint wp = StudyPath[studyWaypointIndex];
+            studyFromPivot = fromCurrent && hasPivot ? pivot : studyToPivot;
+            studyFromDistance = fromCurrent ? distance : studyToDistance;
+            studyToPivot = SurfacePointFromNormalized(wp.Nx, wp.Ny);
+            studyToDistance = Mathf.Clamp(
+                enterDistance * wp.DistanceFactor,
+                effectiveMinDistance,
+                maxDistance);
+            studySegmentT = 0f;
+        }
+
+        private void TickStudyPath()
+        {
+            RefreshZoomLimits();
+
+            if (studyHoldingEnd)
+            {
+                studySegmentT += Time.deltaTime;
+                ApplyStudyPose(studyToPivot, studyToDistance);
+                if (studySegmentT >= Mathf.Max(0.05f, studyEndHoldDuration))
+                    FinishStudyFlythrough();
+                return;
+            }
+
+            float duration = Mathf.Max(0.05f, studySegmentDuration);
+            studySegmentT = Mathf.Min(1f, studySegmentT + Time.deltaTime / duration);
+            float u = studySegmentT * studySegmentT * (3f - 2f * studySegmentT);
+
+            Vector3 p = Vector3.Lerp(studyFromPivot, studyToPivot, u);
+            float d = Mathf.Lerp(studyFromDistance, studyToDistance, u);
+            ApplyStudyPose(p, d);
+
+            if (studySegmentT < 1f - 1e-4f) return;
+
+            studyWaypointIndex++;
+            if (studyWaypointIndex >= StudyPath.Length)
+            {
+                studyHoldingEnd = true;
+                studySegmentT = 0f;
+                return;
+            }
+
+            LoadStudySegment(fromCurrent: false);
+        }
+
+        private void ApplyStudyPose(Vector3 targetPivot, float standOff)
+        {
+            pivot = targetPivot;
+            hasPivot = true;
+            standOff = Mathf.Clamp(standOff, effectiveMinDistance, maxDistance);
+            distance = targetDistance = standOff;
+            GetFrontalPose(targetPivot, standOff, out Vector3 pos, out Quaternion rot);
+            if (inspectCamera != null)
+                inspectCamera.transform.SetPositionAndRotation(pos, rot);
+        }
+
+        private Vector3 SurfacePointFromNormalized(float nx, float ny)
+        {
+            float inset = Mathf.Clamp(studyEdgeInset, 0.5f, 1f);
+            nx = Mathf.Clamp(nx, -1f, 1f) * inset;
+            ny = Mathf.Clamp(ny, -1f, 1f) * inset;
+            return surfaceCenter + surfaceRight * (nx * halfWidth) + surfaceUp * (ny * halfHeight);
+        }
+
+        private void FinishStudyFlythrough()
+        {
+            studyFlythrough = false;
+            studyPathPending = false;
+            studyHoldingEnd = false;
+            // Stay in inspect; keep cursor unlocked so a still-held study row is not interrupted.
+            ApplyInspectCursorLock();
+            UpdatePivotMarker();
+        }
+
+        private void CancelStudyFlythrough()
+        {
+            studyFlythrough = false;
+            studyPathPending = false;
+            studyHoldingEnd = false;
+            studySuppressCursorLock = false;
+        }
+
         public void ToggleInspect()
         {
             if (IsTransitioning) return;
@@ -250,7 +493,7 @@ namespace MasterBidder.Presentation
                 inspectCamera.transform.SetPositionAndRotation(endPos, endRot);
                 ApplyCameraRig(CameraMode.Inspect, snapListeners: true);
                 mode = CameraMode.Inspect;
-                SetCursorLocked(lockCursorWhileInspecting);
+                ApplyInspectCursorLock();
                 UpdatePivotMarker();
                 return;
             }
@@ -272,12 +515,13 @@ namespace MasterBidder.Presentation
 
             ApplyCameraRig(CameraMode.ToInspect, snapListeners: true);
             mode = CameraMode.ToInspect;
-            SetCursorLocked(lockCursorWhileInspecting);
+            ApplyInspectCursorLock();
             UpdatePivotMarker();
         }
 
         public void ExitInspect(bool snap)
         {
+            CancelStudyFlythrough();
             CancelPan();
             hasPivot = false;
             UpdatePivotMarker();
@@ -714,7 +958,7 @@ namespace MasterBidder.Presentation
 
                 ApplyCameraRig(CameraMode.Inspect, snapListeners: true);
                 mode = CameraMode.Inspect;
-                SetCursorLocked(lockCursorWhileInspecting);
+                ApplyInspectCursorLock();
                 UpdatePivotMarker();
                 return;
             }
@@ -891,6 +1135,11 @@ namespace MasterBidder.Presentation
             Cursor.visible = !locked;
         }
 
+        private void ApplyInspectCursorLock()
+        {
+            SetCursorLocked(lockCursorWhileInspecting && !studySuppressCursorLock);
+        }
+
         private void CancelPan()
         {
             isPanning = false;
@@ -929,7 +1178,7 @@ namespace MasterBidder.Presentation
                 else return;
             }
 
-            bool show = showPivotMarker && IsInspecting && hasPivot && mode == CameraMode.Inspect;
+            bool show = showPivotMarker && IsInspecting && hasPivot && mode == CameraMode.Inspect && !studyFlythrough;
             pivotMarker.gameObject.SetActive(show);
             if (show)
             {

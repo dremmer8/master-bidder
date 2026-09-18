@@ -2227,6 +2227,7 @@ namespace MasterBidder.UI
         {
             if (!IsFieldStudyAllowed(fieldIndex)) return false;
             _studyingFieldIndex = fieldIndex;
+            _flow?.Presentation?.InspectCamera?.StartStudyFlythrough();
             return true;
         }
 

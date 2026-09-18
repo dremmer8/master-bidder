@@ -30,6 +30,7 @@ namespace MasterBidder.Flow
 
         public GameSession Session => _session;
         public GameCatalog Catalog => catalog;
+        public PresentationOperator Presentation => presentation;
         /// <summary>True while cloth/lot presentation is in progress (actions should stay locked).</summary>
         public bool IsPresentingLot => _presentRoutine != null;
         /// <summary>True while waiting on the sold-ticket appear beat after a buy.</summary>
