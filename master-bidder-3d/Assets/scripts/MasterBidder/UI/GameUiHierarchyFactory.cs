@@ -285,7 +285,8 @@ namespace MasterBidder.UI
             // Sit below the shared Chrome banner (same top bar as auction).
             var root = CreatePanel("Screen_Brief", parent, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -52));
             root.GetComponent<Image>().sprite = null;
-            root.GetComponent<Image>().color = GameUiStyle.ScreenBg;
+            root.GetComponent<Image>().color = new Color(0, 0, 0, 0f);
+            root.GetComponent<Image>().raycastTarget = false;
 
             var chrome = parent.Find("Chrome") ?? parent;
             var status = CreateFixedBar("ChromeStatus", chrome, new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(360f, 38f));

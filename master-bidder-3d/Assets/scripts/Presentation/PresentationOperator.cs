@@ -1,4 +1,5 @@
 using System.Collections;
+using MasterBidder.Core;
 using UnityEngine;
 
 namespace MasterBidder.Presentation
@@ -14,6 +15,7 @@ namespace MasterBidder.Presentation
         [SerializeField] private CanvasController canvas;
         [SerializeField] private PresentationLightRig lightRig;
         [SerializeField] private PresentationInspectCamera inspectCamera;
+        [SerializeField] private PresentationVenueCamera venueCamera;
         [SerializeField] private PresentationTicketController ticket;
 
         [Header("Demo")]
@@ -34,6 +36,7 @@ namespace MasterBidder.Presentation
         public CanvasController Canvas => canvas;
         public PresentationLightRig LightRig => lightRig;
         public PresentationInspectCamera InspectCamera => inspectCamera;
+        public PresentationVenueCamera VenueCamera => venueCamera;
         public PresentationTicketController Ticket => ticket;
 
         private void Awake()
@@ -58,10 +61,39 @@ namespace MasterBidder.Presentation
                 inspectCamera = GetComponent<PresentationInspectCamera>();
             }
 
+            if (venueCamera == null)
+            {
+                venueCamera = GetComponent<PresentationVenueCamera>();
+            }
+
             if (ticket == null)
             {
                 ticket = FindObjectOfType<PresentationTicketController>();
             }
+        }
+
+        /// <summary>
+        /// Leave painting inspect, then blend the venue camera for this UI screen.
+        /// Inspect input is re-enabled only after arriving at the auction hall.
+        /// </summary>
+        public void ApplyVenueForScreen(GameScreen screen, bool snap = false)
+        {
+            ExitInspectMode();
+            if (inspectCamera != null)
+                inspectCamera.InputEnabled = false;
+
+            if (venueCamera == null)
+            {
+                if (inspectCamera != null)
+                    inspectCamera.InputEnabled = screen == GameScreen.Auction;
+                return;
+            }
+
+            venueCamera.GoToForScreen(screen, snap, () =>
+            {
+                if (inspectCamera != null)
+                    inspectCamera.InputEnabled = screen == GameScreen.Auction;
+            });
         }
 
         private void Update()

@@ -113,9 +113,10 @@ namespace MasterBidder.Flow
             _ui.ShowScreen(screen);
             _ui.Refresh(_session);
 
-            // Painting inspect/zoom only during auction — not on brief/order select.
-            if (presentation?.InspectCamera != null)
-                presentation.InspectCamera.InputEnabled = screen == GameScreen.Auction;
+            // Brief → banquet, Report → warehouse, Auction/Intro/End → hall.
+            // Inspect zoom only after we arrive at the auction hall.
+            bool snapVenue = screen == GameScreen.Intro || screen == GameScreen.End;
+            presentation?.ApplyVenueForScreen(screen, snapVenue);
 
             if (screen == GameScreen.Auction && _session?.State != null)
             {

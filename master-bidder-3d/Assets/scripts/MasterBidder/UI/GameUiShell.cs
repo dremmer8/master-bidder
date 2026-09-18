@@ -398,6 +398,16 @@ namespace MasterBidder.UI
             DontDestroyOnLoad(es);
         }
 
+        static void ClearScreenBackdrop(GameObject root)
+        {
+            if (root == null) return;
+            var img = root.GetComponent<Image>();
+            if (img == null) return;
+            img.sprite = null;
+            img.color = new Color(0f, 0f, 0f, 0f);
+            img.raycastTarget = false;
+        }
+
         public void ShowScreen(GameScreen screen)
         {
             _currentScreen = screen;
@@ -406,6 +416,13 @@ namespace MasterBidder.UI
             if (_auction) _auction.SetActive(screen == GameScreen.Auction);
             if (_report) _report.SetActive(screen == GameScreen.Report);
             if (_end) _end.SetActive(screen == GameScreen.End);
+
+            // Brief / Auction / Report show the 3D venue through a clear root.
+            if (screen == GameScreen.Brief || screen == GameScreen.Auction || screen == GameScreen.Report)
+                ClearScreenBackdrop(screen == GameScreen.Brief ? _brief
+                    : screen == GameScreen.Auction ? _auction
+                    : _report);
+
             if (screen != GameScreen.Auction)
             {
                 HideCollectorPopup();
